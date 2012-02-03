@@ -94,8 +94,14 @@ class Regex(Expression):
     """
     __slots__ = ['re']
 
-    def __init__(self, pattern):
-        self.re = re.compile(pattern)
+    def __init__(self, pattern, ignore_case=False, locale=False, multiline=False,
+                 dot_all=False, unicode=False, verbose=False):
+        self.re = re.compile(pattern, (ignore_case and re.I) |
+                                      (locale and re.L) |
+                                      (multiline and re.M) |
+                                      (dot_all and re.S) |
+                                      (unicode and re.U) |
+                                      (verbose and re.X))
 
     def _match(self, text, pos=0, cache=dummy_cache):
         """Return length of match, ``None`` if no match."""

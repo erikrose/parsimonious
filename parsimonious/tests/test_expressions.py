@@ -7,6 +7,7 @@ def test_regex():
     eq_(Literal('hello')._match('ehello', 1), 5)  # simple
     eq_(Regex('hello*')._match('hellooo'), 7)  # *
     eq_(Regex('hello*')._match('goodbye'), None)  # no match
+    eq_(Regex('hello', ignore_case=True)._match('HELLO'), 5)
 
 def test_sequence():
     eq_(Sequence(Regex('hi*'), Literal('lo'), Regex('.ingo'))._match('hiiiilobingo1234'),
