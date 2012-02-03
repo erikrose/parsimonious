@@ -86,19 +86,23 @@ class Regex(Expression):
             return span[1] - span[0]
 
 
-class Sequence(Expression):
-    """A series of expressions that must match contiguous, ordered pieces of the text
+class _Compound(Expression):
+    """An abstract expression which contains other expressions"""
 
-    In other words, it's a concatenation operator: each piece has to match, one
-    after another.
-
-    """
     __slots__ = ['members']
 
     def __init__(self, *members):
         """``members`` is a sequence of expressions."""
         self.members = members
 
+
+class Sequence(_Compound):
+    """A series of expressions that must match contiguous, ordered pieces of the text
+
+    In other words, it's a concatenation operator: each piece has to match, one
+    after another.
+
+    """
     def _match(self, text, pos=0, cache=dummy_cache):
         new_pos = pos
         length_of_sequence = 0
@@ -112,21 +116,30 @@ class Sequence(Expression):
         return length_of_sequence
 
 
-class OneOf(Expression):
+class OneOf(_Compound):
     """A series of expressions, one of which must match
 
     Expressions are tested in order from first to last. The first to succeed
     wins.
 
     """
-    __slots__ = ['members']
-
-    def __init__(self, *members):
-        """``members`` is a sequence of expressions."""
-        self.members = members
-
     def _match(self, text, pos=0, cache=dummy_cache):
         for m in self.members:
             length = m.match(text, pos, cache)
             if length is not None:
                 return length
+
+
+class AllOf(_Compound):
+    """A series of expressions, each of which must succeed from the current position.
+
+    The returned length of the composite expression is the length of the last
+    member.
+
+    """
+    def _match(self, text, pos=0, cache=dummy_cache):
+        for m in self.members:
+            length = m.match(text, pos, cache)
+            if length is None:
+                return None
+        return length

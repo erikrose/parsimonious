@@ -1,6 +1,6 @@
 from nose.tools import eq_
 
-from parsimonious.expressions import Regex, Sequence, OneOf
+from parsimonious.expressions import Regex, Sequence, OneOf, AllOf
 
 
 def test_regex():
@@ -20,3 +20,7 @@ def test_one_of():
     eq_(OneOf(Regex('aaa'), Regex('bb'))._match('aaa'), 3)  # first alternative
     eq_(OneOf(Regex('aaa'), Regex('bb'))._match('bbaaa'), 2)  # second
     eq_(OneOf(Regex('aaa'), Regex('bb'))._match('aa'), None)  # no match
+
+def test_all_of():
+    eq_(AllOf(Regex('0'), Regex('..'))._match('01'), 2)  # match
+    eq_(AllOf(Regex('0'), Regex('.2'))._match('01'), None)  # don't
