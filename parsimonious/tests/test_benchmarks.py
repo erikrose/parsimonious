@@ -24,3 +24,18 @@ def test_call_vs_inline():
     # global var access and addition in l[0] += 1.
     print '%s (no call) < %s (call)' % (no_call, call)
     assert no_call < call
+
+
+def test_startswith_vs_regex():
+    """Can I beat the speed of regexes by special-casing literals?"""
+    re_time = timeit(
+        'r.match(t, 19)',
+        'import re\n'
+        "r = re.compile('hello')\n"
+        "t = 'this is the finest hello ever'")
+    startswith_time = timeit("t.startswith('hello', 19)",
+                             "t = 'this is the finest hello ever'")
+
+    # Regexes take 2.24x as long as simple string matching.
+    print '%s (startswith) < %s (re)' % (startswith_time, re_time)
+    assert startswith_time < re_time

@@ -66,6 +66,18 @@ class Expression(object):
         return match
 
 
+class Literal(Expression):
+    """A string literal"""
+    __slots__ = ['literal']
+
+    def __init__(self, literal):
+        self.literal = literal
+
+    def _match(self, text, pos=0, cache=dummy_cache):
+        if text.startswith(self.literal, pos):
+            return len(self.literal)
+
+
 class Regex(Expression):
     """An expression that matches what a regex does.
 
@@ -84,9 +96,6 @@ class Regex(Expression):
         if m is not None:
             span = m.span()
             return span[1] - span[0]
-
-
-# TODO: Think about whether we need a Literal. Would it be faster than Regex?
 
 
 class _Compound(Expression):
