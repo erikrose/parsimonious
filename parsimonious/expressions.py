@@ -170,7 +170,7 @@ class Not(_Container):
         return 0 if length is None else None
 
 
-# TODO: Add quanitifiers for ?, *, and +.
+# Quantifiers. None of these is strictly necessary, but they're darn handy.
 
 class Optional(_Container):
     """An expression that succeeds whether or not the contained one does
@@ -195,3 +195,34 @@ class ZeroOrMore(_Container):
                 return total_length
             new_pos += length
             total_length += length
+
+
+class OneOrMore(_Container):
+    """An expression wrapper like the + quantifier in regexes.
+
+    You can also pass in an alternate minimum to make this behave like "2 or
+    more", "3 or more", etc.
+
+    """
+    __slots__ = ['min']
+
+    # TODO: Add max. It should probably succeed if there are more than the max
+    # --just not consume them.
+
+    def __init__(self, member, min=1):
+        super(OneOrMore, self).__init__(member)
+        self.min = min
+
+    def _match(self, text, pos=0, cache=dummy_cache):
+        new_pos = pos
+        total_length = count = 0
+        while True:
+            length = self.member.match(text, new_pos, cache)
+            if length is None:
+                break
+            count += 1
+            if length == 0:  # Don't loop infinitely.
+                break
+            new_pos += length
+            total_length += length
+        return total_length if self.min <= count else None
