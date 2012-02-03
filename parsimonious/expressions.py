@@ -6,7 +6,11 @@
 import re
 
 
-class DummyCache(object):
+__all__ = ['Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf', 'Not', 'Optional',
+           'ZeroOrMore', 'OneOrMore']
+
+
+class _DummyCache(object):
     """Fake cache that always misses.
 
     This never gets used except in tests.
@@ -18,7 +22,7 @@ class DummyCache(object):
     def __setitem__(self, key, value):
         pass
 
-dummy_cache = DummyCache()
+dummy_cache = _DummyCache()
 
 
 class Expression(object):
@@ -55,8 +59,11 @@ class Expression(object):
 
         """
         # TODO: Optimize. Probably a hot spot.
-        # Is there a way of lookup up cached stuff that's faster than hashing
+        # Is there a way of looking up cached stuff that's faster than hashing
         # this id-pos pair?
+        # If this is slow, think about the array module. It might (or might
+        # not!) use more RAM, but it'll likely be faster than hashing things
+        # all the time. Also, can we move all the allocs up front?
         expr_id = id(self)
         cached = cache.get((expr_id, pos), ())
         if cached is not ():
@@ -145,7 +152,7 @@ class OneOf(_Compound):
 class AllOf(_Compound):
     """A series of expressions, each of which must succeed from the current position.
 
-    The returned length of the composite expression is the length of the last
+    The returned length of the whole expression is the length of the last
     member.
 
     """
