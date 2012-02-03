@@ -6,6 +6,21 @@
 import re
 
 
+class DummyCache(object):
+    """Fake cache that always misses.
+
+    This never gets used except in tests.
+
+    """
+    def get(self, key, default=None):
+        return default
+
+    def __setitem__(self, key, value):
+        pass
+
+dummy_cache = DummyCache()
+
+
 class Expression(object):
     """A thing that can be matched against a piece of text"""
 
@@ -30,10 +45,13 @@ class Expression(object):
 
     # TODO: Make match() return a bit of the parse tree that the caller can
     # stitch together.
-    def match(self, text, pos, cache):
+    def match(self, text, pos=0, cache=dummy_cache):
         """Return length of match, ``None`` if no match.
 
         Check the cache first.
+
+        The default args are just to make the tests easier to write.
+        Ordinarily, ``parse()`` calls this and passes in a cache and pos.
 
         """
         # TODO: Optimize. Probably a hot spot.
@@ -60,7 +78,7 @@ class Regex(Expression):
     def __init__(self, pattern):
         self.re = re.compile(pattern)
 
-    def _match(self, text, pos, cache):
+    def _match(self, text, pos=0, cache=dummy_cache):
         """Return length of match, ``None`` if no match."""
         m = self.re.match(text, pos)
         if m is not None:
@@ -81,7 +99,7 @@ class Sequence(Expression):
         """``members`` is a sequence of expressions."""
         self.members = members
 
-    def _match(self, text, pos, cache):
+    def _match(self, text, pos=0, cache=dummy_cache):
         new_pos = pos
         length_of_sequence = 0
         for m in self.members:
@@ -92,3 +110,23 @@ class Sequence(Expression):
             length_of_sequence += length
         # Hooray! We got through all the members!
         return length_of_sequence
+
+
+class OneOf(Expression):
+    """A series of expressions, one of which must match
+
+    Expressions are tested in order from first to last. The first to succeed
+    wins.
+
+    """
+    __slots__ = ['members']
+
+    def __init__(self, *members):
+        """``members`` is a sequence of expressions."""
+        self.members = members
+
+    def _match(self, text, pos=0, cache=dummy_cache):
+        for m in self.members:
+            length = m.match(text, pos, cache)
+            if length is not None:
+                return length
