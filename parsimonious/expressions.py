@@ -86,6 +86,9 @@ class Regex(Expression):
             return span[1] - span[0]
 
 
+# TODO: Think about whether we need a Literal. Would it be faster than Regex?
+
+
 class _Compound(Expression):
     """An abstract expression which contains other expressions"""
 
@@ -145,19 +148,37 @@ class AllOf(_Compound):
         return length
 
 
-class Not(Expression):
-    """An expression that succeeds only if the expression within it doesn't
+class _Container(Expression):
+    """An abstract expression that contains a single other expression"""
 
-    In any case, it never matches any characters.
-
-    """
     __slots__ = ['member']
 
     def __init__(self, member):
         self.member = member
 
+
+class Not(_Container):
+    """An expression that succeeds only if the expression within it doesn't
+
+    In any case, it never matches any characters.
+
+    """
     def _match(self, text, pos=0, cache=dummy_cache):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
         length = self.member.match(text, pos, cache)
         return 0 if length is None else None
+
+
+# TODO: Add quanitifiers for ?, *, and +.
+
+class Optional(_Container):
+    """An expression that succeeds whether or not the contained one does
+
+    If the contained expression succeeds, it goes ahead and consumes what it
+    consumes. Otherwise, it consumes nothing.
+
+    """
+    def _match(self, text, pos=0, cache=dummy_cache):
+        length = self.member.match(text, pos, cache)
+        return 0 if length is None else length
