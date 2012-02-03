@@ -32,18 +32,18 @@ class Expression(object):
     # http://stackoverflow.com/questions/1336791/dictionary-vs-object-which-is-more-efficient-and-why
     __slots__ = []
 
-    def parse(self, text):
+    def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
 
         Initialize the packrat cache and kick off the first ``match()`` call.
 
         """
-        # The packrat cache. {expr: [length matched at text index 0,
-        #                            length matched at text index 1, ...],
+        # The packrat cache. {(oid, pos): [length matched at text index 0,
+        #                                  length matched at text index 1, ...],
         #                     ...}
         cache = {}
 
-        return self.match(text, 0, cache)
+        return self.match(text, pos, cache)
         # TODO: Freak out if the text didn't parse completely: if we didn't get
         # all the way to the end.
 
@@ -74,7 +74,11 @@ class Expression(object):
 
 
 class Literal(Expression):
-    """A string literal"""
+    """A string literal
+
+    Use these if you can; they're the fastest.
+
+    """
     __slots__ = ['literal']
 
     def __init__(self, literal):
