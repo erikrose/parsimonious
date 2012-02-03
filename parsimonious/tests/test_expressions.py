@@ -1,6 +1,6 @@
 from nose.tools import eq_
 
-from parsimonious.expressions import Regex, Sequence, OneOf, AllOf, Not, Optional
+from parsimonious.expressions import Regex, Sequence, OneOf, AllOf, Not, Optional, ZeroOrMore
 
 
 def test_regex():
@@ -32,3 +32,10 @@ def test_not():
 def test_optional():
     eq_(Sequence(Optional(Regex('a')), Regex('b'))._match('b'), 1)  # contained expr fails
     eq_(Sequence(Optional(Regex('a')), Regex('b'))._match('ab'), 2)  # contained expr succeeds
+
+def test_zero_or_more():
+    eq_(ZeroOrMore(Regex('b'))._match(''), 0)  # zero
+    eq_(ZeroOrMore(Regex('b'))._match('bbb'), 3)  # more
+
+    eq_(Regex('^')._match(''), 0)  # Validate the next test.
+    eq_(ZeroOrMore(Regex('^'))._match(''), 0)  # Try to make it loop infinitely using a zero-length contained expression.

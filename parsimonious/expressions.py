@@ -182,3 +182,16 @@ class Optional(_Container):
     def _match(self, text, pos=0, cache=dummy_cache):
         length = self.member.match(text, pos, cache)
         return 0 if length is None else length
+
+
+class ZeroOrMore(_Container):
+    """An expression wrapper like the * quantifier in regexes."""
+    def _match(self, text, pos=0, cache=dummy_cache):
+        new_pos = pos
+        total_length = 0
+        while True:
+            length = self.member.match(text, new_pos, cache)
+            if not length:  # None or 0. 0 would otherwise loop infinitely.
+                return total_length
+            new_pos += length
+            total_length += length
