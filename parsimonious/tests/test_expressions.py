@@ -9,9 +9,9 @@ def test_regex():
     eq_(Regex('hello*')._match('goodbye', 0, {}), None)  # no match
 
 def test_sequence():
-    eq_(Sequence([Regex('hi*'), Regex('lo'), Regex('.ingo')])._match('hiiiilobingo1234', 0, {}),
+    eq_(Sequence(Regex('hi*'), Regex('lo'), Regex('.ingo'))._match('hiiiilobingo1234', 0, {}),
         12)  # succeed
-    eq_(Sequence([Regex('hi*'), Regex('lo'), Regex('.ingo')])._match('hiiiilobing', 0, {}),
+    eq_(Sequence(Regex('hi*'), Regex('lo'), Regex('.ingo'))._match('hiiiilobing', 0, {}),
         None)  # don't
-    eq_(Sequence([Regex('hi*')])._match('>hiiii', 1, {}),
+    eq_(Sequence(Regex('hi*'))._match('>hiiii', 1, {}),
         5)  # non-0 pos

@@ -77,7 +77,7 @@ class Sequence(Expression):
     """
     __slots__ = ['members']
 
-    def __init__(self, members):
+    def __init__(self, *members):
         """``members`` is a sequence of expressions."""
         self.members = members
 
