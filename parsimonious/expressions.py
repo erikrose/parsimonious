@@ -143,3 +143,21 @@ class AllOf(_Compound):
             if length is None:
                 return None
         return length
+
+
+class Not(Expression):
+    """An expression that succeeds only if the expression within it doesn't
+
+    In any case, it never matches any characters.
+
+    """
+    __slots__ = ['member']
+
+    def __init__(self, member):
+        self.member = member
+
+    def _match(self, text, pos=0, cache=dummy_cache):
+        # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
+        # not bother to cache NOTs directly.
+        length = self.member.match(text, pos, cache)
+        return 0 if length is None else None

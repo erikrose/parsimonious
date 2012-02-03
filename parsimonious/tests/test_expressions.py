@@ -1,6 +1,6 @@
 from nose.tools import eq_
 
-from parsimonious.expressions import Regex, Sequence, OneOf, AllOf
+from parsimonious.expressions import Regex, Sequence, OneOf, AllOf, Not
 
 
 def test_regex():
@@ -24,3 +24,7 @@ def test_one_of():
 def test_all_of():
     eq_(AllOf(Regex('0'), Regex('..'))._match('01'), 2)  # match
     eq_(AllOf(Regex('0'), Regex('.2'))._match('01'), None)  # don't
+
+def test_not():
+    eq_(Not(Regex('.'))._match(''), 0)  # match
+    eq_(Not(Regex('.'))._match('Hi'), None)  # don't
