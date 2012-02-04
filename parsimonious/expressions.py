@@ -59,11 +59,17 @@ class Expression(object):
 
         """
         # TODO: Optimize. Probably a hot spot.
+        #
         # Is there a way of looking up cached stuff that's faster than hashing
         # this id-pos pair?
+        #
         # If this is slow, think about the array module. It might (or might
         # not!) use more RAM, but it'll likely be faster than hashing things
         # all the time. Also, can we move all the allocs up front?
+        #
+        # To save space, we have lots of choices: (1) Cache only the results of
+        # entire rules, not subexpressions. (2) Age stuff out of the cache
+        # somehow. LRU?
         expr_id = id(self)
         cached = cache.get((expr_id, pos), ())
         if cached is not ():

@@ -28,6 +28,31 @@ instance, Yacc. And, due to both of these properties, PEG grammars are easier
 to write: they're basically just EBNF.
 
 
+Writing Grammars
+================
+
+* Literals are quoted, either with ', ", """, or '''. Backslash escaping?
+* Sequences are made out of space- or tab-delimited things.
+* OneOf choices have ``/`` between them.
+* AllOf components have ``&`` between them.
+* Optional has ``?`` after it.
+* Not has ``!`` before it.
+* ZeroOrMore has ``*`` after it.
+* OneOrMore has ``+`` after it.
+* I shouldn't need to represent Empty; the quantifiers should suffice.
+* Nonterminals just sit out there naked. Valid names are [a-zA-Z_][a-zA-Z_0-9]*.
+* Regexes have ~ in front and are quoted like literals.
+
+Example::
+
+    bold_text  = bold_open text bold_close
+    text       = ~'[a-zA-Z 0-9]*'
+    bold_open  = '(('
+    bold_close = '))'
+
+What about precedence? Rather than have parens or something, just break up
+rules to do grouping.
+
 Optimizing Grammars
 ===================
 
@@ -46,3 +71,15 @@ doesn't have to run any Python between pieces, but a broken up one will give
 better cache performance if the individual pieces are re-used elsewhere. If the
 pieces of a regex aren't used anywhere else, by all means keep the whole thing
 together.
+
+Quantifiers: bring your quantifiers up to the topmost level you can. Otherwise,
+lower-level patterns could succeed but be empty and put a bunch of useless
+nodes in your tree that didn't really match anything.
+
+
+Why?
+====
+
+* Speed
+* I wanted to understand PEG parsers better so I'd know how to optimize my grammars.
+* I didn't like how PyParsing mixed recognition with formatting the resulting tree. It felt unnatural to me, since my use case--wikis--naturally wants to do several different things with the tree: render to HTML, render to text, etc.
