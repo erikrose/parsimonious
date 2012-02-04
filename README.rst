@@ -31,7 +31,7 @@ to write: they're basically just EBNF.
 Writing Grammars
 ================
 
-* Literals are quoted, either with ', ", """, or '''. Backslash escaping?
+* Literals are quoted with ``"`` and support backslash escaping.
 * Sequences are made out of space- or tab-delimited things.
 * OneOf choices have ``/`` between them.
 * AllOf components have ``&`` between them.
@@ -41,17 +41,28 @@ Writing Grammars
 * OneOrMore has ``+`` after it.
 * I shouldn't need to represent Empty; the quantifiers should suffice.
 * Nonterminals just sit out there naked. Valid names are [a-zA-Z_][a-zA-Z_0-9]*.
-* Regexes have ~ in front and are quoted like literals.
+* Regexes have ``~`` in front and are quoted like literals. Any flags follow
+  the end quotes as single chars. TODO: Think about support Python-style raw
+  strings.
 
 Example::
 
     bold_text  = bold_open text bold_close
-    text       = ~'[a-zA-Z 0-9]*'
+    text       = ~'[A-Z 0-9]*'i
     bold_open  = '(('
     bold_close = '))'
 
 What about precedence? Rather than have parens or something, just break up
 rules to do grouping.
+
+Wishes:
+* The ability to mark certain nodes as undesired, so we don't bother
+  constructing them and cluttering the tree with them
+* Think about having the ability, like PyParsing, to get irrevocably into a
+  pattern so that we don't backtrack out of it. Then, if things don't end up
+  matching, we complain with an informative error message rather than
+  backtracking to nonsense.
+
 
 Optimizing Grammars
 ===================
@@ -62,7 +73,8 @@ reference it from wherever you need it. You'll get the most out of the caching
 this way, since cache lookups are by expression object identity (for speed).
 Even if you have an expression that's very simple, not repeating it will save
 RAM, as there can, at worst, be a cached int for every char in the text you're
-parsing.
+parsing. But hmm, maybe I can identify repeat subexpressions automatically and
+factor that up while building the grammar....
 
 How much should you shove into one ``Regex``, versus how much should you break
 them up to not repeat yourself? That's a fine balance and worthy of

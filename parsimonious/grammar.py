@@ -25,17 +25,14 @@ class Grammar(object):
         self._rules = self._rules_from_peg(peg)
 
     def _rules_from_peg(self, peg):
-        """Return a useful data structure derived from textual PEG rules.
+        """Return a dict of rule names pointing to their expressions.
 
-        It's a map of rules, all referencing each other. Typically, there's a
-        single root to the web of references, and that root is the starting
-        symbol for parsing, but there's nothing saying you can't have multiple
-        roots.
-
-        The grammar gets divided into (sub)expressions, which are arranged in
-        some kind of tree. The parser then traverses that tree, trying to find
-        matches to the expressions.
+        It's a web of expressions, all referencing each other. Typically,
+        there's a single root to the web of references, and that root is the
+        starting symbol for parsing, but there's nothing saying you can't have
+        multiple roots.
 
         """
+        rules = {}  # Hard-code the objects, to bootstrap. {'rule name': Expression}
+        # TODO: Remember to set each top-level expression's .name.
         # TODO: Unstub.
-

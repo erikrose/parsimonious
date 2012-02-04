@@ -17,39 +17,54 @@ class Node(object):
     and render several representations from the tree, one after another.
 
     """
-    __slots__ = ['rule_name',  # The name of the rule that generated me
-                 'start', # The position in the text where that rule started matching
-                 'end',   # The position after start where the rule first didn't
+    __slots__ = ['expr_name',  # The name of the expression that generated me
+                 'start', # The position in the text where that expr started matching
+                 'end',   # The position after start where the expr first didn't
                           # match. [start:end] follow Python slice conventions.
                  'children',  # List of child parse tree nodes
                  'text']  # The full text fed to the parser
 
-    def __init__(self, rule_name, text, start, end, children=None):
-        self.rule_name = rule_name
+    def __init__(self, expr_name, text, start, end, children=None):
+        self.expr_name = expr_name
         self.text = text
         self.start = start
         self.end = end
         self.children = children or []
 
     def __unicode__(self):
-        return u'<%s "%s">' % (self.rule_name,
-                               self.text[self.start:self.end])
-        # TODO: Hang children off the bottom, indented, recursively, like a TreeView.
+        def indent(text):
+            return '\n'.join(('    ' + line) for line in text.splitlines())
+        ret = [u'<%s "%s">' % (self.expr_name, self.text[self.start:self.end])]
+        for n in self.children:
+            ret.append(indent(unicode(n)))
+        return '\n'.join(ret)
+
 
     __str__ = __repr__ = __unicode__
+
+    def __eq__(self, other):
+        """Support by-value deep comparison with other nodes."""
+        return (self.expr_name == other.expr_name and
+                self.text == other.text and
+                self.start == other.start and
+                self.end == other.end and
+                self.children == other.children)
+
+    def __ne__(self, other):
+        return not self == other
 
 
 class NodeVisitor(object):
     """A shell for writing things that turn parse trees into something useful
 
-    Subclass this, add methods for each rule you care about, instantiate, and
+    Subclass this, add methods for each expr you care about, instantiate, and
     call ``visit(top_node_of_parse_tree)``. It'll return the useful stuff.
 
     This API is very similar to that of ``ast.NodeVisitor``.
 
     """
     def visit(self, node):
-        method = getattr(self, 'visit_' + node.rule_name, self.generic_visit)
+        method = getattr(self, 'visit_' + node.expr_name, self.generic_visit)
         return method(node)
 
     def generic_visit(self):
