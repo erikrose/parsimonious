@@ -48,7 +48,7 @@ Writing Grammars
 Example::
 
     bold_text  = bold_open text bold_close
-    text       = ~'[A-Z 0-9]*'i
+    text       = ~"[A-Z 0-9]*"i
     bold_open  = '(('
     bold_close = '))'
 
@@ -57,7 +57,21 @@ rules to do grouping.
 
 Wishes:
 * The ability to mark certain nodes as undesired, so we don't bother
-  constructing them and cluttering the tree with them
+  constructing them and cluttering the tree with them. For example, we might
+  only care to see the OneOf node in the final tree, not the boring Literals
+  inside it::
+
+    greeting = hi / hello / bonjour
+
+  Perhaps we could express it like this::
+
+    greeting = -hi / -hello / -bonjour
+
+  Pijnu has a raft of tree manipulators. I don't think I want all of them, but
+  a judicious subset might be nice. Don't get into mixing formatting with tree
+  manipulation.
+  https://github.com/erikrose/pijnu/blob/master/library/node.py#L333
+
 * Think about having the ability, like PyParsing, to get irrevocably into a
   pattern so that we don't backtrack out of it. Then, if things don't end up
   matching, we complain with an informative error message rather than
@@ -87,6 +101,15 @@ together.
 Quantifiers: bring your quantifiers up to the topmost level you can. Otherwise,
 lower-level patterns could succeed but be empty and put a bunch of useless
 nodes in your tree that didn't really match anything.
+
+
+Dealing With Parse Trees
+========================
+
+A parse tree has a node for each expression which matched, even if it match a
+zero-length string, like a ``thing?`` might do.
+
+TODO: Talk about tree manipulators (if we write any) and about ``NodeVisitor``.
 
 
 Why?

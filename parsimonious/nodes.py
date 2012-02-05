@@ -34,7 +34,7 @@ class Node(object):
     def __unicode__(self):
         def indent(text):
             return '\n'.join(('    ' + line) for line in text.splitlines())
-        ret = [u'<%s "%s">' % (self.expr_name, self.text[self.start:self.end])]
+        ret = [u'<%s "%s">' % (self.expr_name or 'Node', self.text[self.start:self.end])]
         for n in self.children:
             ret.append(indent(unicode(n)))
         return '\n'.join(ret)

@@ -39,10 +39,13 @@ class Expression(object):
     def __init__(self, name=''):
         self.name = name
 
-    def parse(self, text, pos=0):
+    def parse(self, text):
         """Return a parse tree of ``text``.
 
-        Initialize the packrat cache and kick off the first ``match()`` call.
+        Return ``None`` if the expression doesn't match the full string.
+
+        On a more technical level: initialize the packrat cache and kick off
+        the first ``match()`` call.
 
         """
         # The packrat cache. {(oid, pos): [length matched at text index 0,
@@ -50,9 +53,11 @@ class Expression(object):
         #                     ...}
         cache = {}
 
-        return self.match(text, pos, cache)
-        # TODO: Freak out if the text didn't parse completely: if we didn't get
-        # all the way to the end.
+        node = self.match(text, cache=cache)
+        if node is None or node.end - node.start != len(text):
+            # If it was not a complete parse, return None:
+            return None
+        return node
 
     def match(self, text, pos=0, cache=dummy_cache):
         """Return the ``Node`` matching this expression at the given position.
@@ -178,7 +183,8 @@ class OneOf(_Compound):
         for m in self.members:
             node = m.match(text, pos, cache)
             if node is not None:
-                return node
+                # Wrap the succeeding child in a node representing the OneOf:
+                return Node(self.name, text, pos, node.end, children=[node])
 
 
 class AllOf(_Compound):
@@ -193,7 +199,8 @@ class AllOf(_Compound):
             node = m.match(text, pos, cache)
             if node is None:
                 return None
-        return node
+        if node is not None:
+            return Node(self.name, text, pos, node.end, children=[node])
 
 
 class _Container(Expression):
@@ -231,9 +238,11 @@ class Optional(_Container):
     """
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
         node = self.member.match(text, pos, cache)
-        return Node(self.name, text, pos, pos) if node is None else node
+        return (Node(self.name, text, pos, pos) if node is None else
+                Node(self.name, text, pos, node.end, children=[node]))
 
 
+# TODO: Merge with OneOrMore.
 class ZeroOrMore(_Container):
     """An expression wrapper like the * quantifier in regexes."""
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
@@ -261,7 +270,7 @@ class OneOrMore(_Container):
     # --just not consume them.
 
     def __init__(self, member, name='', min=1):
-        super(OneOrMore, self).__init__(member)
+        super(OneOrMore, self).__init__(member, name=name)
         self.min = min
 
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
