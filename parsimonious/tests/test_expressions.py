@@ -18,8 +18,11 @@ def len_eq(node, length):
 
 
 class LengthTests(TestCase):
-    """Tests for returning the right lengths"""
+    """Tests for returning the right lengths
 
+    I wrote these before parse tree generation was implemented.
+
+    """
     def test_regex(self):
         len_eq(Literal('hello').match('ehello', 1), 5)  # simple
         len_eq(Regex('hello*').match('hellooo'), 7)  # *

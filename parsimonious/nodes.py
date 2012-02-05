@@ -11,18 +11,19 @@ class Node(object):
     """A parse tree node
 
     My philosophy is that parse trees (and their nodes) should be
-    representation-agnostic. That is, they shouldn't get all mixed up in what
+    representation-agnostic. That is, they shouldn't get all mixed up with what
     the final rendered form of a wiki page (or the intermediate representation
-    of a programming language) is going to be: you should be able to parse once
-    and render several representations from the tree, one after another.
+    of a programming language, or whatever) is going to be: you should be able
+    to parse once and render several representations from the tree, one after
+    another.
 
     """
     __slots__ = ['expr_name',  # The name of the expression that generated me
+                 'text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
                  'end',   # The position after start where the expr first didn't
                           # match. [start:end] follow Python slice conventions.
-                 'children',  # List of child parse tree nodes
-                 'text']  # The full text fed to the parser
+                 'children']  # List of child parse tree nodes
 
     def __init__(self, expr_name, text, start, end, children=None):
         self.expr_name = expr_name
@@ -39,12 +40,12 @@ class Node(object):
             ret.append(indent(unicode(n)))
         return '\n'.join(ret)
 
-
     __str__ = __repr__ = __unicode__
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes."""
-        return (self.expr_name == other.expr_name and
+        return (other is not None and
+                self.expr_name == other.expr_name and
                 self.text == other.text and
                 self.start == other.start and
                 self.end == other.end and
@@ -52,6 +53,16 @@ class Node(object):
 
     def __ne__(self, other):
         return not self == other
+
+
+class RegexNode(Node):
+    """Node returned from a ``Regex`` expression
+
+    Grants access to the ``re.Match`` object, in case you want to access
+    capturing groups, etc.
+
+    """
+    __slots__ = ['match']
 
 
 class NodeVisitor(object):

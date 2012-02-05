@@ -5,11 +5,11 @@
 
 import re
 
-from parsimonious.nodes import Node
+from parsimonious.nodes import Node, RegexNode
 
 
-__all__ = ['Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf', 'Not', 'Optional',
-           'ZeroOrMore', 'OneOrMore']
+__all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
+           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
 
 
 class _DummyCache(object):
@@ -135,7 +135,9 @@ class Regex(Expression):
         m = self.re.match(text, pos)
         if m is not None:
             span = m.span()
-            return Node(self.name, text, pos, pos + span[1] - span[0])
+            node = RegexNode(self.name, text, pos, pos + span[1] - span[0])
+            node.match = m  # TODO: A terrible idea for cache size?
+            return node
 
 
 class _Compound(Expression):
