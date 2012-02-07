@@ -13,7 +13,7 @@ class HtmlFormatter(NodeVisitor):
 
     def visit_text(self, node):
         """Return the text verbatim."""
-        return node.text[node.start:node.end]
+        return node.text
 
     def visit_bold_text(self, node):
         return ''.join(self.visit(n) for n in node.children)

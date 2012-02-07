@@ -3,14 +3,14 @@ from unittest import TestCase
 from nose.tools import eq_
 
 from parsimonious.nodes import Node
-from parsimonious.grammar import peg_grammar
+from parsimonious.grammar import peg_grammar, PegVisitor
 
 
 class PegGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar definition syntax"""
 
     def test_ws(self):
-        text = ' \t\t'
+        text = ' \t\r'
         eq_(peg_grammar['ws'].parse(text), Node('ws', text, 0, 3))
 
     def test_quantifier(self):
@@ -24,6 +24,8 @@ class PegGrammarTests(TestCase):
     def test_literal(self):
         text = '"anything but quotes#$*&^"'
         eq_(peg_grammar['literal'].parse(text), Node('literal', text, 0, len(text)))
+        text = r'''r"\""'''
+        eq_(peg_grammar['literal'].parse(text), Node('literal', text, 0, 5))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
@@ -65,7 +67,7 @@ class PegGrammarTests(TestCase):
 
         assert peg_grammar['rule'].parse('this = that\r')
         assert peg_grammar['rule'].parse('this = the? that other* \t\r')
-        assert peg_grammar['rule'].parse('the=~"hi*"\n')  # test $ as eol
+        assert peg_grammar['rule'].parse('the=~"hi*"\n')
 
         assert peg_grammar.parse('''
             this = the? that other*
@@ -73,3 +75,23 @@ class PegGrammarTests(TestCase):
             the=~"hi*"
             other = "ahoy hoy"
             ''')
+
+
+class PegVisitorTests(TestCase):
+    """Tests for ``PegVisitor``"""
+
+    def test_round_trip(self):
+        """Test a simple round trip.
+
+        Parse a simple grammar, turn the parse tree into a map of expressions,
+        and use that to parse another piece of text.
+
+        Not everything was implemented yet, but it was a big milestone and a
+        proof of concept.
+
+        """
+        tree = peg_grammar.parse('''number = ~"[0-9]+"\n''')
+        rules, default_rule = PegVisitor().visit(tree)
+
+        text = '98'
+        eq_(default_rule.parse(text), Node('number', text, 0, 2))

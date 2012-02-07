@@ -48,8 +48,8 @@ class Expression(object):
         the first ``match()`` call.
 
         """
-        # The packrat cache. {(oid, pos): [length matched at text index 0,
-        #                                  length matched at text index 1, ...],
+        # The packrat cache. {(oid, pos): Node tree matched by object `oid` at
+        #                                 index `pos`
         #                     ...}
         cache = {}
 
@@ -85,6 +85,7 @@ class Expression(object):
         # only the results of entire rules, not subexpressions (probably a
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU?
+        #print self.__class__.__name__, self.name
         expr_id = id(self)
         cached = cache.get((expr_id, pos), ())
         if cached is not ():
@@ -205,17 +206,7 @@ class AllOf(_Compound):
             return Node(self.name, text, pos, node.end, children=[node])
 
 
-class _Container(Expression):
-    """An abstract expression that contains a single other expression"""
-
-    __slots__ = ['member']
-
-    def __init__(self, member, name=''):
-        super(_Container, self).__init__(name)
-        self.member = member
-
-
-class Not(_Container):
+class Not(_Compound):
     """An expression that succeeds only if the expression within it doesn't
 
     In any case, it never consumes any characters; it's a negative lookahead.
@@ -224,14 +215,14 @@ class Not(_Container):
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
-        node = self.member.match(text, pos, cache)
+        node = self.members[0].match(text, pos, cache)
         if node is None:
             return Node(self.name, text, pos, pos)
 
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
-class Optional(_Container):
+class Optional(_Compound):
     """An expression that succeeds whether or not the contained one does
 
     If the contained expression succeeds, it goes ahead and consumes what it
@@ -239,19 +230,19 @@ class Optional(_Container):
 
     """
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
-        node = self.member.match(text, pos, cache)
+        node = self.members[0].match(text, pos, cache)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
 
 # TODO: Merge with OneOrMore.
-class ZeroOrMore(_Container):
+class ZeroOrMore(_Compound):
     """An expression wrapper like the * quantifier in regexes."""
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
         new_pos = pos
         children = []
         while True:
-            node = self.member.match(text, new_pos, cache)
+            node = self.members[0].match(text, new_pos, cache)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
                 return Node(self.name, text, pos, new_pos, children)
@@ -259,7 +250,7 @@ class ZeroOrMore(_Container):
             new_pos += node.end - node.start
 
 
-class OneOrMore(_Container):
+class OneOrMore(_Compound):
     """An expression wrapper like the + quantifier in regexes.
 
     You can also pass in an alternate minimum to make this behave like "2 or
@@ -279,7 +270,7 @@ class OneOrMore(_Container):
         new_pos = pos
         children = []
         while True:
-            node = self.member.match(text, new_pos, cache)
+            node = self.members[0].match(text, new_pos, cache)
             if node is None:
                 break
             children.append(node)
