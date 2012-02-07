@@ -14,6 +14,11 @@ from parsimonious.exceptions import VisitationException
 class Node(object):
     """A parse tree node
 
+    Consider these immutable once constructed. As a side effect of a
+    memory-saving strategy in the cache, multiple references to a single
+    ``Node`` might be returned in a single parse tree. So, if you started
+    messing with one, you'd see surprising parallel changes pop up elsewhere.
+
     My philosophy is that parse trees (and their nodes) should be
     representation-agnostic. That is, they shouldn't get all mixed up with what
     the final rendered form of a wiki page (or the intermediate representation
@@ -22,6 +27,8 @@ class Node(object):
     another.
 
     """
+    # TODO: Make this subclass list. Lower the API mismatch with the language,
+    # and watch magic happen.
     __slots__ = ['expr_name',  # The name of the expression that generated me
                  'full_text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
@@ -89,11 +96,14 @@ class NodeVisitor(object):
 
     This API is very similar to that of ``ast.NodeVisitor``.
 
-    We shy away from transforming the parse tree in place, because it makes it
-    impossible to report errors: you'd end up with the "error" arrow pointing
-    someplace in a half-transformed mishmash of nodes--and that's assuming
-    you're even transforming the tree into another tree. Heaven forbid you're
-    making it into a string or something else.
+    We never transform the parse tree in place, because...
+
+    * There are likely multiple references to the same ``Node`` object in a
+      parse tree, and changes to one reference would surprise you elsewhere.
+    * It makes it impossible to report errors: you'd end up with the "error"
+      arrow pointing someplace in a half-transformed mishmash of nodes--and
+      that's assuming you're even transforming the tree into another tree.
+      Heaven forbid you're making it into a string or something else.
 
     """
     def visit(self, node):
