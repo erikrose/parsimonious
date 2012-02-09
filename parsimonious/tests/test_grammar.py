@@ -1,7 +1,8 @@
 from unittest import TestCase
 
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 
+from parsimonious.exceptions import UndefinedLabel
 from parsimonious.nodes import Node
 from parsimonious.grammar import peg_grammar, PegVisitor
 
@@ -100,3 +101,8 @@ class PegVisitorTests(TestCase):
 
         text = '98'
         eq_(default_rule.parse(text), Node('number', text, 0, 2))
+
+    def test_undefined_rule(self):
+        """Make sure we throw the right exception on undefined rules."""
+        tree = peg_grammar.parse('boy = howdy\n')
+        assert_raises(UndefinedLabel, PegVisitor().visit, tree)

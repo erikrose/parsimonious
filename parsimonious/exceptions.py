@@ -1,19 +1,3 @@
-class UndefinedLabel(Exception):
-    """A rule referenced in a grammar was never defined.
-
-    Circular references and forward references are okay, but you have to define
-    stuff at some point.
-
-    """
-    def __init__(self, label):
-        self.label = label
-
-    def __unicode__(self):
-        return u'The label "%s" was never defined.' % self.label
-
-    __str__ = __unicode__
-
-
 class VisitationException(Exception):
     """Something went wrong while traversing a parse tree.
 
@@ -37,3 +21,19 @@ class VisitationException(Exception):
             (exc_class.__name__,
              exc,
              node.prettily(error=node)))
+
+
+class UndefinedLabel(VisitationException):
+    """A rule referenced in a grammar was never defined.
+
+    Circular references and forward references are okay, but you have to define
+    stuff at some point.
+
+    """
+    def __init__(self, label):
+        self.label = label
+
+    def __unicode__(self):
+        return u'The label "%s" was never defined.' % self.label
+
+    __str__ = __unicode__
