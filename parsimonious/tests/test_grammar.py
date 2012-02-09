@@ -78,7 +78,12 @@ class PegGrammarTests(TestCase):
 
 
 class PegVisitorTests(TestCase):
-    """Tests for ``PegVisitor``"""
+    """Tests for ``PegVisitor``
+
+    As I write these, Grammar is not yet fully implemented. Normally, there'd
+    be no reason to use ``PegVisitor`` directly.
+
+    """
 
     def test_round_trip(self):
         """Test a simple round trip.

@@ -145,16 +145,15 @@ class PegVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression`` objects"""
 
     def visit_rule(self, node):
+    def visit_rule(self, (ws, label, _2, equals, _3, rhs, _4, eol)):
         """Assign a name to the Expression and return it."""
-        _, label, _, equals, _, rhs, _, eol = node.children
         rhs = self.visit(rhs)
         label = unicode(self.visit(label))  # Turn into text.
         rhs.name = label  # Assign a name to the expr.
         return rhs
 
-    def visit_rhs(self, node):
+    def visit_rhs(self, (term_or_poly,)):
         """Lift the ``term`` or ``poly_term`` up to replace this node."""
-        term_or_poly, = node.children
         return self.visit(term_or_poly)
 
     def visit_label(self, node):
@@ -165,18 +164,16 @@ class PegVisitor(NodeVisitor):
         """
         return _LazyReference(node.text)
 
-    def visit_term(self, node):
+    def visit_term(self, (quantified_or_atom,)):
         """``term `` has only 1 child. Lift it up in place of the term."""
-        quantified_or_atom, = node.children
         return self.visit(quantified_or_atom)  # TODO: Factor up.
 
-    def visit_atom(self, node):
+    def visit_atom(self, (child,)):
         """Lift up the single child to replace this node."""
-        return self.visit(node.children[0])
+        return self.visit(child)
 
-    def visit_regex(self, node):
+    def visit_regex(self, (tilde, pattern, flags)):
         """Return a ``Regex`` expression."""
-        tilde, pattern, flags = node.children
         pattern = self.visit(pattern)  # Turn pattern literal into a string.
         flags = flags.text.upper()
         return Regex(pattern, ignore_case='I' in flags,
@@ -194,7 +191,7 @@ class PegVisitor(NodeVisitor):
         # possibility.
         return ast.literal_eval(node.text)
 
-    def visit_rules(self, node):
+    def visit_rules(self, (rules, ws)):
         """Collate all the rules into a map. Return (map, default rule).
 
         The default rule is the first one. Or, if you have more than one rule
@@ -203,7 +200,6 @@ class PegVisitor(NodeVisitor):
 
         """
         # TODO: Too big. Break up.
-        rules, ws = node.children
         rule_map = {}
 
         def resolve_refs(expr):
@@ -227,7 +223,7 @@ class PegVisitor(NodeVisitor):
         # Turn each rule into an Expression. Later rules of the same name
         # override earlier ones.
         first = None
-        for n in rules.children:
+        for n in rules:
             expr = self.visit(n)
             rule_map[expr.name] = expr
             if not first:

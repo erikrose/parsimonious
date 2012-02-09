@@ -16,7 +16,7 @@ class HtmlFormatter(NodeVisitor):
         return node.text
 
     def visit_bold_text(self, node):
-        return ''.join(self.visit(n) for n in node.children)
+        return ''.join(self.visit(n) for n in node)
 
 
 def test_visitor():

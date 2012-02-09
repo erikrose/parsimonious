@@ -43,6 +43,22 @@ class Node(object):
         self.end = end
         self.children = children or []
 
+    def __iter__(self):
+        """Support looping over my children and doing tuple unpacks on me.
+
+        It can be very handy to unpack nodes in arg lists; see
+        :class:`PegVisitor` for an example.
+
+        """
+        return iter(self.children)
+
+    @property
+    def text(self):
+        """Return the text this node matched."""
+        return self.full_text[self.start:self.end]
+
+    # From here down is just stuff for testing and debugging.
+
     def prettily(self, error=None):
         """Return a pretty-printed representation of me.
 
@@ -54,7 +70,7 @@ class Node(object):
         ret = [u'<%s "%s">%s' % (self.expr_name or 'Node',
                                  self.text,
                                  '  <-- *** We were here. ***' if error is self else '')]
-        for n in self.children:
+        for n in self:
             ret.append(indent(n.prettily(error=error)))
         return '\n'.join(ret)
 
@@ -71,11 +87,6 @@ class Node(object):
 
     def __ne__(self, other):
         return not self == other
-
-    @property
-    def text(self):
-        """Return the text this node matched."""
-        return self.full_text[self.start:self.end]
 
 
 class RegexNode(Node):
