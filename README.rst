@@ -62,7 +62,7 @@ space
 ``a & b``
   A lookahead assertion followed by a normal, consumed symbol. ``a & b & c``
   means that ``a``, ``b``, and ``c`` all have to match at the current position.
-  ``c``, however, is the only bit that actually makes it into the parse tree.
+  ``c``, however, is the only bit that's actually consumed.
 ``thing?``
   An optional expression
 ``!thing``
@@ -76,12 +76,15 @@ space
   the end quotes as single chars. Regexes are good for representing character
   classes (``[a-z0-9]``) and optimizing for speed.
 
-Example::
+Example
+-------
 
-    bold_text  = bold_open text bold_close
-    text       = ~"[A-Z 0-9]*"i
-    bold_open  = '(('
-    bold_close = '))'
+::
+
+  bold_text  = bold_open text bold_close
+  text       = ~"[A-Z 0-9]*"i
+  bold_open  = '(('
+  bold_close = '))'
 
 We might implement parentheses in the future for anonymous grouping. For now,
 just break up complex rules instead.
@@ -160,7 +163,6 @@ Future Directions
 Language Changes
 ----------------
 
-* If the recursion gets too deep in practice, use trampolining to dodge it.
 * Do we need a LookAhead? It might be faster, but ``A Lookahead(B)`` is
   equivalent to ``AB & A``.
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
@@ -201,3 +203,4 @@ Optimizations
   useless ones as RAM use grows.
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
+* If the recursion gets too deep in practice, use trampolining to dodge it.
