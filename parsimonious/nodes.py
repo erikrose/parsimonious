@@ -61,7 +61,7 @@ class Node(object):
     __str__ = __repr__ = __unicode__ = prettily
 
     def __eq__(self, other):
-        """Support by-value deep comparison with other nodes."""
+        """Support by-value deep comparison with other nodes for testing."""
         return (other is not None and
                 self.expr_name == other.expr_name and
                 self.full_text == other.full_text and
