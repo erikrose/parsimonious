@@ -85,7 +85,6 @@ class PegVisitorTests(TestCase):
     be no reason to use ``PegVisitor`` directly.
 
     """
-
     def test_round_trip(self):
         """Test a simple round trip.
 

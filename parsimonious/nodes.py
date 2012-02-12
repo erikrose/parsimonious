@@ -65,6 +65,7 @@ class Node(object):
         :arg error: The node to highlight because an error occurred there
 
         """
+        # TODO: If a Node appears multiple times in the tree, we'll point to them all. Whoops.
         def indent(text):
             return '\n'.join(('    ' + line) for line in text.splitlines())
         ret = [u'<%s "%s">%s' % (self.expr_name or 'Node',
@@ -117,13 +118,16 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
+    # TODO: If we need to optimize this, we can go back to putting subclasses
+    # in charge of visiting children; they know when not to bother. Or we can
+    # mark nodes as not descend-worthy in the grammar.
     def visit(self, node):
         method = getattr(self, 'visit_' + node.expr_name, self.generic_visit)
 
         # Call that method, and show where in the tree it failed if it blows
         # up.
         try:
-            return method(node)
+            return method(node, [self.visit(n) for n in node])
         except VisitationException:
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
@@ -134,8 +138,17 @@ class NodeVisitor(object):
             visitation_exception = VisitationException(exc, exc_class, node)
             raise visitation_exception.__class__, visitation_exception, tb
 
-    def generic_visit(self, node):
-        """Default visitor method"""
-        # TODO: Figure out what, if anything, this should do. Some people will
-        # want strings; others, other things.
-        raise NotImplementedError
+    def generic_visit(self, node, visited_children):
+        """Default visitor method
+
+        :arg node: The node we're visiting
+        :arg visited_children: The results of visiting the children of that
+            node, in a list
+
+        Return the node verbatim, so it maintains the parse tree's structure.
+        Non-generic visitor methods can then use or ignore this at their
+        discretion. This works out well regardless of whether a subclass is
+        trying to make another tree, a flat string, or whatever.
+
+        """
+        return node

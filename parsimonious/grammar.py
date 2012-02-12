@@ -144,37 +144,34 @@ class _LazyReference(unicode):
 class PegVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression`` objects"""
 
-    def visit_rule(self, node):
-    def visit_rule(self, (ws, label, _2, equals, _3, rhs, _4, eol)):
+    def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, eol)):
         """Assign a name to the Expression and return it."""
-        rhs = self.visit(rhs)
-        label = unicode(self.visit(label))  # Turn into text.
+        label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backracking.
         rhs.name = label  # Assign a name to the expr.
         return rhs
 
-    def visit_rhs(self, (term_or_poly,)):
+    def visit_rhs(self, rhs, (term_or_poly,)):
         """Lift the ``term`` or ``poly_term`` up to replace this node."""
-        return self.visit(term_or_poly)
+        return term_or_poly
 
-    def visit_label(self, node):
+    def visit_label(self, label, visited_children):
         """Stick a :class:`_LazyReference` in the tree as a placeholder.
 
         We resolve them all later according to the names in the `rules` hash.
 
         """
-        return _LazyReference(node.text)
+        return _LazyReference(label.text)
 
-    def visit_term(self, (quantified_or_atom,)):
+    def visit_term(self, term, (quantified_or_atom,)):
         """``term `` has only 1 child. Lift it up in place of the term."""
-        return self.visit(quantified_or_atom)  # TODO: Factor up.
+        return quantified_or_atom
 
-    def visit_atom(self, (child,)):
+    def visit_atom(self, atom, (child,)):
         """Lift up the single child to replace this node."""
-        return self.visit(child)
+        return child
 
-    def visit_regex(self, (tilde, pattern, flags)):
+    def visit_regex(self, regex, (tilde, pattern, flags)):
         """Return a ``Regex`` expression."""
-        pattern = self.visit(pattern)  # Turn pattern literal into a string.
         flags = flags.text.upper()
         return Regex(pattern, ignore_case='I' in flags,
                               locale='L' in flags,
@@ -183,15 +180,15 @@ class PegVisitor(NodeVisitor):
                               unicode='U' in flags,
                               verbose='X' in flags)
 
-    def visit_literal(self, node):
+    def visit_literal(self, literal, visited_children):
         """Turn a literal into the text it represents."""
         # Piggyback on Python's string support so we can have backslash
         # escaping and niceties like \n, \t, etc.
         # string.decode('string_escape') would have been a lower-level
         # possibility.
-        return ast.literal_eval(node.text)
+        return ast.literal_eval(literal.text)
 
-    def visit_rules(self, (rules, ws)):
+    def visit_rules(self, node, (rules, ws)):
         """Collate all the rules into a map. Return (map, default rule).
 
         The default rule is the first one. Or, if you have more than one rule

@@ -5,18 +5,18 @@ from parsimonious.nodes import Node, NodeVisitor
 
 class HtmlFormatter(NodeVisitor):
     """Visitor that turns a parse tree into HTML fragments"""
-    def visit_bold_open(self, node):
+    def visit_bold_open(self, node, visited_children):
         return '<b>'
 
-    def visit_bold_close(self, node):
+    def visit_bold_close(self, node, visited_children):
         return '</b>'
 
-    def visit_text(self, node):
+    def visit_text(self, node, visited_children):
         """Return the text verbatim."""
         return node.text
 
-    def visit_bold_text(self, node):
-        return ''.join(self.visit(n) for n in node)
+    def visit_bold_text(self, node, visited_children):
+        return ''.join(visited_children)
 
 
 def test_visitor():
