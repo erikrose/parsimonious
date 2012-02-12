@@ -14,6 +14,7 @@ class VisitationException(Exception):
         :arg node: The node at which the error occurred
 
         """
+        self.original_class = exc_class
         super(VisitationException, self).__init__(
             '%s: %s\n\n'
             'Parse tree:\n'
