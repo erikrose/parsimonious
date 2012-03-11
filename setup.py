@@ -12,7 +12,8 @@ setup(
     author_email='erikrose@grinchcentral.com',
     license='MIT',
     packages=find_packages(exclude=['ez_setup']),
-    tests_require=['Nose'],
+    tests_require=['nose'],
+    test_suite='nose.collector',
     url='https://github.com/erikrose/parsimonious',
     include_package_data=True,
     classifiers=[
