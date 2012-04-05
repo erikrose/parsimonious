@@ -22,6 +22,15 @@ Beyond speed, secondary goals include...
 * Good error reporting. I want the parser to work *with* me as I develop a
   grammar.
 
+Status
+------
+
+Not all the pieces of the grammar compiler are implemented yet, so it's not
+suited for use unless you want to construct expression trees by hand, in Python
+(like you do for PyParsing). Once that's done, I'll do some optimization and
+see if I can make this worthy of its name. RAM use and better thought-out
+grammar extensibility come after that.
+
 
 A Little About PEG Parsers
 ==========================
