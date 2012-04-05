@@ -105,3 +105,11 @@ class PegVisitorTests(TestCase):
         """Make sure we throw the right exception on undefined rules."""
         tree = peg_grammar.parse('boy = howdy\n')
         assert_raises(UndefinedLabel, PegVisitor().visit, tree)
+
+    def test_optional(self):
+        tree = peg_grammar.parse('boy = "howdy"?\n')
+        rules, default_rule = PegVisitor().visit(tree)
+        
+        text = 'howdy'
+        eq_(default_rule.parse(text), Node('boy', text, 0, 5, children=[
+                                           ]))

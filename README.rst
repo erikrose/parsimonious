@@ -23,7 +23,7 @@ Beyond speed, secondary goals include...
   grammar.
 
 Status
-------
+======
 
 Not all the pieces of the grammar compiler are implemented yet, so it's not
 suited for use unless you want to construct expression trees by hand, in Python

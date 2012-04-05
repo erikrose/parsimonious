@@ -144,6 +144,11 @@ class _LazyReference(unicode):
 class PegVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression`` objects"""
 
+    quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
+
+    def visit_quantified(self, quantified, (atom, quantifier)):
+        return self.quantifier_classes[quantifier.text](atom)
+
     def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, eol)):
         """Assign a name to the Expression and return it."""
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backracking.
