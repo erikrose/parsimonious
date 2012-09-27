@@ -12,6 +12,9 @@ from parsimonious.expressions import *
 from parsimonious.nodes import NodeVisitor
 
 
+__all__ = ['Grammar']
+
+
 class Grammar(dict):
     """A collection of expressions that describe a language
 
@@ -41,7 +44,7 @@ class Grammar(dict):
 
     """
     def __init__(self, peg, default_rule=None):
-        """Construct a grammar
+        """Construct a grammar.
 
         :arg default_rule: The name of the rule invoked when you call
             ``parse()`` on the grammar. Defaults to the first rule.
@@ -54,16 +57,13 @@ class Grammar(dict):
         # __add__ on Grammars and strings. Or maybe, if you want to extend a
         # grammar, just prepend (or append?) your string to its, and yours will
         # take precedence.
-        #
-        # Can we deduce what the starting symbol is, if there is one? If not,
-        # it would be nice to be able to pass it in so we could just call
-        # g.parse('whatever') and get a reasonable behavior most of the time.
         rules, first = self._rules_from_peg(peg)
         self.update(rules)
         self.default_rule = rules[default_rule] if default_rule else first
 
     def _rules_from_peg(self, peg):
-        """Return a dict of rule names pointing to their expressions.
+        """Return a 2-tuple: a dict of rule names pointing to their
+        expressions, and then the first rule.
 
         It's a web of expressions, all referencing each other. Typically,
         there's a single root to the web of references, and that root is the
@@ -71,36 +71,8 @@ class Grammar(dict):
         multiple roots.
 
         """
-        # TODO: Unstub.
-        # Hard-code the rules for the DSL, to bootstrap:
-        ws = Regex(r'\s+')
-        _ = Regex(r'[ \t]+')
-        label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*')
-        quantifier = Regex(r'[*+?]')
-        # This pattern supports empty literals. TODO: A problem?
-        literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"', ignore_case=True, dot_all=True)
-        regex = Sequence(Literal('~'), literal, Regex('[ilmsux]*', ignore_case=True))
-        atom = OneOf(label, literal, regex)
-        quantified = Sequence(atom, quantifier)
-        term = OneOf(quantified, atom)
-        another_term = Sequence(_, term)
-        sequence = Sequence(term, OneOrMore(another_term))
-        or_term = Sequence(_, Literal('/'), another_term)
-        ored = Sequence(term, OneOrMore(or_term))
-        and_term = Sequence(_, Literal('&'), another_term)
-        anded = Sequence(term, OneOrMore(and_term))
-        poly_term = OneOf(anded, ored, sequence)
-        rhs = OneOf(poly_term, term)
-        eol = Regex(r'[\r\n$]')  # TODO: Support $.
-        rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
-                        Optional(_), rhs, Optional(_), eol)
-        rules = Sequence(OneOrMore(rule), Optional(ws))
-
-        peg_rules = {}
-        for k, v in ((x, y) for (x, y) in locals().iteritems() if isinstance(y, Expression)):
-            v.name = k
-            peg_rules[k] = v
-        return peg_rules, rules
+        tree = _bootstrapping_rule.parse(peg)
+        return PegVisitor().visit(tree)
 
     def parse(self, text):
         """Parse some text with the default rule."""
@@ -112,7 +84,7 @@ class Grammar(dict):
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
-peg_grammar = Grammar('''
+peg_text = '''
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol
     eol = ~r"[\r\n]"  # TODO: $
@@ -134,7 +106,50 @@ peg_grammar = Grammar('''
     label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
     _ = ~r"[ \t]+"  # horizontal whitespace
     ws = ~r"\s+"
-    ''')
+    '''
+
+
+def _get_bootstrapping_rule():
+    """Return the starting rule for parsing the grammar DSL."""
+    # Hard-code enough of the rules to parse the grammar that describes the
+    # DSL, to bootstrap:
+    ws = Regex(r'\s+')
+    _ = Regex(r'[ \t]+')
+    label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*')
+    quantifier = Regex(r'[*+?]')
+    # This pattern supports empty literals. TODO: A problem?
+    literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"', ignore_case=True, dot_all=True)
+    regex = Sequence(Literal('~'), literal, Regex('[ilmsux]*', ignore_case=True))
+    atom = OneOf(label, literal, regex)
+    quantified = Sequence(atom, quantifier)
+    term = OneOf(quantified, atom)
+    another_term = Sequence(_, term)
+    sequence = Sequence(term, OneOrMore(another_term))
+    or_term = Sequence(_, Literal('/'), another_term)
+    ored = Sequence(term, OneOrMore(or_term))
+    and_term = Sequence(_, Literal('&'), another_term)
+    anded = Sequence(term, OneOrMore(and_term))
+    poly_term = OneOf(anded, ored, sequence)
+    rhs = OneOf(poly_term, term)
+    eol = Regex(r'[\r\n$]')  # TODO: Support $.
+    rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
+                    Optional(_), rhs, Optional(_), eol)
+    rules = Sequence(OneOrMore(rule), Optional(ws))
+    
+    # Use those hard-coded rules to parse the (possibly more extensive) DSL
+    # grammar definition:
+    peg_tree = rules.parse(peg_text)
+
+    # Turn the parse tree into a map of expressions:
+    _, first_rule = PegVisitor().visit(peg_tree)
+    return first_rule  # ...which is the "rules" rule
+
+    peg_rules = {}
+    for k, v in ((x, y) for (x, y) in locals().iteritems() if isinstance(y, Expression)):
+        v.name = k
+        peg_rules[k] = v
+    return peg_rules, rules
+_bootstrapping_rule = _get_bootstrapping_rule()
 
 
 class _LazyReference(unicode):
