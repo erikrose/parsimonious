@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from nose.tools import eq_, assert_raises
+from nose.tools import eq_, assert_raises, ok_
 
 from parsimonious.exceptions import UndefinedLabel
 from parsimonious.nodes import Node
@@ -38,44 +38,44 @@ class PegGrammarTests(TestCase):
 
     def test_successes(self):
         """Make sure the PEG recognition grammar succeeds on various inputs."""
-        assert peg_grammar['label'].parse('_')
-        assert peg_grammar['label'].parse('jeff')
-        assert peg_grammar['label'].parse('_THIS_THING')
+        ok_(peg_grammar['label'].parse('_'))
+        ok_(peg_grammar['label'].parse('jeff'))
+        ok_(peg_grammar['label'].parse('_THIS_THING'))
 
-        assert peg_grammar['atom'].parse('some_label')
-        assert peg_grammar['atom'].parse('"some literal"')
-        assert peg_grammar['atom'].parse('~"some regex"i')
+        ok_(peg_grammar['atom'].parse('some_label'))
+        ok_(peg_grammar['atom'].parse('"some literal"'))
+        ok_(peg_grammar['atom'].parse('~"some regex"i'))
 
-        assert peg_grammar['quantified'].parse('~"some regex"i*')
-        assert peg_grammar['quantified'].parse('thing+')
-        assert peg_grammar['quantified'].parse('"hi"?')
+        ok_(peg_grammar['quantified'].parse('~"some regex"i*'))
+        ok_(peg_grammar['quantified'].parse('thing+'))
+        ok_(peg_grammar['quantified'].parse('"hi"?'))
 
-        assert peg_grammar['term'].parse('this')
-        assert peg_grammar['term'].parse('that+')
+        ok_(peg_grammar['term'].parse('this'))
+        ok_(peg_grammar['term'].parse('that+'))
 
-        assert peg_grammar['sequence'].parse('this that? other')
+        ok_(peg_grammar['sequence'].parse('this that? other'))
 
-        assert peg_grammar['ored'].parse('this / that+ / "other"')
+        ok_(peg_grammar['ored'].parse('this / that+ / "other"'))
 
-        assert peg_grammar['anded'].parse('this & that+ & "other"')
+        ok_(peg_grammar['anded'].parse('this & that+ & "other"'))
 
-        assert peg_grammar['poly_term'].parse('this & that+ & "other"')
-        assert peg_grammar['poly_term'].parse('this / that? / "other"+')
-        assert peg_grammar['poly_term'].parse('this? that other*')
+        ok_(peg_grammar['poly_term'].parse('this & that+ & "other"'))
+        ok_(peg_grammar['poly_term'].parse('this / that? / "other"+'))
+        ok_(peg_grammar['poly_term'].parse('this? that other*'))
 
-        assert peg_grammar['rhs'].parse('this')
-        assert peg_grammar['rhs'].parse('this? that other*')
+        ok_(peg_grammar['rhs'].parse('this'))
+        ok_(peg_grammar['rhs'].parse('this? that other*'))
 
-        assert peg_grammar['rule'].parse('this = that\r')
-        assert peg_grammar['rule'].parse('this = the? that other* \t\r')
-        assert peg_grammar['rule'].parse('the=~"hi*"\n')
+        ok_(peg_grammar['rule'].parse('this = that\r'))
+        ok_(peg_grammar['rule'].parse('this = the? that other* \t\r'))
+        ok_(peg_grammar['rule'].parse('the=~"hi*"\n'))
 
-        assert peg_grammar.parse('''
+        ok_(peg_grammar.parse('''
             this = the? that other*
             that = "thing"
             the=~"hi*"
             other = "ahoy hoy"
-            ''')
+            '''))
 
 
 class PegVisitorTests(TestCase):
