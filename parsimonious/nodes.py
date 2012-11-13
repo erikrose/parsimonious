@@ -16,8 +16,8 @@ class Node(object):
 
     Consider these immutable once constructed. As a side effect of a
     memory-saving strategy in the cache, multiple references to a single
-    ``Node`` might be returned in a single parse tree. So, if you started
-    messing with one, you'd see surprising parallel changes pop up elsewhere.
+    ``Node`` might be returned in a single parse tree. So, if you start
+    messing with one, you'll see surprising parallel changes pop up elsewhere.
 
     My philosophy is that parse trees (and their nodes) should be
     representation-agnostic. That is, they shouldn't get all mixed up with what

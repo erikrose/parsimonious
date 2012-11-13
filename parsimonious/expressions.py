@@ -9,7 +9,7 @@ from parsimonious.nodes import Node, RegexNode
 
 
 __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
-           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
+           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore', 'ExpressionFlattener']
 
 
 class _DummyCache(object):
@@ -98,6 +98,9 @@ class Expression(object):
         cache[(expr_id, pos)] = match
         return match
 
+    def __unicode__(self):
+        return '<%s "%s", ID %s>' % (self.__class__.__name__, self.name, id(self))
+
 
 class Empty(Expression):
     """The empty expression, which matches only at the end of the text
@@ -171,6 +174,10 @@ class _Compound(Expression):
         self.members = members
 
 
+# TODO: Add round-tripping, so the pretty-printed version of an Expression is
+# its PEG DSL representation. Sure makes it easier to debug expression trees.
+
+
 class Sequence(_Compound):
     """A series of expressions that must match contiguous, ordered pieces of the text
 
@@ -179,6 +186,7 @@ class Sequence(_Compound):
 
     """
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
+        import pdb;pdb.set_trace()
         new_pos = pos
         length_of_sequence = 0
         children = []
@@ -299,3 +307,30 @@ class OneOrMore(_Compound):
             new_pos += length
         if len(children) >= self.min:
             return Node(self.name, text, pos, new_pos, children)
+
+
+class ExpressionFlattener(object):
+    """A visitor that turns expression trees back into PEG DSL
+
+    You typically don't need this, but it comes in handy while debugging the
+    library. You could also use it to freeze grammars that you
+    machine-generate.
+
+    """
+    CAPS = re.compile('([A-Z])')
+
+    def visit(self, expr):
+        method = getattr(self,
+                         'visit_' + pep8(expr.__class__.__name__),
+                         self.generic_visit)
+        return method(expr, [self.visit(e) for e in getattr(expr, 'members', [])])
+
+    def pep8(self, name):
+        """Turn NamesLikeThis into names_like_this."""
+        return self.CAPS.sub(lambda m: '_' + m.groups()[0].lower(), name)
+
+    def visit_sequence(self, expr, visited_children):
+        return ' '.join(visited_children)
+
+    def visit_one_or_more(self, expr, visited_children):
+        return expr.member

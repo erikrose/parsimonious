@@ -71,7 +71,7 @@ class Grammar(dict):
         multiple roots.
 
         """
-        tree = _bootstrapping_rule.parse(peg)
+        tree = peg_grammar.parse(peg)
         return PegVisitor().visit(tree)
 
     def parse(self, text):
@@ -79,15 +79,67 @@ class Grammar(dict):
         return self.default_rule.parse(text)
 
 
+class PegGrammar(Grammar):
+    """The grammar used to recognize the DSL that describes other grammars
+
+    This grammar gets its start from some hard-coded Expressions and claws its
+    way from there to a PEG that describes how to parse the grammar description
+    DSL.
+
+    """
+    def _rules_from_peg(self, peg):
+        """Return the rules for parsing the grammar DSL.
+
+        Return a 2-tuple: a dict of rule names pointing to their
+        expressions, and then the first rule.
+
+        """
+        # Hard-code enough of the rules to parse the grammar that describes the
+        # grammar description language, to bootstrap:
+        ws = Regex(r'\s+')
+        _ = Regex(r'[ \t]+')
+        label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*')
+        quantifier = Regex(r'[*+?]')
+        # This pattern supports empty literals. TODO: A problem?
+        literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"', ignore_case=True, dot_all=True)
+        regex = Sequence(Literal('~'), literal, Regex('[ilmsux]*', ignore_case=True))
+        atom = OneOf(label, literal, regex)
+        quantified = Sequence(atom, quantifier)
+        term = OneOf(quantified, atom)
+        another_term = Sequence(_, term)
+        sequence = Sequence(term, OneOrMore(another_term))
+        or_term = Sequence(_, Literal('/'), another_term)
+        ored = Sequence(term, OneOrMore(or_term))
+        and_term = Sequence(_, Literal('&'), another_term)
+        anded = Sequence(term, OneOrMore(and_term))
+        poly_term = OneOf(anded, ored, sequence)
+        rhs = OneOf(poly_term, term)
+        eol = Regex(r'[\r\n$]')  # TODO: Support $.
+        rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
+                        Optional(_), rhs, Optional(_), eol)
+        rules = Sequence(OneOrMore(rule), Optional(ws))
+
+        # Use those hard-coded rules to parse the (possibly more extensive) DSL
+        # grammar definition. (For example, unless I start using parentheses in
+        # the DSL definition itself, I should never have to hard-code
+        # expressions for those above.)
+        peg_tree = rules.parse(peg)
+
+        # Turn the parse tree into a map of expressions:
+        return PegVisitor().visit(peg_tree)
+
+
 # The grammar for parsing PEG grammar definitions:
 # TODO: Support Not. Figure out how tightly it should bind.
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
-peg_text = '''
+peg_text = ('''
+    literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol
-    eol = ~r"[\r\n]"  # TODO: $
+    eol = ~r"[\r\n]"''' # TODO: $  # TODO: use raw string?
+    '''
     rhs = poly_term / term
     poly_term = anded / ored / sequence
     anded = term and_term+
@@ -96,60 +148,22 @@ peg_text = '''
     or_term = _ "/" another_term
     sequence = term another_term+
     another_term = _ term
-    not_term = "!" term  # TODO: Half thought out. Make this work.
+    not_term = "!" term'''  # TODO: Half thought out. Make this work.
+    '''
     term = quantified / atom
     quantified = atom quantifier
     atom = label / literal / regex
     regex = "~" literal ~"[ilmsux]*"i
-    literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
+
     quantifier = ~"[*+?]"
     label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
-    _ = ~r"[ \t]+"  # horizontal whitespace
-    ws = ~r"\s+"
+    _ = ~r"[ \t]+"'''  # horizontal whitespace  # TODO: use raw string?
     '''
+    ws = ~r"\s+"
+    ''')
 
 
-def _get_bootstrapping_rule():
-    """Return the starting rule for parsing the grammar DSL."""
-    # Hard-code enough of the rules to parse the grammar that describes the
-    # DSL, to bootstrap:
-    ws = Regex(r'\s+')
-    _ = Regex(r'[ \t]+')
-    label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*')
-    quantifier = Regex(r'[*+?]')
-    # This pattern supports empty literals. TODO: A problem?
-    literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"', ignore_case=True, dot_all=True)
-    regex = Sequence(Literal('~'), literal, Regex('[ilmsux]*', ignore_case=True))
-    atom = OneOf(label, literal, regex)
-    quantified = Sequence(atom, quantifier)
-    term = OneOf(quantified, atom)
-    another_term = Sequence(_, term)
-    sequence = Sequence(term, OneOrMore(another_term))
-    or_term = Sequence(_, Literal('/'), another_term)
-    ored = Sequence(term, OneOrMore(or_term))
-    and_term = Sequence(_, Literal('&'), another_term)
-    anded = Sequence(term, OneOrMore(and_term))
-    poly_term = OneOf(anded, ored, sequence)
-    rhs = OneOf(poly_term, term)
-    eol = Regex(r'[\r\n$]')  # TODO: Support $.
-    rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
-                    Optional(_), rhs, Optional(_), eol)
-    rules = Sequence(OneOrMore(rule), Optional(ws))
-    
-    # Use those hard-coded rules to parse the (possibly more extensive) DSL
-    # grammar definition:
-    peg_tree = rules.parse(peg_text)
-
-    # Turn the parse tree into a map of expressions:
-    _, first_rule = PegVisitor().visit(peg_tree)
-    return first_rule  # ...which is the "rules" rule
-
-    peg_rules = {}
-    for k, v in ((x, y) for (x, y) in locals().iteritems() if isinstance(y, Expression)):
-        v.name = k
-        peg_rules[k] = v
-    return peg_rules, rules
-_bootstrapping_rule = _get_bootstrapping_rule()
+peg_grammar = PegGrammar(peg_text)
 
 
 class _LazyReference(unicode):
@@ -157,8 +171,10 @@ class _LazyReference(unicode):
 
 
 class PegVisitor(NodeVisitor):
-    """Turns a parse tree of a grammar definition into a map of ``Expression`` objects"""
+    """Turns a parse tree of a grammar definition into a map of ``Expression``
+    objects
 
+    """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
     def visit_quantified(self, quantified, (atom, quantifier)):
@@ -166,7 +182,7 @@ class PegVisitor(NodeVisitor):
 
     def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, eol)):
         """Assign a name to the Expression and return it."""
-        label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backracking.
+        label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
         rhs.name = label  # Assign a name to the expr.
         return rhs
 

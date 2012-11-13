@@ -111,5 +111,15 @@ class PegVisitorTests(TestCase):
         rules, default_rule = PegVisitor().visit(tree)
         
         text = 'howdy'
-        eq_(default_rule.parse(text), Node('boy', text, 0, 5, children=[
-                                           ]))
+        eq_(default_rule.parse(text), Node('boy', text, 0, 5, children=[]))
+
+
+class IntegrationTests(TestCase):
+    """Integration-test Grammar: feed it a PEG and see if it works."""
+    def test_integration(self):
+        greeting_grammar = Grammar('greeting = "hi" | "howdy"')
+        tree = greeting_grammar.parse('hi')
+        # The children might not be right, but the outer Node should be.
+        # Correct once I finish implementing Grammar.
+        eq_(tree, Node('greeting', 'hi', 0, 1, children=[
+                       Node('', 'hi', 0, 1)]))
