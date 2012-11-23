@@ -165,6 +165,21 @@ When something goes wrong in your visitor, you get a nice error like this::
 Note the parse tree tacked onto the exception. The node whose visitor method
 raised the error is pointed out.
 
+Why No Streaming Tree Processing?
+---------------------------------
+
+Some have asked why we don't process the tree as we go, SAX-style. There are
+two main reasons:
+
+1. It wouldn't work. With a PEG parser, no parsing decision is final until the
+   whole text is parsed. If we had to change a decision, we'd have to backtrack
+   and redo the SAX-style interpretation as well, which would involve
+   reconstituting part of the AST first. (Note that some limited SAX-style
+   processing may be possible in the future if we use cuts.)
+
+2. It interferes with the ability to derive multiple representations from the
+   AST: for example, first HTML and then text from wiki markup.
+
 
 Future Directions
 =================

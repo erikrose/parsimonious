@@ -1,5 +1,8 @@
-"""Subexpressions that make up a parsed grammar"""
+"""Subexpressions that make up a parsed grammar
 
+These do the parsing.
+
+"""
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
@@ -9,13 +12,14 @@ from parsimonious.nodes import Node, RegexNode
 
 
 __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
-           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
+           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore', 'ExpressionFlattener']
 
 
 class _DummyCache(object):
     """Fake cache that always misses.
 
-    This never gets used except in tests.
+    This never gets used except in tests. TODO: Then what's it doing in here?
+    Get it out.
 
     """
     def get(self, key, default=None):
@@ -57,8 +61,9 @@ class Expression(object):
         # TODO: Stop doing this, and instead introduce an Empty symbol that
         # matches only at the EOF. Then we don't need both a public parse() and
         # a match(), and you have the option of matching part of a string while
-        # still enjoying caching.
-        if node is None or node.end - node.start != len(text):
+        # still enjoying caching. OTOH, it might be nice to be able to match()
+        # or parse() without messing with the grammar.
+        if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here?
             # If it was not a complete parse, return None:
             return None
         return node
@@ -94,20 +99,35 @@ class Expression(object):
         cached = cache.get((expr_id, pos), ())
         if cached is not ():
             return cached
-        match = self._uncached_match(text, pos, cache)
-        cache[(expr_id, pos)] = match
-        return match
+        uncached = self._uncached_match(text, pos, cache)
+        cache[(expr_id, pos)] = uncached
+
+        return uncached
+
+    def __unicode__(self):
+        return u'<%s%s at 0x%s>' % (
+            self.__class__.__name__,
+            (' called "%s"' % self.name) if self.name else '',
+            id(self))
+
+    def __str__(self):
+        return self.__unicode__().encode('utf-8')
+
+    __repr__ = __str__
 
 
 class Empty(Expression):
     """The empty expression, which matches only at the end of the text
 
     Stick one of these at the end of your grammar if you want to make it match
-    only whole texts, You know, maybe a kwargs on parse() is easier to
-    understand for the non-having-studied-parsing among us. Is Empty useful
-    anywhere but the EOF?
+    only whole texts.
 
     """
+    # TODO: You know, maybe a kwargs on parse() is easier to understand for the
+    # non-having-studied-parsing among us. Plus then you don't have to mess
+    # with the grammar if you want to do match() sometimes and search() others.
+    # Is Empty useful anywhere but the EOF?
+
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
         """Return 0 if we're at the EOF, ``None`` otherwise."""
         if pos == len(text):
@@ -169,6 +189,10 @@ class _Compound(Expression):
         """``members`` is a sequence of expressions."""
         super(_Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
+
+
+# TODO: Add round-tripping, so the pretty-printed version of an Expression is
+# its PEG DSL representation. Sure makes it easier to debug expression trees.
 
 
 class Sequence(_Compound):
@@ -299,3 +323,59 @@ class OneOrMore(_Compound):
             new_pos += length
         if len(children) >= self.min:
             return Node(self.name, text, pos, new_pos, children)
+
+
+class ExpressionFlattener(object):
+    """A visitor that turns expression trees back into PEG DSL
+
+    You typically don't need this, but it comes in handy while debugging the
+    library. You could also use it to freeze grammars that you
+    machine-generate.
+
+    The visit_* methods all return strings. Thus, they all also receive a bunch
+    of strings as their second parameters.
+
+    """
+    # TODO: Break the output into named rules, and don't print each one's
+    # definition more than once.
+
+    CAPS = re.compile('([A-Z])')
+
+    def visit(self, expr):
+        method = getattr(self,
+                         'visit' + self.pep8(expr.__class__.__name__),
+                         self.generic_visit)
+        return method(expr, [self.visit(e) for e in getattr(expr, 'members', [])])
+
+    def pep8(self, name):
+        """Turn NamesLikeThis into names_like_this."""
+        return self.CAPS.sub(lambda m: '_' + m.groups()[0].lower(), name)
+
+    def visit_one_or_more(self, expr, (term,)):
+        return '%s+' % term
+
+    def visit_zero_or_more(self, expr, (term,)):
+        return '%s*' % term
+
+    def visit_optional(self, expr, (term,)):
+        return '%s?' % term
+
+    def visit_all_of(self, expr, terms):
+        return ' & '.join(terms)
+
+    def visit_one_of(self, expr, terms):
+        return ' / '.join(terms)
+
+    def visit_sequence(self, expr, terms):
+        return ' '.join(terms)
+
+    def visit_regex(self, regex, visited_children):
+        # TODO: Get backslash escaping and flag display right.
+        return '~"%s" flags=%s' % (regex.re.pattern, regex.re.flags)
+
+    def visit_literal(self, literal, visited_children):
+        # TODO: Get backslash escaping right.
+        return '"%s"' % literal.literal
+
+    def generic_visit(self, expr, visited_children):
+        print "WTF: %s" % expr.__class__.__name__

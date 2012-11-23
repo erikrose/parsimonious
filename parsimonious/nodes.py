@@ -27,8 +27,8 @@ class Node(object):
     another.
 
     """
-    # TODO: Make this subclass list. Lower the API mismatch with the language,
-    # and watch magic happen.
+    # I tried making this subclass list, but it got ugly. I had to construct
+    # invalid ones and patch them up later, and there were other problems.
     __slots__ = ['expr_name',  # The name of the expression that generated me
                  'full_text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
@@ -68,9 +68,11 @@ class Node(object):
         # TODO: If a Node appears multiple times in the tree, we'll point to them all. Whoops.
         def indent(text):
             return '\n'.join(('    ' + line) for line in text.splitlines())
-        ret = [u'<%s "%s">%s' % (self.expr_name or self.__class__.__name__,
-                                 self.text,
-                                 '  <-- *** We were here. ***' if error is self else '')]
+        ret = [u'<%s%s matching "%s">%s' % (
+            self.__class__.__name__,
+            (' called "%s"' % self.expr_name) if self.expr_name else '',
+            self.text,
+            '  <-- *** We were here. ***' if error is self else '')]
         for n in self:
             ret.append(indent(n.prettily(error=error)))
         return '\n'.join(ret)
@@ -103,8 +105,9 @@ class RegexNode(Node):
 class NodeVisitor(object):
     """A shell for writing things that turn parse trees into something useful
 
-    Subclass this, add methods for each expr you care about, instantiate, and
-    call ``visit(top_node_of_parse_tree)``. It'll return the useful stuff.
+    Performs a depth-first traversal of an AST. Subclass this, add methods for
+    each expr you care about, instantiate, and call
+    ``visit(top_node_of_parse_tree)``. It'll return the useful stuff.
 
     This API is very similar to that of ``ast.NodeVisitor``.
 
@@ -120,7 +123,7 @@ class NodeVisitor(object):
     """
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
-    # mark nodes as not descend-worthy in the grammar.
+    # mark nodes as not descent-worthy in the grammar.
     def visit(self, node):
         method = getattr(self, 'visit_' + node.expr_name, self.generic_visit)
 
@@ -145,10 +148,9 @@ class NodeVisitor(object):
         :arg visited_children: The results of visiting the children of that
             node, in a list
 
-        Return the node verbatim, so it maintains the parse tree's structure.
-        Non-generic visitor methods can then use or ignore this at their
-        discretion. This works out well regardless of whether a subclass is
-        trying to make another tree, a flat string, or whatever.
+        I'm not sure there's an implementation of this that makes sense across
+        all (or even most) use cases, so we leave it to subclasses to implement
+        for now.
 
         """
-        return node
+        raise NotImplementedError

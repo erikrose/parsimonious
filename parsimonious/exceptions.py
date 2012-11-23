@@ -7,6 +7,9 @@ class VisitationException(Exception):
     tree traversal in your head.
 
     """
+    # TODO: Make sure this is pickleable. Probably use @property pattern. Make
+    # the original exc and node available on it if they don't cause a whole
+    # raft of stack frames to be retained.
     def __init__(self, exc, exc_class, node):
         """Construct.
 

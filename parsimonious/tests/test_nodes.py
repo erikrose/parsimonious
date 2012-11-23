@@ -46,6 +46,6 @@ def test_visitor():
 def test_repr():
     """Test repr, str, and unicode of ``Node``."""
     n = Node('text', 'o hai', 0, 5)
-    eq_(str(n), '<text "o hai">')
-    eq_(unicode(n), '<text "o hai">')
-    eq_(repr(n), '<text "o hai">')
+    eq_(str(n), '<Node called "text" matching "o hai">')
+    eq_(unicode(n), '<Node called "text" matching "o hai">')
+    eq_(repr(n), '<Node called "text" matching "o hai">')
