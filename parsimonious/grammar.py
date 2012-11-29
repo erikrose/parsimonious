@@ -1,4 +1,5 @@
-"""A convenience which constructs expression trees from an easy-to-read EBNF-like syntax
+"""A convenience which constructs expression trees from an easy-to-read
+EBNF-like syntax
 
 Use this unless you have a compelling reason not to; it performs some
 optimizations that would be tedious to do when constructing an expression tree
@@ -137,9 +138,6 @@ class DslGrammar(Grammar):
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
-
-#   literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
-#                u?r?"[^"\\]*(?:\\.[^"\\]*)*"
 dsl_text = (r'''
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol

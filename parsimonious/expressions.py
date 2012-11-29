@@ -341,15 +341,34 @@ class ExpressionFlattener(object):
 
     CAPS = re.compile('([A-Z])')
 
-    def visit(self, expr):
-        method = getattr(self,
-                         'visit' + self.pep8(expr.__class__.__name__),
-                         self.generic_visit)
-        return method(expr, [self.visit(e) for e in getattr(expr, 'members', [])])
+    def mappify(self, expr):
+        """Return a map of expression names to stringified expressions."""
+        named_exprs = {}
+        self.visit(expr, named_exprs)
+        return named_exprs
+
+    def stringify(self, expr):
+        return '\n'.join('%s = %s' % (k, v) for k, v in
+                         self.mappify(expr).iteritems())
+
+    def visit(self, expr, named_exprs):
+        if expr.name not in named_exprs:
+            method = getattr(self,
+                             'visit' + self.pep8(expr.__class__.__name__))
+            dsl = method(expr, [self.visit(e, named_exprs) for e in
+                                getattr(expr, 'members', [])])
+            if expr.name:
+                named_exprs[expr.name] = dsl
+        return expr.name or dsl
 
     def pep8(self, name):
         """Turn NamesLikeThis into names_like_this."""
         return self.CAPS.sub(lambda m: '_' + m.groups()[0].lower(), name)
+
+    def regex_flags_from_bits(self, bits):
+        """Return the textual eqivalent of numerically encoded regex flags."""
+        flags = 'tilmsux'
+        return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
 
     def visit_one_or_more(self, expr, (term,)):
         return '%s+' % term
@@ -370,12 +389,9 @@ class ExpressionFlattener(object):
         return ' '.join(terms)
 
     def visit_regex(self, regex, visited_children):
-        # TODO: Get backslash escaping and flag display right.
-        return '~"%s" flags=%s' % (regex.re.pattern, regex.re.flags)
+        # TODO: Get backslash escaping right.
+        return '~"%s"%s' % (regex.re.pattern, self.regex_flags_from_bits(regex.re.flags))
 
     def visit_literal(self, literal, visited_children):
         # TODO: Get backslash escaping right.
         return '"%s"' % literal.literal
-
-    def generic_visit(self, expr, visited_children):
-        print "WTF: %s" % expr.__class__.__name__
