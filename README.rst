@@ -16,20 +16,19 @@ Beyond speed, secondary goals include...
 * Complete test coverage
 * Separation of concerns. Some Python parsing kits mix recognition with
   instructions about how to turn the resulting tree into some kind of other
-  representation. This feels limiting to me, since my use case--wikis--
-  naturally wants to do several different things with a tree:
-  render to HTML, render to text, etc.
+  representation. This is limiting when you want to do several different things
+  with a tree: for example, render wiki markup to HTML *or* to text.
 * Good error reporting. I want the parser to work *with* me as I develop a
   grammar.
 
 Status
 ======
 
-Not all the pieces of the grammar compiler are implemented yet, so it's not
-suited for use unless you want to construct expression trees by hand, in Python
-(like you do for PyParsing). Once that's done, I'll do some optimization and
-see if I can make this worthy of its name. RAM use and better thought-out
-grammar extensibility come after that.
+The grammar compiler (the ``Grammar`` class) passes initial integration tests
+and might work. I don't love the API right now; ``Grammar`` and ``Expression``
+might merge or something. Once I get that ironed out and tested, I'll do some
+optimization and see if I can make Parsimonious worthy of its name. RAM use and
+better thought-out grammar extensibility come after that.
 
 
 A Little About PEG Parsers
@@ -52,13 +51,13 @@ would be ambiguous languages if described in canonical EBNF. They do this by
 trading the ``|`` alternation operator for the ``/`` operator, which works the
 same except that it makes priority explicit: ``a / b / c`` first tries matching
 ``a``. If that fails, it tries ``b``, and, failing that, moves on to ``c``.
-Thus, ambiguity is resolved by always yielding the first successful derivation.
+Thus, ambiguity is resolved by always yielding the first successful recognition.
 
 
 Writing Grammars
 ================
 
-They're basically just extended BNF syntax:
+They're basically just extended EBNF syntax:
 
 ``"some literal"``
   Used to quote literals. Backslash escaping and Python conventions for "raw"
@@ -80,10 +79,13 @@ space
   Zero or more things
 ``things+``
   One or more things
-``~r"regex"ix``
+``~r"regex"ilmsux``
   Regexes have ``~`` in front and are quoted like literals. Any flags follow
   the end quotes as single chars. Regexes are good for representing character
-  classes (``[a-z0-9]``) and optimizing for speed.
+  classes (``[a-z0-9]``) and optimizing for speed. The downside is that they
+  won't be able to take advantage of our fancy debugging, once we get that
+  working. Ultimately, I'd like to deprecate explicit regexes and instead have
+  Parsimonious build them dynamically out of simpler primitives.
 
 Example
 -------
@@ -110,8 +112,8 @@ reference it from wherever you need it. You'll get the most out of the caching
 this way, since cache lookups are by expression object identity (for speed).
 Even if you have an expression that's very simple, not repeating it will save
 RAM, as there can, at worst, be a cached int for every char in the text you're
-parsing. But hmm, maybe I can identify repeat subexpressions automatically and
-factor that up while building the grammar....
+parsing. But hmm, maybe I can identify repeated subexpressions automatically
+and factor that up while building the grammar....
 
 How much should you shove into one ``Regex``, versus how much should you break
 them up to not repeat yourself? That's a fine balance and worthy of
@@ -132,37 +134,39 @@ Dealing With Parse Trees
 A parse tree has a node for each expression matched, even if it matched a
 zero-length string, like ``"thing"?`` might do.
 
-TODO: Talk about tree manipulators (if we write any) and about ``NodeVisitor``.
+The ``NodeVisitor`` class provides an inversion of control framework for
+walking a tree and returning a new construct (tree, string, or whatever) based
+on it. For now, have a look at its docstrings for more detail.
 
 When something goes wrong in your visitor, you get a nice error like this::
 
     [normal traceback here...]
-    VisitationException: 'Node' object has no attribute 'name'
+    VisitationException: 'Node' object has no attribute 'foo'
 
     Parse tree:
-    <rules "number = ~"[0-9]+"">  <-- *** We were here. ***
-        <Node "number = ~"[0-9]+"">
-            <rule "number = ~"[0-9]+"">
-                <Node "">
-                <label "number">
-                <Node " ">
-                    <_ " ">
-                <Node "=">
-                <Node " ">
-                    <_ " ">
-                <rhs "~"[0-9]+"">
-                    <term "~"[0-9]+"">
-                        <atom "~"[0-9]+"">
-                            <regex "~"[0-9]+"">
-                                <Node "~">
-                                <literal ""[0-9]+"">
-                                <Node "">
-                <Node "">
-                <eol "
+    <Node called "rules" matching "number = ~"[0-9]+"">  <-- *** We were here. ***
+        <Node matching "number = ~"[0-9]+"">
+            <Node called "rule" matching "number = ~"[0-9]+"">
+                <Node matching "">
+                <Node called "label" matching "number">
+                <Node matching " ">
+                    <Node called "_" matching " ">
+                <Node matching "=">
+                <Node matching " ">
+                    <Node called "_" matching " ">
+                <Node called "rhs" matching "~"[0-9]+"">
+                    <Node called "term" matching "~"[0-9]+"">
+                        <Node called "atom" matching "~"[0-9]+"">
+                            <Node called "regex" matching "~"[0-9]+"">
+                                <Node matching "~">
+                                <Node called "literal" matching ""[0-9]+"">
+                                <Node matching "">
+                <Node matching "">
+                <Node called "eol" matching "
                 ">
-        <Node "">
+        <Node matching "">
 
-Note the parse tree tacked onto the exception. The node whose visitor method
+The parse tree tacked onto the exception, and the node whose visitor method
 raised the error is pointed out.
 
 Why No Streaming Tree Processing?
@@ -174,7 +178,8 @@ two main reasons:
 1. It wouldn't work. With a PEG parser, no parsing decision is final until the
    whole text is parsed. If we had to change a decision, we'd have to backtrack
    and redo the SAX-style interpretation as well, which would involve
-   reconstituting part of the AST first. (Note that some limited SAX-style
+   reconstituting part of the AST and quite possibly scuttling whatever you
+   were doing with the streaming output. (Note that some bursty SAX-style
    processing may be possible in the future if we use cuts.)
 
 2. It interferes with the ability to derive multiple representations from the
@@ -184,8 +189,8 @@ two main reasons:
 Future Directions
 =================
 
-Language Changes
-----------------
+DSL Changes
+-----------
 
 * Do we need a LookAhead? It might be faster, but ``A Lookahead(B)`` is
   equivalent to ``AB & A``.
@@ -209,16 +214,15 @@ Language Changes
   a judicious subset might be nice. Don't get into mixing formatting with tree
   manipulation.
   https://github.com/erikrose/pijnu/blob/master/library/node.py#L333
-* Think about having the ability, like PyParsing, to get irrevocably into a
-  pattern so that we don't backtrack out of it. Then, if things don't end up
-  matching, we complain with an informative error message rather than
-  backtracking to nonsense.
 
 Optimizations
 -------------
 
 * Make RAM use almost constant by automatically inserting "cuts", as described
-  in http://ialab.cs.tsukuba.ac.jp/~mizusima/publications/paste513-mizushima.pdf
+  in
+  http://ialab.cs.tsukuba.ac.jp/~mizusima/publications/paste513-mizushima.pdf.
+  This would also improve error reporting, as we wouldn't backtrack out of
+  everything informative before finally failing.
 * Think about having the user (optionally) provide some representative input
   along with a grammar. We can then profile against it, see which expressions
   are worth caching, and annotate the grammar. Perhaps there will even be
