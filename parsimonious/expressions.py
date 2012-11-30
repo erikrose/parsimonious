@@ -336,9 +336,6 @@ class ExpressionFlattener(object):
     of strings as their second parameters.
 
     """
-    # TODO: Break the output into named rules, and don't print each one's
-    # definition more than once.
-
     CAPS = re.compile('([A-Z])')
 
     def mappify(self, expr):
@@ -348,6 +345,8 @@ class ExpressionFlattener(object):
         return named_exprs
 
     def stringify(self, expr):
+        # TODO: Output ``expr``  first so a Grammar built from the return value
+        # will use that as the starting rule.
         return '\n'.join('%s = %s' % (k, v) for k, v in
                          self.mappify(expr).iteritems())
 

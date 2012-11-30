@@ -123,11 +123,12 @@ class DslVisitorTests(TestCase):
 
 class IntegrationTests(TestCase):
     """Integration-test Grammar: feed it a PEG and see if it works."""
+
     def test_integration(self):
-        raise SkipTest("This test fails but shouldn't.")
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')
         tree = greeting_grammar.parse('hi')
+
         # The children might not be right, but the outer Node should be.
         # Correct once I finish implementing Grammar.
-        eq_(tree, Node('greeting', 'hi', 0, 1, children=[
-                       Node('', 'hi', 0, 1)]))
+        eq_(tree, Node('greeting', 'hi', 0, 2, children=[
+                       Node('', 'hi', 0, 2)]))

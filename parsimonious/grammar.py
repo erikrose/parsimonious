@@ -41,7 +41,7 @@ class Grammar(dict):
     * Circular references aren't a pain.
     * It does all kinds of whizzy space- and time-saving optimizations, like
       factoring up repeated subexpressions into a single object, which should
-      increase cache hit ratio.
+      increase cache hit ratio. [Is this implemented yet?]
 
     """
     def __init__(self, dsl, default_rule=None):
@@ -57,8 +57,10 @@ class Grammar(dict):
         # pull the text off Grammar.dsl, or we could get fancy and define
         # __add__ on Grammars and strings. Or maybe, if you want to extend a
         # grammar, just prepend (or append?) your string to its, and yours will
-        # take precedence.
+        # take precedence. Or use the OMeta delegation syntax. Or yield back
+        # the dynamic reconstruction of the DSL.
         rules, first = self._rules_from_dsl(dsl)
+
         self.update(rules)
         self.default_rule = rules[default_rule] if default_rule else first
 
@@ -142,7 +144,7 @@ dsl_text = (r'''
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
-    eol = ~r"[\r\n]"''' # TODO: $
+    eol = ~r"(?:[\r\n]|$)"'''
     r'''
     rhs = poly_term / term
     poly_term = anded / ored / sequence
