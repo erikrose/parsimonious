@@ -1,8 +1,12 @@
 """Tests to show that the benchmarks we based our speed optimizations on are still valid"""
 
+from functools import partial
 from timeit import timeit
 
 from nose.tools import ok_
+
+
+timeit = partial(timeit, number=10000)
 
 
 def test_lists_vs_dicts():
