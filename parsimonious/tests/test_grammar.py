@@ -8,7 +8,7 @@ from parsimonious.nodes import Node
 from parsimonious.grammar import dsl_grammar, DslVisitor, Grammar
 
 
-class DslGrammarTests(TestCase):
+class BootstrapingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 

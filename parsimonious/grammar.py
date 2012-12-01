@@ -83,7 +83,7 @@ class Grammar(dict):
         return self.default_rule.parse(text)
 
 
-class DslGrammar(Grammar):
+class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the DSL that describes other grammars
 
     This grammar gets its start from some hard-coded Expressions and claws its
@@ -132,8 +132,7 @@ class DslGrammar(Grammar):
         dsl_tree = rules.parse(dsl)
 
         # Turn the parse tree into a map of expressions:
-        ret = DslVisitor().visit(dsl_tree)
-        return ret
+        return DslVisitor().visit(dsl_tree)
 
 
 # The grammar for parsing PEG grammar definitions:
@@ -342,4 +341,14 @@ class DslVisitor(NodeVisitor):
         return rule_map, rules[0]
 
 
-dsl_grammar = DslGrammar(dsl_text)
+# Bootstrap to level 1...
+dsl_grammar = BootstrappingGrammar(dsl_text)
+# ...and then to level 2. This establishes that the node tree of our grammar
+# DSL is built by the same machinery that will build that of our users'
+# grammars. And the correctness of that tree is tested, indirectly, in
+# test_grammar.
+dsl_grammar = Grammar(dsl_text)
+
+# TODO: Teach Expression trees how to spit out Python representations of
+# themselves. Then we can just paste that in about, and we won't have to
+# bootstrap on import. Though it'll be a little less DRY.
