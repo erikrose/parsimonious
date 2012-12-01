@@ -20,7 +20,8 @@ def len_eq(node, length):
 class LengthTests(TestCase):
     """Tests for returning the right lengths
 
-    I wrote these before parse tree generation was implemented.
+    I wrote these before parse tree generation was implemented. They're
+    partially redundant with TreeTests.
 
     """
     def test_regex(self):
@@ -151,7 +152,8 @@ class ParseTests(TestCase):
                                    Node('lit', text, 1, 2)]))
 
     def test_parse_failure(self):
-        """Make sure ``parse()`` fails when it doesn't recognize all the way to the end."""
+        """Make sure ``parse()`` fails when it doesn't recognize all the way to
+        the end."""
         expr = OneOrMore(Literal('a', name='lit'), name='more')
         text = 'aab'
         eq_(expr.parse(text), None)

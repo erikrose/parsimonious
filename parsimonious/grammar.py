@@ -23,8 +23,9 @@ class Grammar(dict):
     directly on the ``Grammar`` object::
 
         g = Grammar('''
-                    polite_greeting = greeting ", my good sir"
-                    greeting        = Hi / Hello
+                    polite_greeting = greeting ", my good " title
+                    greeting        = "Hi" / "Hello"
+                    title           = "madam" / "sir"
                     ''')
         g.parse('Hello, my good sir')
 
@@ -137,6 +138,7 @@ class DslGrammar(Grammar):
 
 # The grammar for parsing PEG grammar definitions:
 # TODO: Support Not. Figure out how tightly it should bind.
+# TODO: Support comments.
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
@@ -144,8 +146,7 @@ dsl_text = (r'''
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
-    eol = ~r"(?:[\r\n]|$)"'''
-    r'''
+    eol = ~r"(?:[\r\n]|$)"
     rhs = poly_term / term
     poly_term = anded / ored / sequence
     anded = term and_terms
@@ -171,7 +172,7 @@ dsl_text = (r'''
     ''')
 
 
-class _LazyReference(unicode):
+class LazyReference(unicode):
     """A lazy reference to a rule, which we resolve after grokking all the rules"""
 
 
@@ -247,12 +248,12 @@ class DslVisitor(NodeVisitor):
         return anded_ored_or_sequence
 
     def visit_label(self, label, visited_children):
-        """Stick a :class:`_LazyReference` in the tree as a placeholder.
+        """Stick a :class:`LazyReference` in the tree as a placeholder.
 
         We resolve them all later according to the names in the `rules` hash.
 
         """
-        return _LazyReference(label.text)
+        return LazyReference(label.text)
 
     def visit_term(self, term, (quantified_or_atom,)):
         """``term `` has only 1 child. Lift it up in place of the term."""
@@ -316,7 +317,7 @@ class DslVisitor(NodeVisitor):
             one, replace it with rules[the reference].
 
             """
-            if isinstance(expr, _LazyReference):
+            if isinstance(expr, LazyReference):
                 try:
                     return rule_map[expr]
                 except KeyError:

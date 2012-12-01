@@ -196,7 +196,8 @@ class _Compound(Expression):
 
 
 class Sequence(_Compound):
-    """A series of expressions that must match contiguous, ordered pieces of the text
+    """A series of expressions that must match contiguous, ordered pieces of
+    the text
 
     In other words, it's a concatenation operator: each piece has to match, one
     after another.
@@ -234,7 +235,8 @@ class OneOf(_Compound):
 
 
 class AllOf(_Compound):
-    """A series of expressions, each of which must succeed from the current position.
+    """A series of expressions, each of which must succeed from the current
+    position.
 
     The returned node is from the last member. If you like, you can think of
     the preceding members as lookaheads.
@@ -389,7 +391,8 @@ class ExpressionFlattener(object):
 
     def visit_regex(self, regex, visited_children):
         # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (regex.re.pattern, self.regex_flags_from_bits(regex.re.flags))
+        return '~"%s"%s' % (regex.re.pattern,
+                            self.regex_flags_from_bits(regex.re.flags))
 
     def visit_literal(self, literal, visited_children):
         # TODO: Get backslash escaping right.

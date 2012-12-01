@@ -8,11 +8,10 @@ from parsimonious.nodes import Node
 from parsimonious.grammar import dsl_grammar, DslVisitor, Grammar
 
 
-class PegGrammarTests(TestCase):
+class DslGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
-    definition syntax
+    definition syntax"""
 
-    """
     def test_ws(self):
         text = ' \t\r'
         eq_(dsl_grammar['ws'].parse(text), Node('ws', text, 0, 3))
@@ -121,14 +120,18 @@ class DslVisitorTests(TestCase):
                                           Node('', howdy, 0, 5)]))
 
 
-class IntegrationTests(TestCase):
-    """Integration-test Grammar: feed it a PEG and see if it works."""
+class GrammarTests(TestCase):
+    """Integration-test ``Grammar``: feed it a PEG and see if it works.
 
-    def test_integration(self):
+    That the correct ``Expression`` tree is built is already tested in
+    ``DslGrammarTests``. This tests only that the ``Grammar`` base class's
+    ``_rules_from_dsl`` works.
+
+    """
+    def test_rules_from_dsl(self):
+        """Test the ``Grammar`` base class's DSL-to-expression-tree
+        transformation."""
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')
         tree = greeting_grammar.parse('hi')
-
-        # The children might not be right, but the outer Node should be.
-        # Correct once I finish implementing Grammar.
         eq_(tree, Node('greeting', 'hi', 0, 2, children=[
                        Node('', 'hi', 0, 2)]))
