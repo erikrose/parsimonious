@@ -136,7 +136,12 @@ zero-length string, like ``"thing"?`` might do.
 
 The ``NodeVisitor`` class provides an inversion of control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
-on it. For now, have a look at its docstrings for more detail.
+on it. For now, have a look at its docstrings for more detail. There's also a
+good example in ``grammar.DslVisitor``. Notice how we take advantage of nodes'
+iterability by using tuple unpacks in the formal parameter lists::
+
+    def visit_or_term(self, or_term, (_, slash, term)):
+        ...
 
 When something goes wrong in your visitor, you get a nice error like this::
 
@@ -192,13 +197,14 @@ Future Directions
 DSL Changes
 -----------
 
-* Do we need a LookAhead? It might be faster, but ``A Lookahead(B)`` is
-  equivalent to ``AB & A``.
+* Do we need a LookAhead? It might be slightly faster, but ``A Lookahead(B)``
+  is equivalent to ``AB & A``, which, while more verbose, takes full advantage
+  of packratting.
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
 * The ability to mark certain nodes as undesired, so we don't bother
   constructing them and cluttering the tree with them. For example, we might
-  only care to see the OneOf node in the final tree, not the boring Literals
-  inside it::
+  only care to see the ``OneOf`` node in the final tree, not the boring
+  Literals inside it::
 
     greeting = "hi" / "hello" / "bonjour"
 
@@ -209,7 +215,10 @@ DSL Changes
   On the other hand, parentheses for anonymous subexpressions could largely
   solve this problem--and in a more familiar way--if we implicitly omitted
   their nodes. (The exception would be subexpressions that you end up having to
-  repeat several times in the grammar.)
+  repeat several times in the grammar.) On the third hand, I don't really care
+  to clutter grammar definitions up like this. It makes them less readable and
+  conflates recognition with tree processing. I'll most likely just focus on
+  making ``NodeVisitor`` subclasses as easy as possible to write.
 * Pijnu has a raft of tree manipulators. I don't think I want all of them, but
   a judicious subset might be nice. Don't get into mixing formatting with tree
   manipulation.
@@ -232,3 +241,27 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
+
+
+Version History
+===============
+
+0.1: A rough but useable preview release
+  * Everything that exists works. Test coverage is good.
+  * Parsimonious bootstraps itself to "level 1", parsing a textual description
+    of its grammar description language into a functioning parser. Coming soon
+    is level 2 (perhaps just in tests), which will feed the textual description
+    back through the constructed parser and make sure the same thing comes out.
+  * I don't plan on making any backward-incompatible changes to the grammar DSL
+    in the future, so you can write grammars without fear.
+  * It may be slow and use a lot of RAM; I haven't measured either yet.
+  * Error reporting and debugging are nonexistent, though ``repr``s of things
+    are often helpful and informative.
+  * Grammar extensibility story is underdeveloped at the moment. You should be
+    able to extend a grammar by simply concatening more rules onto its textual
+    (DSL) representation; later rules of the same name should override previous
+    ones. However, this is untested and may not be the final story.
+  * I'm not in love with the ``Grammar`` API, so it may change.
+    ``ExpressionFlattener`` is probably going to move or get absorbed by
+    something else.
+  * No Sphinx docs yet, but the docstrings are pretty good
