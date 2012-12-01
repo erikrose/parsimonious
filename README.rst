@@ -2,9 +2,10 @@
 Parsimonious
 ============
 
-Parsimonious aims to be the fastest PEG parser written in pure Python. It was
-designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
-of RAM to do one page.
+Parsimonious aims to be the fastest arbitrary-lookahead parser written in pure
+Python. It's based on parsing expression grammars (PEGs), which means you
+essentially feed it EBNF notation. Parsimonious was designed to undergird a
+MediaWiki parser that wouldn't take 5 seconds or a GB of RAM to do one page.
 
 Beyond speed, secondary goals include...
 
