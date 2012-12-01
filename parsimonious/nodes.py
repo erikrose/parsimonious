@@ -154,3 +154,9 @@ class NodeVisitor(object):
 
         """
         raise NotImplementedError
+
+    # Convenience methods you can call from your own visitors:
+
+    def lift_child(self, node, (first_child,)):
+        """Lift the sole child of ``node`` up to replace the node."""
+        return first_child

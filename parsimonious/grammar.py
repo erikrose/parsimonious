@@ -182,6 +182,8 @@ class DslVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
+    visit_rhs = visit_poly_term = visit_term = visit_atom = NodeVisitor.lift_child
+
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
 
@@ -190,10 +192,6 @@ class DslVisitor(NodeVisitor):
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
         rhs.name = label  # Assign a name to the expr.
         return rhs
-
-    def visit_rhs(self, rhs, (term_or_poly,)):
-        """Lift the ``term`` or ``poly_term`` up to replace this node."""
-        return term_or_poly
 
     def visit_sequence(self, sequence, (term, other_terms)):
         """A parsed Sequence looks like [term node, OneOrMore node of
@@ -232,10 +230,6 @@ class DslVisitor(NodeVisitor):
         """
         return term
 
-    def visit_poly_term(self, poly_term, (anded_ored_or_sequence,)):
-        """Lift up the only child of a ``poly_term`` to take its place."""
-        return anded_ored_or_sequence
-
     def visit_label(self, label, visited_children):
         """Stick a :class:`LazyReference` in the tree as a placeholder.
 
@@ -243,14 +237,6 @@ class DslVisitor(NodeVisitor):
 
         """
         return LazyReference(label.text)
-
-    def visit_term(self, term, (quantified_or_atom,)):
-        """``term `` has only 1 child. Lift it up in place of the term."""
-        return quantified_or_atom
-
-    def visit_atom(self, atom, (child,)):
-        """Lift up the single child to replace this node."""
-        return child
 
     def visit_regex(self, regex, (tilde, literal, flags)):
         """Return a ``Regex`` expression."""
