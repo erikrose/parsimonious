@@ -11,8 +11,7 @@ Beyond speed, secondary goals include...
 * Frugal RAM use
 * Minimalistic, understandable, idiomatic Python code
 * Readable grammars
-* Extensible grammars (TODO: Think about the ^ operator from OMeta. It would
-  let us reference supergrammars' rules without repeating them.)
+* Extensible grammars
 * Complete test coverage
 * Separation of concerns. Some Python parsing kits mix recognition with
   instructions about how to turn the resulting tree into some kind of other
@@ -21,14 +20,62 @@ Beyond speed, secondary goals include...
 * Good error reporting. I want the parser to work *with* me as I develop a
   grammar.
 
+
+Example
+=======
+
+Here's how to build a simple grammar::
+
+    >>> from parsimonious.grammar import Grammar
+    >>> grammar = Grammar(
+    ...     """
+    ...     bold_text  = bold_open text bold_close
+    ...     text       = ~"[A-Z 0-9]*"i
+    ...     bold_open  = "(("
+    ...     bold_close = "))"
+    ...     """)
+
+You can have forward references or anything you want; it's all taken care of by
+the grammar compiler. The first rule is taken to be the default start symbol,
+but you can override that.
+
+Next, let's parse something and get an abstract syntax tree::
+
+    >>> grammar.parse('((bold stuff))')
+    <Node called "bold_text" matching "((bold stuff))">
+        <Node called "bold_open" matching "((">
+        <RegexNode called "text" matching "bold stuff">
+        <Node called "bold_close" matching "))">
+
+You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
+the tree and do something useful with it.
+
+But first, lots of scary warnings...
+
+
 Status
 ======
 
-The grammar compiler (the ``Grammar`` class) passes initial integration tests
-and might work. I don't love the API right now; ``Grammar`` and ``Expression``
-might merge or something. Once I get that ironed out and tested, I'll do some
-optimization and see if I can make Parsimonious worthy of its name. RAM use and
-better thought-out grammar extensibility come after that.
+Take it easy, because 0.1 is a useable but rough preview release.
+
+* Everything that exists works. Test coverage is good.
+* I don't plan on making any backward-incompatible changes to the grammar DSL
+  in the future, so you can write grammars without fear.
+* It may be slow and use a lot of RAM; I haven't measured either yet. However,
+  I have several macro- and micro-optimizations in mind.
+* Error reporting and debugging are nonexistent, though ``repr`` methods of
+  things are often helpful and informative. I have big things planned here.
+* Grammar extensibility story is underdeveloped at the moment. You should be
+  able to extend a grammar by simply concatening more rules onto its textual
+  (DSL) representation; later rules of the same name should override previous
+  ones. However, this is untested and may not be the final story.
+* I'm not in love with the ``Grammar`` API, so it may change.
+  ``ExpressionFlattener`` is probably going to move or get absorbed by
+  something else.
+* No Sphinx docs yet, but the docstrings are pretty good
+
+Next, I'll do some optimization and see if I can make Parsimonious worthy of
+its name. RAM use and better thought-out grammar extensibility come after that.
 
 
 A Little About PEG Parsers
@@ -74,7 +121,8 @@ space
 ``thing?``
   An optional expression
 ``!thing``
-  Matches if ``thing`` isn't found here. Doesn't consume any text.
+  (Not implemented yet.) Matches if ``thing`` isn't found here. Doesn't consume
+  any text.
 ``things*``
   Zero or more things
 ``things+``
@@ -86,16 +134,6 @@ space
   won't be able to take advantage of our fancy debugging, once we get that
   working. Ultimately, I'd like to deprecate explicit regexes and instead have
   Parsimonious build them dynamically out of simpler primitives.
-
-Example
--------
-
-::
-
-  bold_text  = bold_open text bold_close
-  text       = ~"[A-Z 0-9]*"i
-  bold_open  = '(('
-  bold_close = '))'
 
 We might implement parentheses in the future for anonymous grouping. For now,
 just break up complex rules instead.
@@ -246,22 +284,5 @@ Optimizations
 Version History
 ===============
 
-0.1: A rough but useable preview release
-  * Everything that exists works. Test coverage is good.
-  * Parsimonious bootstraps itself to "level 1", parsing a textual description
-    of its grammar description language into a functioning parser. Coming soon
-    is level 2 (perhaps just in tests), which will feed the textual description
-    back through the constructed parser and make sure the same thing comes out.
-  * I don't plan on making any backward-incompatible changes to the grammar DSL
-    in the future, so you can write grammars without fear.
-  * It may be slow and use a lot of RAM; I haven't measured either yet.
-  * Error reporting and debugging are nonexistent, though ``repr``s of things
-    are often helpful and informative.
-  * Grammar extensibility story is underdeveloped at the moment. You should be
-    able to extend a grammar by simply concatening more rules onto its textual
-    (DSL) representation; later rules of the same name should override previous
-    ones. However, this is untested and may not be the final story.
-  * I'm not in love with the ``Grammar`` API, so it may change.
-    ``ExpressionFlattener`` is probably going to move or get absorbed by
-    something else.
-  * No Sphinx docs yet, but the docstrings are pretty good
+0.1
+  * A rough but useable preview release
