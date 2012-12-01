@@ -113,11 +113,9 @@ class BootstrappingGrammar(Grammar):
         another_term = Sequence(_, term, name='another_term')
         sequence = Sequence(term, OneOrMore(another_term), name='sequence')
         or_term = Sequence(_, Literal('/'), another_term, name='or_term')
-        or_terms = OneOrMore(or_term, name='or_terms')
-        ored = Sequence(term, or_terms, name='ored')
+        ored = Sequence(term, OneOrMore(or_term), name='ored')
         and_term = Sequence(_, Literal('&'), another_term, name='and_term')
-        and_terms = OneOrMore(and_term, name='and_terms')
-        anded = Sequence(term, and_terms, name='anded')
+        anded = Sequence(term, OneOrMore(and_term), name='anded')
         poly_term = OneOf(anded, ored, sequence, name='poly_term')
         rhs = OneOf(poly_term, term, name='rhs')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
@@ -148,12 +146,10 @@ dsl_text = (r'''
     eol = ~r"(?:[\r\n]|$)"
     rhs = poly_term / term
     poly_term = anded / ored / sequence
-    anded = term and_terms
+    anded = term and_term+
     and_term = _ "&" another_term
-    and_terms = and_term+
-    ored = term or_terms
     or_term = _ "/" another_term
-    or_terms = or_term+
+    ored = term or_term+
     sequence = term another_term+
     another_term = _ term
     not_term = "!" term'''  # TODO: Half thought out. Make this work.
@@ -172,7 +168,8 @@ dsl_text = (r'''
 
 
 class LazyReference(unicode):
-    """A lazy reference to a rule, which we resolve after grokking all the rules"""
+    """A lazy reference to a rule, which we resolve after grokking all the
+    rules"""
 
 
 class DslVisitor(NodeVisitor):
@@ -198,10 +195,10 @@ class DslVisitor(NodeVisitor):
         """Lift the ``term`` or ``poly_term`` up to replace this node."""
         return term_or_poly
 
-    def visit_sequence(self, sequence, (term, one_or_more_other_terms)):  # TODO: right? I'm tired right now. How do the children get passed in? [I think this is right.]
+    def visit_sequence(self, sequence, (term, other_terms)):
         """A parsed Sequence looks like [term node, OneOrMore node of
         ``another_term``s]. Flatten it out."""
-        return Sequence(term, *one_or_more_other_terms)
+        return Sequence(term, *other_terms)
 
     def visit_ored(self, ored, (first_term, other_terms)):
         return OneOf(first_term, *other_terms)
@@ -214,10 +211,6 @@ class DslVisitor(NodeVisitor):
         """
         return term
 
-    def visit_or_terms(self, or_terms, or_term_children):
-        """Raise the list of children up to replace the OneOrMore node around them."""
-        return or_term_children
-
     def visit_anded(self, anded, (first_term, other_terms)):
         return AllOf(first_term, *other_terms)
 
@@ -229,12 +222,9 @@ class DslVisitor(NodeVisitor):
         """
         return term
 
-    def visit_and_terms(self, and_terms, and_term_children):
-        """Raise the list of children up to replace the OneOrMore node around them."""
-        return and_term_children
-
     def visit_another_term(self, another_term, (_, term)):
-        """Strip off the space, and just return the actual term involved in ``another_term``.
+        """Strip off the space, and just return the actual term involved in
+        ``another_term``.
 
         This lets us avoid repeating the stripping of the leading space in
         ``visit_or_term``, ``visit_and_term``, and elsewhere.
@@ -351,4 +341,6 @@ dsl_grammar = Grammar(dsl_text)
 
 # TODO: Teach Expression trees how to spit out Python representations of
 # themselves. Then we can just paste that in about, and we won't have to
-# bootstrap on import. Though it'll be a little less DRY.
+# bootstrap on import. Though it'll be a little less DRY. [Ah, but this is not
+# so clean, because it would have to output multiple statements to get multiple
+# refs to a single expression hooked up.]
