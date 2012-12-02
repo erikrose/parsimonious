@@ -9,7 +9,8 @@ by hand.
 import ast
 
 from parsimonious.exceptions import UndefinedLabel
-from parsimonious.expressions import *
+from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
+    Optional, ZeroOrMore, OneOrMore)
 from parsimonious.nodes import NodeVisitor
 
 
