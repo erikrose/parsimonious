@@ -6,7 +6,7 @@ from timeit import timeit
 from nose.tools import ok_
 
 
-timeit = partial(timeit, number=10000)
+timeit = partial(timeit, number=100000)
 
 
 def test_lists_vs_dicts():
