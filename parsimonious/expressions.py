@@ -58,11 +58,6 @@ class Expression(object):
         cache = {}
 
         node = self.match(text, cache=cache)
-        # TODO: Stop doing this, and instead introduce an Empty symbol that
-        # matches only at the EOF. Then we don't need both a public parse() and
-        # a match(), and you have the option of matching part of a string while
-        # still enjoying caching. OTOH, it might be nice to be able to match()
-        # or parse() without messing with the grammar.
         if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here?
             # If it was not a complete parse, return None:
             return None
@@ -114,24 +109,6 @@ class Expression(object):
         return self.__unicode__().encode('utf-8')
 
     __repr__ = __str__
-
-
-class Empty(Expression):
-    """The empty expression, which matches only at the end of the text
-
-    Stick one of these at the end of your grammar if you want to make it match
-    only whole texts.
-
-    """
-    # TODO: You know, maybe a kwargs on parse() is easier to understand for the
-    # non-having-studied-parsing among us. Plus then you don't have to mess
-    # with the grammar if you want to do match() sometimes and search() others.
-    # Is Empty useful anywhere but the EOF?
-
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
-        """Return 0 if we're at the EOF, ``None`` otherwise."""
-        if pos == len(text):
-            return 0
 
 
 class Literal(Expression):
