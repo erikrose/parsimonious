@@ -60,12 +60,13 @@ class Node(object):
     # From here down is just stuff for testing and debugging.
 
     def prettily(self, error=None):
-        """Return a pretty-printed representation of me.
+        """Return a unicode, pretty-printed representation of me.
 
         :arg error: The node to highlight because an error occurred there
 
         """
-        # TODO: If a Node appears multiple times in the tree, we'll point to them all. Whoops.
+        # TODO: If a Node appears multiple times in the tree, we'll point to
+        # them all. Whoops.
         def indent(text):
             return '\n'.join(('    ' + line) for line in text.splitlines())
         ret = [u'<%s%s matching "%s">%s' % (
@@ -77,7 +78,13 @@ class Node(object):
             ret.append(indent(n.prettily(error=error)))
         return '\n'.join(ret)
 
-    __str__ = __repr__ = __unicode__ = prettily
+    def __unicode__(self):
+        return self.prettily()
+
+    def __str__(self):
+        return self.__unicode__().encode('utf-8')
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
