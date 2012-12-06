@@ -4,8 +4,9 @@ Parsimonious
 
 Parsimonious aims to be the fastest arbitrary-lookahead parser written in pure
 Python. It's based on parsing expression grammars (PEGs), which means you
-essentially feed it EBNF notation. Parsimonious was designed to undergird a
-MediaWiki parser that wouldn't take 5 seconds or a GB of RAM to do one page.
+feed it a simplified sort of EBNF notation. Parsimonious was designed to
+undergird a MediaWiki parser that wouldn't take 5 seconds or a GB of RAM to do
+one page.
 
 Beyond speed, secondary goals include...
 
@@ -238,7 +239,7 @@ Rule Syntax Changes
 
 * Do we need a LookAhead? It might be slightly faster, but ``A Lookahead(B)``
   is equivalent to ``AB & A``, which, while more verbose, takes full advantage
-  of packratting.
+  of packratting. Also, ``!!A`` is an effective lookahead.
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
 * The ability to mark certain nodes as undesired, so we don't bother
   constructing them and cluttering the tree with them. For example, we might
@@ -284,6 +285,19 @@ Optimizations
 
 Version History
 ===============
+
+0.2
+  * Simplify grammar compilation internals: get rid of superfluous visitor
+    methods and factor up repetitive ones. Simplify rule grammar as well.
+  * Add ``NodeVisitor.lift_child`` convenience method.
+  * Rework ``repr`` and ``str`` values for grammars and expressions. Now they
+    both look like rule syntax. Grammars are even round-trippable! This fixes a
+    unicode encoding error when printing nodes that had parsed unicode text.
+  * Add tox for testing. Stop advertising Python 2.5 support, which never
+    worked (and won't unless somebody cares a lot, since it makes Python 3
+    support harder).
+  * Settle(?) on the term "rule" to mean "the string representation of a
+    production". Get rid of the vague, mysterious "DSL".
 
 0.1
   * A rough but useable preview release
