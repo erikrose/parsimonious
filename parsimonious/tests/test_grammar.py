@@ -123,15 +123,34 @@ class DslVisitorTests(TestCase):
 class GrammarTests(TestCase):
     """Integration-test ``Grammar``: feed it a PEG and see if it works.
 
-    That the correct ``Expression`` tree is built is already tested in
-    ``DslGrammarTests``. This tests only that the ``Grammar`` base class's
-    ``_rules_from_dsl`` works.
 
     """
     def test_rules_from_dsl(self):
-        """Test the ``Grammar`` base class's DSL-to-expression-tree
-        transformation."""
+        """Test the ``Grammar`` base class's ability to compile an expression
+        tree from a DSL representation.
+
+        That the correct ``Expression`` tree is built is already tested in
+        ``DslGrammarTests``. This tests only that the ``Grammar`` base class's
+        ``_rules_from_dsl`` works.
+
+        """
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')
         tree = greeting_grammar.parse('hi')
         eq_(tree, Node('greeting', 'hi', 0, 2, children=[
                        Node('', 'hi', 0, 2)]))
+
+    def test_unicode(self):
+        """Assert that a ``Grammar`` can convert into a string-formatted series
+        of rules."""
+        grammar = Grammar(r"""
+                          bold_text  = bold_open text bold_close
+                          text       = ~"[A-Z 0-9]*"i
+                          bold_open  = "(("
+                          bold_close = "))"
+                          """)
+        lines = unicode(grammar).splitlines()
+        eq_(lines[0], 'bold_text = bold_open text bold_close')
+        ok_('text = ~"[A-Z 0-9]*"i' in lines)
+        ok_('bold_open = "(("' in lines)
+        ok_('bold_close = "))"' in lines)
+        eq_(len(lines), 4)

@@ -9,9 +9,10 @@ are public.
 import sys
 
 from parsimonious.exceptions import VisitationException
+from parsimonious.utils import StrAndRepr
 
 
-class Node(object):
+class Node(StrAndRepr):
     """A parse tree node
 
     Consider these immutable once constructed. As a side effect of a
@@ -81,11 +82,6 @@ class Node(object):
     def __unicode__(self):
         return self.prettily()
 
-    def __str__(self):
-        return self.__unicode__().encode('utf-8')
-
-    __repr__ = __str__
-
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
         return (other is not None and
@@ -128,6 +124,12 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
+    # These could easily all be static methods, but that adds at least as much
+    # user-facing weirdness as the ``()`` chars for instantiation. And this
+    # way, we're forward compatible if we or the user ever wants to add any
+    # state: options, for instance, or a symbol table constructed from a
+    # programming language's AST.
+
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
     # mark nodes as not descent-worthy in the grammar.

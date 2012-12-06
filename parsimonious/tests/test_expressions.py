@@ -1,8 +1,11 @@
+#coding=utf-8
 from unittest import TestCase
 
 from nose.tools import eq_
 
-from parsimonious.expressions import Literal, Regex, Sequence, OneOf, AllOf, Not, Optional, ZeroOrMore, OneOrMore
+from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
+    Not, Optional, ZeroOrMore, OneOrMore, Expression)
+from parsimonious.grammar import Grammar, dsl_grammar
 from parsimonious.nodes import Node
 
 
@@ -157,3 +160,22 @@ class ParseTests(TestCase):
         expr = OneOrMore(Literal('a', name='lit'), name='more')
         text = 'aab'
         eq_(expr.parse(text), None)
+
+
+class RepresentationTests(TestCase):
+    """Tests for str(), unicode(), and repr() of expressions"""
+
+    def test_unicode_crash(self):
+        """Make sure matched unicode strings don't crash ``__str__``."""
+        grammar = Grammar(r'string = ~r"\S+"u')
+        str(grammar.parse(u'中文'))
+        # Okay, this is passing now, because I commented out __str__ etc. in Node.
+
+    def test_unicode(self):
+        """Smoke-test the conversion of expressions to bits of DSL.
+
+        A slightly more comprehensive test of the actual values is in
+        ``GrammarTests.test_unicode``.
+
+        """
+        unicode(dsl_grammar)

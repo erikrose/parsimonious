@@ -9,6 +9,7 @@ These do the parsing.
 import re
 
 from parsimonious.nodes import Node, RegexNode
+from parsimonious.utils import StrAndRepr
 
 
 __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
@@ -31,7 +32,7 @@ class _DummyCache(object):
 dummy_cache = _DummyCache()
 
 
-class Expression(object):
+class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
     # Slots are about twice as fast as __dict__-based attributes:
@@ -58,7 +59,7 @@ class Expression(object):
         cache = {}
 
         node = self.match(text, cache=cache)
-        if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here?
+        if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here? Are we going to add a pos kwarg or something?
             # If it was not a complete parse, return None:
             return None
         return node
@@ -96,19 +97,36 @@ class Expression(object):
             return cached
         uncached = self._uncached_match(text, pos, cache)
         cache[(expr_id, pos)] = uncached
-
         return uncached
 
     def __unicode__(self):
-        return u'<%s%s at 0x%s>' % (
+        return u'<%s %s at 0x%s>' % (
             self.__class__.__name__,
-            (' called "%s"' % self.name) if self.name else '',
+            self.as_rule(),
             id(self))
 
-    def __str__(self):
-        return self.__unicode__().encode('utf-8')
+    def as_rule(self):
+        """Return the left- and right-hand sides of a rule that represents me.
 
-    __repr__ = __str__
+        Return unicode. If I have no ``name``, omit the left-hand side.
+
+        """
+        return ((u'%s = %s' % (self.name, self._rhs())) if self.name else
+                self._rhs())
+
+    def _unicode_members(self):
+        """Return an iterable of my unicode-represented children, stopping
+        descent when we hit a named node so the returned value resembles the
+        input DSL."""
+        return [(m.name or m._rhs()) for m in self.members]
+
+    def _rhs(self):
+        """Return the RHS of a DSL rule that represents me.
+
+        Implemented by subclasses.
+
+        """
+        raise NotImplementedError
 
 
 class Literal(Expression):
@@ -126,6 +144,10 @@ class Literal(Expression):
     def _uncached_match(self, text, pos=0, cache=dummy_cache):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
+
+    def _rhs(self):
+        # TODO: Get backslash escaping right.
+        return '"%s"' % self.literal
 
 
 class Regex(Expression):
@@ -155,6 +177,16 @@ class Regex(Expression):
             node = RegexNode(self.name, text, pos, pos + span[1] - span[0])
             node.match = m  # TODO: A terrible idea for cache size?
             return node
+
+    def _regex_flags_from_bits(self, bits):
+        """Return the textual eqivalent of numerically encoded regex flags."""
+        flags = 'tilmsux'
+        return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
+
+    def _rhs(self):
+        # TODO: Get backslash escaping right.
+        return '~"%s"%s' % (self.re.pattern,
+                            self._regex_flags_from_bits(self.re.flags))
 
 
 class _Compound(Expression):
@@ -195,6 +227,8 @@ class Sequence(_Compound):
         # Hooray! We got through all the members!
         return Node(self.name, text, pos, pos + length_of_sequence, children)
 
+    def _rhs(self):
+        return u' '.join(self._unicode_members())
 
 class OneOf(_Compound):
     """A series of expressions, one of which must match
@@ -209,6 +243,9 @@ class OneOf(_Compound):
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
+
+    def _rhs(self):
+        return u' / '.join(self._unicode_members())
 
 
 class AllOf(_Compound):
@@ -226,6 +263,9 @@ class AllOf(_Compound):
                 return None
         if node is not None:
             return Node(self.name, text, pos, node.end, children=[node])
+
+    def _rhs(self):
+        return u' & '.join(self._unicode_members())
 
 
 class Not(_Compound):
@@ -256,6 +296,9 @@ class Optional(_Compound):
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
+    def _rhs(self):
+        return u'%s?' % self._unicode_members()[0]
+
 
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
@@ -270,6 +313,9 @@ class ZeroOrMore(_Compound):
                 return Node(self.name, text, pos, new_pos, children)
             children.append(node)
             new_pos += node.end - node.start
+
+    def _rhs(self):
+        return u'%s*' % self._unicode_members()[0]
 
 
 class OneOrMore(_Compound):
@@ -303,74 +349,5 @@ class OneOrMore(_Compound):
         if len(children) >= self.min:
             return Node(self.name, text, pos, new_pos, children)
 
-
-class ExpressionFlattener(object):
-    """A visitor that turns expression trees back into PEG DSL
-
-    You typically don't need this, but it comes in handy while debugging the
-    library. You could also use it to freeze grammars that you
-    machine-generate.
-
-    The visit_* methods all return strings. Thus, they all also receive a bunch
-    of strings as their second parameters.
-
-    """
-    CAPS = re.compile('([A-Z])')
-
-    def mappify(self, expr):
-        """Return a map of expression names to stringified expressions."""
-        named_exprs = {}
-        self.visit(expr, named_exprs)
-        return named_exprs
-
-    def stringify(self, expr):
-        # TODO: Output ``expr``  first so a Grammar built from the return value
-        # will use that as the starting rule.
-        return '\n'.join('%s = %s' % (k, v) for k, v in
-                         self.mappify(expr).iteritems())
-
-    def visit(self, expr, named_exprs):
-        if expr.name not in named_exprs:
-            method = getattr(self,
-                             'visit' + self.pep8(expr.__class__.__name__))
-            dsl = method(expr, [self.visit(e, named_exprs) for e in
-                                getattr(expr, 'members', [])])
-            if expr.name:
-                named_exprs[expr.name] = dsl
-        return expr.name or dsl
-
-    def pep8(self, name):
-        """Turn NamesLikeThis into names_like_this."""
-        return self.CAPS.sub(lambda m: '_' + m.groups()[0].lower(), name)
-
-    def regex_flags_from_bits(self, bits):
-        """Return the textual eqivalent of numerically encoded regex flags."""
-        flags = 'tilmsux'
-        return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
-
-    def visit_one_or_more(self, expr, (term,)):
-        return '%s+' % term
-
-    def visit_zero_or_more(self, expr, (term,)):
-        return '%s*' % term
-
-    def visit_optional(self, expr, (term,)):
-        return '%s?' % term
-
-    def visit_all_of(self, expr, terms):
-        return ' & '.join(terms)
-
-    def visit_one_of(self, expr, terms):
-        return ' / '.join(terms)
-
-    def visit_sequence(self, expr, terms):
-        return ' '.join(terms)
-
-    def visit_regex(self, regex, visited_children):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (regex.re.pattern,
-                            self.regex_flags_from_bits(regex.re.flags))
-
-    def visit_literal(self, literal, visited_children):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % literal.literal
+    def _rhs(self):
+        return u'%s+' % self._unicode_members()[0]

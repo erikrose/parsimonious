@@ -12,12 +12,13 @@ from parsimonious.exceptions import UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
     Optional, ZeroOrMore, OneOrMore)
 from parsimonious.nodes import NodeVisitor
+from parsimonious.utils import StrAndRepr
 
 
 __all__ = ['Grammar']
 
 
-class Grammar(dict):
+class Grammar(StrAndRepr, dict):
     """A collection of expressions that describe a language
 
     You can start parsing from the default expression by calling ``parse()``
@@ -49,6 +50,8 @@ class Grammar(dict):
     def __init__(self, dsl, default_rule=None):
         """Construct a grammar.
 
+        :arg dsl: A string of production rules, one per line. There must be at
+            least one rule.
         :arg default_rule: The name of the rule invoked when you call
             ``parse()`` on the grammar. Defaults to the first rule.
 
@@ -82,6 +85,18 @@ class Grammar(dict):
     def parse(self, text):
         """Parse some text with the default rule."""
         return self.default_rule.parse(text)
+
+    def __unicode__(self):
+        """Return a DSL string that may be used to passed to the constructor to
+        reconstitute the grammar."""
+        exprs = [self.default_rule]
+        exprs.extend(expr for expr in self.itervalues() if
+                     expr is not self.default_rule)
+        return '\n'.join(expr.as_rule() for expr in exprs)
+
+    def __repr__(self):
+        """Return an expression that will reconstitute the grammar."""
+        return "Grammar('%s')" % str(self).encode('string_escape')
 
 
 class BootstrappingGrammar(Grammar):
