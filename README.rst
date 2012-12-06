@@ -60,16 +60,16 @@ Status
 Take it easy, because 0.1 is a useable but rough preview release.
 
 * Everything that exists works. Test coverage is good.
-* I don't plan on making any backward-incompatible changes to the grammar DSL
+* I don't plan on making any backward-incompatible changes to the rule syntax
   in the future, so you can write grammars without fear.
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
   I have several macro- and micro-optimizations in mind.
 * Error reporting and debugging are nonexistent, though ``repr`` methods of
   things are often helpful and informative. I have big things planned here.
 * Grammar extensibility story is underdeveloped at the moment. You should be
-  able to extend a grammar by simply concatening more rules onto its textual
-  (DSL) representation; later rules of the same name should override previous
-  ones. However, this is untested and may not be the final story.
+  able to extend a grammar by simply concatening more rules onto the existing
+  ones; later rules of the same name should override previous ones. However,
+  this is untested and may not be the final story.
 * I'm not in love with the ``Grammar`` API, so it may change.
   ``ExpressionFlattener`` is probably going to move or get absorbed by
   something else.
@@ -176,7 +176,7 @@ zero-length string, like ``"thing"?`` might do.
 The ``NodeVisitor`` class provides an inversion of control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
 on it. For now, have a look at its docstrings for more detail. There's also a
-good example in ``grammar.DslVisitor``. Notice how we take advantage of nodes'
+good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
 iterability by using tuple unpacks in the formal parameter lists::
 
     def visit_or_term(self, or_term, (_, slash, term)):
@@ -233,8 +233,8 @@ two main reasons:
 Future Directions
 =================
 
-DSL Changes
------------
+Rule Syntax Changes
+-------------------
 
 * Do we need a LookAhead? It might be slightly faster, but ``A Lookahead(B)``
   is equivalent to ``AB & A``, which, while more verbose, takes full advantage

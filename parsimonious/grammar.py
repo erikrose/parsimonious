@@ -47,29 +47,26 @@ class Grammar(StrAndRepr, dict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
-    def __init__(self, dsl, default_rule=None):
+    def __init__(self, rules, default_rule=None):
         """Construct a grammar.
 
-        :arg dsl: A string of production rules, one per line. There must be at
-            least one rule.
+        :arg rules: A string of production rules, one per line. There must be
+            at least one rule.
         :arg default_rule: The name of the rule invoked when you call
             ``parse()`` on the grammar. Defaults to the first rule.
 
         """
-        # Maybe we should keep the original DSL text around in case people want
-        # to extend already-compiled grammars. We can't rely on callers to
-        # nicely expose their DSL strings. We can either have extending callers
-        # pull the text off Grammar.dsl, or we could get fancy and define
-        # __add__ on Grammars and strings. Or maybe, if you want to extend a
-        # grammar, just prepend (or append?) your string to its, and yours will
-        # take precedence. Or use the OMeta delegation syntax. Or yield back
-        # the dynamic reconstruction of the DSL.
-        rules, first = self._rules_from_dsl(dsl)
+        # We can either have extending callers pull the rule text out of repr,
+        # or we could get fancy and define __add__ on Grammars and strings. Or
+        # maybe, if you want to extend a grammar, just prepend (or append?)
+        # your string to its, and yours will take precedence. Or use the OMeta
+        # delegation syntax.
+        exprs, first = self._expressions_from_rules(rules)
 
-        self.update(rules)
-        self.default_rule = rules[default_rule] if default_rule else first
+        self.update(exprs)
+        self.default_rule = exprs[default_rule] if default_rule else first
 
-    def _rules_from_dsl(self, dsl):
+    def _expressions_from_rules(self, rules):
         """Return a 2-tuple: a dict of rule names pointing to their
         expressions, and then the first rule.
 
@@ -79,15 +76,15 @@ class Grammar(StrAndRepr, dict):
         multiple roots.
 
         """
-        tree = dsl_grammar.parse(dsl)
-        return DslVisitor().visit(tree)
+        tree = rule_grammar.parse(rules)
+        return RuleVisitor().visit(tree)
 
     def parse(self, text):
         """Parse some text with the default rule."""
         return self.default_rule.parse(text)
 
     def __unicode__(self):
-        """Return a DSL string that may be used to passed to the constructor to
+        """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
         exprs = [self.default_rule]
         exprs.extend(expr for expr in self.itervalues() if
@@ -100,18 +97,19 @@ class Grammar(StrAndRepr, dict):
 
 
 class BootstrappingGrammar(Grammar):
-    """The grammar used to recognize the DSL that describes other grammars
+    """The grammar used to recognize the textual rules that describe other
+    grammars
 
     This grammar gets its start from some hard-coded Expressions and claws its
     way from there to an expression tree that describes how to parse the
-    grammar description DSL.
+    grammar description syntax.
 
     """
-    def _rules_from_dsl(self, dsl):
-        """Return the rules for parsing the grammar DSL.
+    def _expressions_from_rules(self, rule_syntax):
+        """Return the rules for parsing the grammar definition syntax.
 
-        Return a 2-tuple: a dict of rule names pointing to their
-        expressions, and then the first rule.
+        Return a 2-tuple: a dict of rule names pointing to their expressions,
+        and then the top-level expression for the first rule.
 
         """
         # Hard-code enough of the rules to parse the grammar that describes the
@@ -139,14 +137,14 @@ class BootstrappingGrammar(Grammar):
                         Optional(_), rhs, Optional(_), eol, name='rule')
         rules = Sequence(OneOrMore(rule), Optional(ws), name='rules')
 
-        # Use those hard-coded rules to parse the (possibly more extensive) DSL
-        # grammar definition. (For example, unless I start using parentheses in
-        # the DSL definition itself, I should never have to hard-code
+        # Use those hard-coded rules to parse the (possibly more extensive)
+        # rule syntax. (For example, unless I start using parentheses in the
+        # rule language definition itself, I should never have to hard-code
         # expressions for those above.)
-        dsl_tree = rules.parse(dsl)
+        rule_tree = rules.parse(rule_syntax)
 
         # Turn the parse tree into a map of expressions:
-        return DslVisitor().visit(dsl_tree)
+        return RuleVisitor().visit(rule_tree)
 
 
 # The grammar for parsing PEG grammar definitions:
@@ -155,7 +153,7 @@ class BootstrappingGrammar(Grammar):
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
-dsl_text = (r'''
+rule_syntax = (r'''
     rules = rule+ ws?
     rule = ws? label _? "=" _? rhs _? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
@@ -188,7 +186,7 @@ class LazyReference(unicode):
     rules"""
 
 
-class DslVisitor(NodeVisitor):
+class RuleVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression``
     objects
 
@@ -334,12 +332,12 @@ class DslVisitor(NodeVisitor):
 
 
 # Bootstrap to level 1...
-dsl_grammar = BootstrappingGrammar(dsl_text)
-# ...and then to level 2. This establishes that the node tree of our grammar
-# DSL is built by the same machinery that will build that of our users'
+rule_grammar = BootstrappingGrammar(rule_syntax)
+# ...and then to level 2. This establishes that the node tree of our rule
+# syntax is built by the same machinery that will build trees of our users'
 # grammars. And the correctness of that tree is tested, indirectly, in
 # test_grammar.
-dsl_grammar = Grammar(dsl_text)
+rule_grammar = Grammar(rule_syntax)
 
 # TODO: Teach Expression trees how to spit out Python representations of
 # themselves. Then we can just paste that in about, and we won't have to

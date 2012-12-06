@@ -117,11 +117,11 @@ class Expression(StrAndRepr):
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
         descent when we hit a named node so the returned value resembles the
-        input DSL."""
+        input rule."""
         return [(m.name or m._rhs()) for m in self.members]
 
     def _rhs(self):
-        """Return the RHS of a DSL rule that represents me.
+        """Return the right-hand side of a rule that represents me.
 
         Implemented by subclasses.
 
@@ -198,10 +198,6 @@ class _Compound(Expression):
         """``members`` is a sequence of expressions."""
         super(_Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
-
-
-# TODO: Add round-tripping, so the pretty-printed version of an Expression is
-# its PEG DSL representation. Sure makes it easier to debug expression trees.
 
 
 class Sequence(_Compound):

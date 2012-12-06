@@ -5,7 +5,7 @@ from nose.tools import eq_
 
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
     Not, Optional, ZeroOrMore, OneOrMore, Expression)
-from parsimonious.grammar import Grammar, dsl_grammar
+from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
 
 
@@ -172,10 +172,10 @@ class RepresentationTests(TestCase):
         # Okay, this is passing now, because I commented out __str__ etc. in Node.
 
     def test_unicode(self):
-        """Smoke-test the conversion of expressions to bits of DSL.
+        """Smoke-test the conversion of expressions to bits of rules.
 
         A slightly more comprehensive test of the actual values is in
         ``GrammarTests.test_unicode``.
 
         """
-        unicode(dsl_grammar)
+        unicode(rule_grammar)
