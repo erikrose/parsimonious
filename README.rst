@@ -293,6 +293,8 @@ Version History
   * Simplify grammar compilation internals: get rid of superfluous visitor
     methods and factor up repetitive ones. Simplify rule grammar as well.
   * Add ``NodeVisitor.lift_child`` convenience method.
+  * Rename ``VisitationException`` to ``VisitationError`` for consistency with
+    the standard Python exception hierarchy.
   * Rework ``repr`` and ``str`` values for grammars and expressions. Now they
     both look like rule syntax. Grammars are even round-trippable! This fixes a
     unicode encoding error when printing nodes that had parsed unicode text.

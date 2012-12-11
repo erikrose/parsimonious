@@ -1,4 +1,4 @@
-class VisitationException(Exception):
+class VisitationError(Exception):
     """Something went wrong while traversing a parse tree.
 
     This exception exists to augment an underlying exception with information
@@ -18,7 +18,7 @@ class VisitationException(Exception):
 
         """
         self.original_class = exc_class
-        super(VisitationException, self).__init__(
+        super(VisitationError, self).__init__(
             '%s: %s\n\n'
             'Parse tree:\n'
             '%s' %
@@ -27,7 +27,7 @@ class VisitationException(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(VisitationException):
+class UndefinedLabel(VisitationError):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define

@@ -8,7 +8,7 @@ are public.
 # TODO: If this is slow, think about using cElementTree or something.
 import sys
 
-from parsimonious.exceptions import VisitationException
+from parsimonious.exceptions import VisitationError
 from parsimonious.utils import StrAndRepr
 
 
@@ -140,14 +140,14 @@ class NodeVisitor(object):
         # up.
         try:
             return method(node, [self.visit(n) for n in node])
-        except VisitationException:
+        except VisitationError:
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
         except Exception, e:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = sys.exc_info()
-            visitation_exception = VisitationException(exc, exc_class, node)
+            visitation_exception = VisitationError(exc, exc_class, node)
             raise visitation_exception.__class__, visitation_exception, tb
 
     def generic_visit(self, node, visited_children):
