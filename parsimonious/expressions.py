@@ -37,12 +37,7 @@ class Expression(StrAndRepr):
         the first ``match()`` call.
 
         """
-        # The packrat cache. {(oid, pos): Node tree matched by object `oid` at
-        #                                 index `pos`
-        #                     ...}
-        cache = {}
-
-        node = self.match(text, cache=cache)
+        node = self.match(text)
         if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here? Are we going to add a pos kwarg or something?
             # If it was not a complete parse, return None:
             return None
@@ -71,6 +66,9 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         if cache is None:
+            # The packrat cache. {(oid, pos): Node tree matched by object `oid`
+            #                                 at index `pos`
+            #                     ...}
             cache = {}
         expr_id = id(self)
         cached = cache.get((expr_id, pos), ())
