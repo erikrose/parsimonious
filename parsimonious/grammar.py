@@ -1,5 +1,4 @@
-"""A convenience which constructs expression trees from an easy-to-read
-EBNF-like syntax
+"""A convenience which constructs expression trees from an easy-to-read syntax
 
 Use this unless you have a compelling reason not to; it performs some
 optimizations that would be tedious to do when constructing an expression tree
@@ -8,7 +7,7 @@ by hand.
 """
 import ast
 
-from parsimonious.exceptions import UndefinedLabel
+from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
     Optional, ZeroOrMore, OneOrMore)
 from parsimonious.nodes import NodeVisitor
@@ -77,6 +76,11 @@ class Grammar(StrAndRepr, dict):
 
         """
         tree = rule_grammar.parse(rules)
+        if tree is None:
+            raise BadGrammar('There is an error in your rule definitions. '
+                             'Sorry for the vague error reporting at the '
+                             'moment.')
+
         return RuleVisitor().visit(tree)
 
     def parse(self, text):

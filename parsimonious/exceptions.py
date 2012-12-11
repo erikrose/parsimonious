@@ -1,3 +1,7 @@
+class BadGrammar(Exception):
+    """The rule definitions passed to Grammar contain syntax errors."""
+
+
 class VisitationError(Exception):
     """Something went wrong while traversing a parse tree.
 

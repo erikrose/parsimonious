@@ -3,7 +3,7 @@ from unittest import TestCase
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
-from parsimonious.exceptions import UndefinedLabel
+from parsimonious.exceptions import UndefinedLabel, BadGrammar
 from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
@@ -121,10 +121,8 @@ class RuleVisitorTests(TestCase):
 
 
 class GrammarTests(TestCase):
-    """Integration-test ``Grammar``: feed it a PEG and see if it works.
+    """Integration-test ``Grammar``: feed it a PEG and see if it works."""
 
-
-    """
     def test_expressions_from_rules(self):
         """Test the ``Grammar`` base class's ability to compile an expression
         tree from rules.
@@ -168,3 +166,7 @@ class GrammarTests(TestCase):
                                          Node('bold_open', s, 1, 3),
                                          Node('text', s, 3, 6),
                                          Node('bold_close', s, 6, 8)]))
+
+    def test_bad_grammar(self):
+        """Constructing a Grammar with bad rules should raise BadGrammar."""
+        assert_raises(BadGrammar, Grammar, 'just a bunch of junk')
