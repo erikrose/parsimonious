@@ -16,22 +16,6 @@ __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
            'Not', 'Optional', 'ZeroOrMore', 'OneOrMore', 'ExpressionFlattener']
 
 
-class _DummyCache(object):
-    """Fake cache that always misses.
-
-    This never gets used except in tests. TODO: Then what's it doing in here?
-    Get it out.
-
-    """
-    def get(self, key, default=None):
-        return default
-
-    def __setitem__(self, key, value):
-        pass
-
-dummy_cache = _DummyCache()
-
-
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -138,7 +122,7 @@ class Literal(Expression):
         super(Literal, self).__init__(name)
         self.literal = literal
 
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
 
@@ -166,7 +150,7 @@ class Regex(Expression):
                                       (unicode and re.U) |
                                       (verbose and re.X))
 
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         """Return length of match, ``None`` if no match."""
         m = self.re.match(text, pos)
         if m is not None:
@@ -205,7 +189,7 @@ class Sequence(_Compound):
     after another.
 
     """
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         new_pos = pos
         length_of_sequence = 0
         children = []
@@ -230,7 +214,7 @@ class OneOf(_Compound):
     wins.
 
     """
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         for m in self.members:
             node = m.match(text, pos, cache)
             if node is not None:
@@ -249,7 +233,7 @@ class AllOf(_Compound):
     the preceding members as lookaheads.
 
     """
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         for m in self.members:
             node = m.match(text, pos, cache)
             if node is None:
@@ -267,7 +251,7 @@ class Not(_Compound):
     In any case, it never consumes any characters; it's a negative lookahead.
 
     """
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
         node = self.members[0].match(text, pos, cache)
@@ -284,7 +268,7 @@ class Optional(_Compound):
     consumes. Otherwise, it consumes nothing.
 
     """
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         node = self.members[0].match(text, pos, cache)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
@@ -296,7 +280,7 @@ class Optional(_Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
     """An expression wrapper like the * quantifier in regexes."""
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         new_pos = pos
         children = []
         while True:
@@ -327,7 +311,7 @@ class OneOrMore(_Compound):
         super(OneOrMore, self).__init__(member, name=name)
         self.min = min
 
-    def _uncached_match(self, text, pos=0, cache=dummy_cache):
+    def _uncached_match(self, text, pos, cache):
         new_pos = pos
         children = []
         while True:
