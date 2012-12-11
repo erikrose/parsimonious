@@ -38,7 +38,7 @@ class Expression(StrAndRepr):
     # Slots are about twice as fast as __dict__-based attributes:
     # http://stackoverflow.com/questions/1336791/dictionary-vs-object-which-is-more-efficient-and-why
 
-    # Top-level expressions--rules--have names. Subexpressions are anonymous: ''.
+    # Top-level expressions--rules--have names. Subexpressions are named ''.
     __slots__ = ['name']
 
     def __init__(self, name=''):
@@ -64,18 +64,14 @@ class Expression(StrAndRepr):
             return None
         return node
 
-    def match(self, text, pos=0, cache=dummy_cache):
+    def match(self, text, pos=0, cache=None):
         """Return the ``Node`` matching this expression at the given position.
 
         Return ``None`` if it doesn't match there. Check the cache first.
 
-        The default args are just to make the tests easier to write.
-        Ordinarily, ``parse()`` calls this and passes in a cache and pos.
+        :arg pos: The index at which to start matching
 
         """
-        # TODO: Maybe make this really suitable for public calling. Make cache
-        # turn into a fresh {} if none is passed in.
-        #
         # TODO: Optimize. Probably a hot spot.
         #
         # Is there a way of looking up cached stuff that's faster than hashing
@@ -89,8 +85,9 @@ class Expression(StrAndRepr):
         # objects. Cache just what you need to reconstitute them. (1) Cache
         # only the results of entire rules, not subexpressions (probably a
         # horrible idea for rules that need to backtrack internally a lot). (2)
-        # Age stuff out of the cache somehow. LRU?
-        #print self.__class__.__name__, self.name
+        # Age stuff out of the cache somehow. LRU? (3) Cuts.
+        if cache is None:
+            cache = {}
         expr_id = id(self)
         cached = cache.get((expr_id, pos), ())
         if cached is not ():

@@ -117,7 +117,7 @@ class RuleVisitorTests(TestCase):
         # It should turn into a Node from the Optional and another from the
         # Literal within.
         eq_(default_rule.parse(howdy), Node('boy', howdy, 0, 5, children=[
-                                          Node('', howdy, 0, 5)]))
+                                           Node('', howdy, 0, 5)]))
 
 
 class GrammarTests(TestCase):
@@ -154,3 +154,17 @@ class GrammarTests(TestCase):
         ok_('bold_open = "(("' in lines)
         ok_('bold_close = "))"' in lines)
         eq_(len(lines), 4)
+
+    def test_match(self):
+        """Make sure partial-matching (with pos) works."""
+        grammar = Grammar(r"""
+                          bold_text  = bold_open text bold_close
+                          text       = ~"[A-Z 0-9]*"i
+                          bold_open  = "(("
+                          bold_close = "))"
+                          """)
+        s = ' ((boo))yah'
+        eq_(grammar.match(s, pos=1), Node('bold_text', s, 1, 8, children=[
+                                         Node('bold_open', s, 1, 3),
+                                         Node('text', s, 3, 6),
+                                         Node('bold_close', s, 6, 8)]))

@@ -83,6 +83,15 @@ class Grammar(StrAndRepr, dict):
         """Parse some text with the default rule."""
         return self.default_rule.parse(text)
 
+    def match(self, text, pos=0):
+        """Parse some text with the default rule but not necessarily all the
+        way to the end.
+
+        :arg pos: The index at which to start parsing
+
+        """
+        return self.default_rule.match(text, pos=pos)
+
     def __unicode__(self):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""

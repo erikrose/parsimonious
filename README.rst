@@ -287,6 +287,9 @@ Version History
 ===============
 
 0.2
+  * Support matching of prefixes and other not-to-the-end slices of strings by
+    making ``match()`` public and able to initialize a new cache. Add
+    ``match()`` callthrough method to ``Grammar``.
   * Simplify grammar compilation internals: get rid of superfluous visitor
     methods and factor up repetitive ones. Simplify rule grammar as well.
   * Add ``NodeVisitor.lift_child`` convenience method.
