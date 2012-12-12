@@ -37,9 +37,9 @@ Here's how to build a simple grammar::
     ...     bold_close = "))"
     ...     """)
 
-You can have forward references or anything you want; it's all taken care of by
-the grammar compiler. The first rule is taken to be the default start symbol,
-but you can override that.
+You can have forward references and even right recursion; it's all taken care
+of by the grammar compiler. The first rule is taken to be the default start
+symbol, but you can override that.
 
 Next, let's parse something and get an abstract syntax tree::
 
@@ -58,26 +58,30 @@ But first, lots of scary warnings...
 Status
 ======
 
-Take it easy, because 0.1 is a useable but rough preview release.
+0.2 is a usable preview release. Note that there may be API changes until we
+get to 1.0.
 
 * Everything that exists works. Test coverage is good.
 * I don't plan on making any backward-incompatible changes to the rule syntax
   in the future, so you can write grammars without fear.
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
   I have several macro- and micro-optimizations in mind.
-* Error reporting and debugging are nonexistent, though ``repr`` methods of
-  things are often helpful and informative. I have big things planned here.
-* Grammar extensibility story is underdeveloped at the moment. You should be
-  able to extend a grammar by simply concatening more rules onto the existing
-  ones; later rules of the same name should override previous ones. However,
-  this is untested and may not be the final story.
-* I'm not in love with the ``Grammar`` API, so it may change.
-  ``ExpressionFlattener`` is probably going to move or get absorbed by
-  something else.
-* No Sphinx docs yet, but the docstrings are pretty good
+* Error reporting is fairly uninformative, and debugging is nonexistent.
+  However, ``repr`` methods of expressions, grammars, and nodes are very clear
+  and helpful. Ones of ``Grammar`` objects are even round-trippable! Huge
+  things are planned for grammar debugging in the future.
+* The grammar extensibility story is underdeveloped at the moment. You should
+  be able to extend a grammar by simply concatening more rules onto the
+  existing ones; later rules of the same name should override previous ones.
+  However, this is untested and may not be the final story.
+* Sphinx docs are coming, but the docstrings are quite useful now.
 
-Next, I'll do some optimization and see if I can make Parsimonious worthy of
-its name. RAM use and better thought-out grammar extensibility come after that.
+Coming up soon...
+
+* Grammar additions: comments, parentheses, and "not"
+* Optimizations to make Parsimonious worthy of its name.
+* Tighter RAM use
+* Better-thought-out grammar extensibility story
 
 
 A Little About PEG Parsers
@@ -86,9 +90,9 @@ A Little About PEG Parsers
 PEG parsers don't draw a distinction between lexing and parsing; everything's
 done at once. As a result, there is no lookahead limit, as there is with, for
 instance, Yacc. And, due to both of these properties, PEG grammars are easier
-to write: they're basically just EBNF. With caching, they take O(grammar size *
-text length) memory (though I plan to do better), but they run in O(text
-length) time.
+to write: they're basically just a more practical dialect of EBNF. With
+caching, they take O(grammar size * text length) memory (though I plan to do
+better), but they run in O(text length) time.
 
 More Technically
 ----------------
@@ -106,7 +110,16 @@ Thus, ambiguity is resolved by always yielding the first successful recognition.
 Writing Grammars
 ================
 
-They're basically just extended EBNF syntax:
+Grammars are defined by a series of rules, one per line. The syntax should be
+familiar to anyone who uses regexes or reads programming language manuals. An
+example will serve best::
+
+    styled_text = bold_text / italic_text
+    bold_text   = "((" text "))"
+    italic_text = "''" text "''"
+    text        = ~"[A-Z 0-9]*"i
+
+Here's a syntax reference:
 
 ``"some literal"``
   Used to quote literals. Backslash escaping and Python conventions for "raw"
@@ -137,44 +150,38 @@ space
   working. Ultimately, I'd like to deprecate explicit regexes and instead have
   Parsimonious build them dynamically out of simpler primitives.
 
-We might implement parentheses in the future for anonymous grouping. For now,
-just break up complex rules instead.
-
-We shouldn't need to represent Empty; the quantifiers should suffice.
-
 
 Optimizing Grammars
 ===================
 
-Don't repeat expressions. If you need a ``Regex('such-and-such')`` at some
-point in your grammar, don't type it twice; make it a rule of its own, and
-reference it from wherever you need it. You'll get the most out of the caching
-this way, since cache lookups are by expression object identity (for speed).
-Even if you have an expression that's very simple, not repeating it will save
-RAM, as there can, at worst, be a cached int for every char in the text you're
-parsing. But hmm, maybe I can identify repeated subexpressions automatically
-and factor that up while building the grammar....
+Don't repeat expressions. If you need a ``~"[a-z0-9]"i`` at two points in your
+grammar, don't type it twice; make it a rule of its own, and reference it from
+wherever you need it. You'll get the most out of the caching this way, since
+cache lookups are by expression object identity (for speed). Even if you have
+an expression that's very simple, not repeating it will save RAM, as there can,
+at worst, be a cached int for every char in the text you're parsing. In the
+future, we may identify repeated subexpressions automatically and factor them
+up while building the grammar.
 
-How much should you shove into one ``Regex``, versus how much should you break
-them up to not repeat yourself? That's a fine balance and worthy of
-benchmarking. More stuff jammed into a regex will execute faster, because it
-doesn't have to run any Python between pieces, but a broken-up one will give
-better cache performance if the individual pieces are re-used elsewhere. If the
-pieces of a regex aren't used anywhere else, by all means keep the whole thing
-together.
+How much should you shove into one regex, versus how much should you break them
+up to not repeat yourself? That's a fine balance and worthy of benchmarking.
+More stuff jammed into a regex will execute faster, because it doesn't have to
+run any Python between pieces, but a broken-up one will give better cache
+performance if the individual pieces are re-used elsewhere. If the pieces of a
+regex aren't used anywhere else, by all means keep the whole thing together.
 
 Quantifiers: bring your ``?`` and ``*`` quantifiers up to the highest level you
 can. Otherwise, lower-level patterns could succeed but be empty and put a bunch
 of useless nodes in your tree that didn't really match anything.
 
 
-Dealing With Parse Trees
-========================
+Processing Parse Trees
+======================
 
 A parse tree has a node for each expression matched, even if it matched a
 zero-length string, like ``"thing"?`` might do.
 
-The ``NodeVisitor`` class provides an inversion of control framework for
+The ``NodeVisitor`` class provides an inversion-of-control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
 on it. For now, have a look at its docstrings for more detail. There's also a
 good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
@@ -241,28 +248,8 @@ Rule Syntax Changes
   is equivalent to ``AB & A``, which, while more verbose, takes full advantage
   of packratting. Also, ``!!A`` is an effective lookahead.
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
-* The ability to mark certain nodes as undesired, so we don't bother
-  constructing them and cluttering the tree with them. For example, we might
-  only care to see the ``OneOf`` node in the final tree, not the boring
-  Literals inside it::
-
-    greeting = "hi" / "hello" / "bonjour"
-
-  Perhaps we could express it like this::
-
-    greeting = -"hi" / -"hello" / -"bonjour"
-
-  On the other hand, parentheses for anonymous subexpressions could largely
-  solve this problem--and in a more familiar way--if we implicitly omitted
-  their nodes. (The exception would be subexpressions that you end up having to
-  repeat several times in the grammar.) On the third hand, I don't really care
-  to clutter grammar definitions up like this. It makes them less readable and
-  conflates recognition with tree processing. I'll most likely just focus on
-  making ``NodeVisitor`` subclasses as easy as possible to write.
-* Pijnu has a raft of tree manipulators. I don't think I want all of them, but
-  a judicious subset might be nice. Don't get into mixing formatting with tree
-  manipulation.
-  https://github.com/erikrose/pijnu/blob/master/library/node.py#L333
+* Parentheses
+* Inversion
 
 Optimizations
 -------------
@@ -281,6 +268,14 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
+
+Niceties
+--------
+
+* Pijnu has a raft of tree manipulators. I don't think I want all of them, but
+  a judicious subset might be nice. Don't get into mixing formatting with tree
+  manipulation.
+  https://github.com/erikrose/pijnu/blob/master/library/node.py#L333
 
 
 Version History
@@ -303,8 +298,8 @@ Version History
   * Add tox for testing. Stop advertising Python 2.5 support, which never
     worked (and won't unless somebody cares a lot, since it makes Python 3
     support harder).
-  * Settle(?) on the term "rule" to mean "the string representation of a
-    production". Get rid of the vague, mysterious "DSL".
+  * Settle (hopefully) on the term "rule" to mean "the string representation of
+    a production". Get rid of the vague, mysterious "DSL".
 
 0.1
   * A rough but useable preview release
