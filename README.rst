@@ -134,14 +134,17 @@ space
   means that ``a``, ``b``, and ``c`` all have to match at the current position.
   ``c``, however, is the only bit that's actually consumed.
 ``thing?``
-  An optional expression
+  An optional expression. This is greedy, always consuming ``thing`` if it
+  exists.
 ``!thing``
   (Not implemented yet.) Matches if ``thing`` isn't found here. Doesn't consume
   any text.
 ``things*``
-  Zero or more things
+  Zero or more things. This is greedy, always consuming as many repetitions as
+  it can.
 ``things+``
-  One or more things
+  One or more things. This is greedy, always consuming as many repetitions as
+  it can.
 ``~r"regex"ilmsux``
   Regexes have ``~`` in front and are quoted like literals. Any flags follow
   the end quotes as single chars. Regexes are good for representing character
