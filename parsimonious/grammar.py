@@ -77,7 +77,7 @@ class Grammar(StrAndRepr, dict):
         """
         tree = rule_grammar.parse(rules)
         if tree is None:
-            raise BadGrammar('There is an error in your rule definitions. '
+            raise BadGrammar('There is an error in your grammar definition. '
                              'Sorry for the vague error reporting at the '
                              'moment.')
 
@@ -128,6 +128,7 @@ class BootstrappingGrammar(Grammar):
         # Hard-code enough of the rules to parse the grammar that describes the
         # grammar description language, to bootstrap:
         ws = Regex(r'\s+', name='ws')
+        comment = Regex(r'#[^\r\n]*', name='comment')
         _ = Regex(r'[ \t]+', name='_')
         label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*', name='label')
         quantifier = Regex(r'[*+?]', name='quantifier')
@@ -147,7 +148,8 @@ class BootstrappingGrammar(Grammar):
         rhs = OneOf(poly_term, term, name='rhs')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
         rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
-                        Optional(_), rhs, Optional(_), eol, name='rule')
+                        Optional(_), rhs, Optional(_), Optional(comment), eol,
+                        name='rule')
         rules = Sequence(OneOrMore(rule), Optional(ws), name='rules')
 
         # Use those hard-coded rules to parse the (possibly more extensive)
@@ -162,13 +164,12 @@ class BootstrappingGrammar(Grammar):
 
 # The grammar for parsing PEG grammar definitions:
 # TODO: Support Not. Figure out how tightly it should bind.
-# TODO: Support comments.
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
 rule_syntax = (r'''
     rules = rule+ ws?
-    rule = ws? label _? "=" _? rhs _? eol
+    rule = ws? label _? "=" _? rhs _? comment? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     eol = ~r"(?:[\r\n]|$)"
     rhs = poly_term / term
@@ -185,12 +186,12 @@ rule_syntax = (r'''
     quantified = atom quantifier
     atom = label / literal / regex
     regex = "~" literal ~"[ilmsux]*"i
-
     quantifier = ~"[*+?]"
     label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
     _ = ~r"[ \t]+"'''  # horizontal whitespace
     r'''
     ws = ~r"\s+"
+    comment = ~r"#[^\r\n]*"
     ''')
 
 
@@ -214,7 +215,7 @@ class RuleVisitor(NodeVisitor):
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
 
-    def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, eol)):
+    def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, comment, eol)):
         """Assign a name to the Expression and return it."""
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
         rhs.name = label  # Assign a name to the expr.

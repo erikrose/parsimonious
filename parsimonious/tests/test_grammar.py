@@ -170,3 +170,15 @@ class GrammarTests(TestCase):
     def test_bad_grammar(self):
         """Constructing a Grammar with bad rules should raise BadGrammar."""
         assert_raises(BadGrammar, Grammar, 'just a bunch of junk')
+
+    def test_comments(self):
+        """Test tolerance of comments in rules."""
+        grammar = Grammar(r"""
+                          bold_text  = stars text stars  # nice
+                          text       = ~"[A-Z 0-9]*"i #dude
+                          stars      = "**"
+                          """)  # Make sure a comment doesn't need a
+                                          # \n or \r to end.
+        eq_(str(grammar), '''bold_text = stars text stars\n'''
+                          '''text = ~"[A-Z 0-9]*"i\n'''
+                          '''stars = "**"''')
