@@ -221,7 +221,7 @@ When something goes wrong in your visitor, you get a nice error like this::
                 ">
         <Node matching "">
 
-The parse tree tacked onto the exception, and the node whose visitor method
+The parse tree is tacked onto the exception, and the node whose visitor method
 raised the error is pointed out.
 
 Why No Streaming Tree Processing?
@@ -253,6 +253,9 @@ Rule Syntax Changes
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
 * Parentheses
 * Inversion
+* Ultimately, I'd like to get rid of explicit regexes and break them into more
+  atomic things like character classes. Then we can dynamically compile bits
+  of the grammar into regexes as necessary to boost speed.
 
 Optimizations
 -------------
