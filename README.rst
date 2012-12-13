@@ -287,6 +287,9 @@ Niceties
 Version History
 ===============
 
+0.3
+  * Support comments in grammar definition syntax.
+
 0.2
   * Support matching of prefixes and other not-to-the-end slices of strings by
     making ``match()`` public and able to initialize a new cache. Add

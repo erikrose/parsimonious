@@ -147,10 +147,10 @@ class BootstrappingGrammar(Grammar):
         poly_term = OneOf(anded, ored, sequence, name='poly_term')
         rhs = OneOf(poly_term, term, name='rhs')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
-        rule = Sequence(Optional(ws), label, Optional(_), Literal('='),
-                        Optional(_), rhs, Optional(_), Optional(comment), eol,
-                        name='rule')
-        rules = Sequence(OneOrMore(rule), Optional(ws), name='rules')
+        rule = Sequence(label, Optional(_), Literal('='), Optional(_), rhs,
+                        Optional(_), Optional(comment), eol, name='rule')
+        rule_or_rubbish = OneOf(rule, ws, comment, name='rule_or_rubbish')
+        rules = OneOrMore(rule_or_rubbish, name='rules')
 
         # Use those hard-coded rules to parse the (possibly more extensive)
         # rule syntax. (For example, unless I start using parentheses in the
@@ -163,13 +163,14 @@ class BootstrappingGrammar(Grammar):
 
 
 # The grammar for parsing PEG grammar definitions:
-# TODO: Support Not. Figure out how tightly it should bind.
+# TODO: Support Not. Figure out how tightly it should bind--probably very.
 # This is a nice, simple grammar. We may someday add parentheses or support for
 # multi-line rules, but it's a safe bet that the future will always be a
 # superset of this.
 rule_syntax = (r'''
-    rules = rule+ ws?
-    rule = ws? label _? "=" _? rhs _? comment? eol
+    rules = rule_or_rubbish+
+    rule_or_rubbish = rule / ws / comment
+    rule = label _? "=" _? rhs _? comment? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     eol = ~r"(?:[\r\n]|$)"
     rhs = poly_term / term
@@ -180,16 +181,14 @@ rule_syntax = (r'''
     ored = term or_term+
     sequence = term another_term+
     another_term = _ term
-    not_term = "!" term'''  # TODO: Half thought out. Make this work.
-    r'''
+    not_term = "!" term  # TODO: Half thought out. Make this work.
     term = quantified / atom
     quantified = atom quantifier
     atom = label / literal / regex
     regex = "~" literal ~"[ilmsux]*"i
     quantifier = ~"[*+?]"
     label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
-    _ = ~r"[ \t]+"'''  # horizontal whitespace
-    r'''
+    _ = ~r"[ \t]+"  # horizontal whitespace
     ws = ~r"\s+"
     comment = ~r"#[^\r\n]*"
     ''')
@@ -210,12 +209,22 @@ class RuleVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
-    visit_rhs = visit_poly_term = visit_term = visit_atom = NodeVisitor.lift_child
+    visit_rule_or_rubbish = visit_rhs = visit_poly_term = visit_term = \
+        visit_atom = NodeVisitor.lift_child
 
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
 
-    def visit_rule(self, rule, (ws, label, _2, equals, _3, rhs, _4, comment, eol)):
+    def visit_ws(self, ws, visited_children):
+        """Stomp out ``ws`` nodes so visit_rules can easily filter them out."""
+        return None
+
+    def visit_comment(self, comment, visited_children):
+        """Stomp out ``comment`` nodes so visit_rules can easily filter them
+        out."""
+        return None
+
+    def visit_rule(self, rule, (label, _2, equals, _3, rhs, _4, comment, eol)):
         """Assign a name to the Expression and return it."""
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
         rhs.name = label  # Assign a name to the expr.
@@ -295,14 +304,14 @@ class RuleVisitor(NodeVisitor):
         regex rule. Most of these kept-around nodes are subsequently thrown
         away by the other visitor methods.
 
-        We can't simple hang the visited children off the original node; that
+        We can't simply hang the visited children off the original node; that
         would be disastrous if the node occurred in more than one place in the
         tree.
 
         """
         return visited_children or node  # should semantically be a tuple
 
-    def visit_rules(self, node, (rules, ws)):
+    def visit_rules(self, node, rule_or_rubbishes):
         """Collate all the rules into a map. Return (map, default rule).
 
         The default rule is the first one. Or, if you have more than one rule
@@ -310,8 +319,10 @@ class RuleVisitor(NodeVisitor):
         override the default rule when you extend a grammar.)
 
         """
-        # TODO: Too big. Break up.
         rule_map = {}
+
+        # Drop the ws and comments:
+        rules = [r for r in rule_or_rubbishes if r is not None]
 
         def resolve_refs(expr):
             """Turn references into the things they actually reference.

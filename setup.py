@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='parsimonious',
-    version='0.2',
+    version='0.3',
     description='(Soon to be) the fastest pure-Python PEG parser I could muster',
     long_description=open('README.rst').read(),
     author='Erik Rose',
