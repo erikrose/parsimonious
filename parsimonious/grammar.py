@@ -142,8 +142,7 @@ class BootstrappingGrammar(Grammar):
         sequence = Sequence(term, OneOrMore(another_term), name='sequence')
         or_term = Sequence(_, Literal('/'), another_term, name='or_term')
         ored = Sequence(term, OneOrMore(or_term), name='ored')
-        poly_term = OneOf(ored, sequence, name='poly_term')
-        rhs = OneOf(poly_term, term, name='rhs')
+        rhs = OneOf(ored, sequence, term, name='rhs')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
         rule = Sequence(label, Optional(_), Literal('='), Optional(_), rhs,
                         Optional(_), Optional(comment), eol, name='rule')
@@ -171,8 +170,7 @@ rule_syntax = (r'''
     rule = label _? "=" _? rhs _? comment? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     eol = ~r"(?:[\r\n]|$)"
-    rhs = poly_term / term  # TODO: Merge rhs and poly_term.
-    poly_term = ored / sequence
+    rhs = ored / sequence / term
     or_term = _ "/" another_term
     ored = term or_term+
     sequence = term another_term+
@@ -206,8 +204,8 @@ class RuleVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
-    visit_rule_or_rubbish = visit_rhs = visit_poly_term = visit_term = \
-        visit_atom = NodeVisitor.lift_child
+    visit_rule_or_rubbish = visit_rhs = visit_term = visit_atom = \
+        NodeVisitor.lift_child
 
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)

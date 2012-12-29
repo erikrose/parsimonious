@@ -63,11 +63,10 @@ class BootstrapingGrammarTests(TestCase):
         # thing:
         ok_(rule_grammar['lookahead_term'].parse('&this+'))
 
-        ok_(rule_grammar['poly_term'].parse('&this / that+ / "other"'))
-        ok_(rule_grammar['poly_term'].parse('this / that? / "other"+'))
-        ok_(rule_grammar['poly_term'].parse('this? that other*'))
-
         ok_(rule_grammar['rhs'].parse('this'))
+        ok_(rule_grammar['rhs'].parse('this? that other*'))
+        ok_(rule_grammar['rhs'].parse('&this / that+ / "other"'))
+        ok_(rule_grammar['rhs'].parse('this / that? / "other"+'))
         ok_(rule_grammar['rhs'].parse('this? that other*'))
 
         ok_(rule_grammar['rule'].parse('this = that\r'))
