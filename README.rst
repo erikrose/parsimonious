@@ -289,6 +289,7 @@ Version History
 
 0.3
   * Support comments in grammar definition syntax.
+  * Add support for the ``!`` ("not") operator.
 
 0.2
   * Support matching of prefixes and other not-to-the-end slices of strings by

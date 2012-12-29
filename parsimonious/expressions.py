@@ -256,6 +256,11 @@ class Not(_Compound):
         if node is None:
             return Node(self.name, text, pos, pos)
 
+    def _as_rhs(self):
+        # TODO: Make sure this parenthesizes the member properly if it's an OR
+        # or AND.
+        return u'!%s' % self._unicode_members()[0]
+
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 

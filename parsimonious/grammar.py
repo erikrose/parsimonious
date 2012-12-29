@@ -9,7 +9,7 @@ import ast
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
-    Optional, ZeroOrMore, OneOrMore)
+    Optional, ZeroOrMore, OneOrMore, Not)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr
 
@@ -181,8 +181,8 @@ rule_syntax = (r'''
     ored = term or_term+
     sequence = term another_term+
     another_term = _ term
-    not_term = "!" term  # TODO: Half thought out. Make this work.
-    term = quantified / atom
+    not_term = "!" term
+    term = not_term / quantified / atom
     quantified = atom quantifier
     atom = label / literal / regex
     regex = "~" literal ~"[ilmsux]*"i
@@ -214,6 +214,9 @@ class RuleVisitor(NodeVisitor):
 
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
+
+    def visit_not_term(self, not_term, (exclamation, term)):
+        return Not(term)
 
     def visit_ws(self, ws, visited_children):
         """Stomp out ``ws`` nodes so visit_rules can easily filter them out."""
@@ -365,7 +368,7 @@ rule_grammar = BootstrappingGrammar(rule_syntax)
 rule_grammar = Grammar(rule_syntax)
 
 # TODO: Teach Expression trees how to spit out Python representations of
-# themselves. Then we can just paste that in about, and we won't have to
+# themselves. Then we can just paste that in above, and we won't have to
 # bootstrap on import. Though it'll be a little less DRY. [Ah, but this is not
 # so clean, because it would have to output multiple statements to get multiple
 # refs to a single expression hooked up.]

@@ -187,3 +187,9 @@ class GrammarTests(TestCase):
         eq_(str(grammar), '''bold_text = stars text stars\n'''
                           '''text = ~"[A-Z 0-9]*"i\n'''
                           '''stars = "**"''')
+
+    def test_not(self):
+        """Make sure "not" predicates get parsed and work properly."""
+        grammar = Grammar(r'''not_arp = !"arp" ~"[a-z]+"''')
+        eq_(grammar.parse('arp'), None)
+        ok_(grammar.parse('argle') is not None)
