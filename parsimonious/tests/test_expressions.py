@@ -3,8 +3,8 @@ from unittest import TestCase
 
 from nose.tools import eq_
 
-from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
-    Not, Optional, ZeroOrMore, OneOrMore, Expression)
+from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
+    Optional, ZeroOrMore, OneOrMore, Expression)
 from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
 
@@ -45,10 +45,6 @@ class LengthTests(TestCase):
         len_eq(OneOf(Literal('aaa'), Literal('bb')).match('aaa'), 3)  # first alternative
         len_eq(OneOf(Literal('aaa'), Literal('bb')).match('bbaaa'), 2)  # second
         len_eq(OneOf(Literal('aaa'), Literal('bb')).match('aa'), None)  # no match
-
-    def test_all_of(self):
-        len_eq(AllOf(Literal('0'), Regex('..')).match('01'), 2)  # match
-        len_eq(AllOf(Literal('0'), Regex('.2')).match('01'), None)  # don't
 
     def test_not(self):
         len_eq(Not(Regex('.')).match(''), 0)  # match
@@ -103,14 +99,6 @@ class TreeTests(TestCase):
         eq_(o.match(text), Node('one_of', text, 0, 1, children=[
                                 Node('lit', text, 0, 1)]))
 
-    def test_all_of(self):
-        """``AllOf`` should return its own node, wrapping the last child."""
-        expr = AllOf(Literal('a', name='lit_a'),
-                     Regex('A', ignore_case=True, name='reg_a'), name='all_of')
-        text = 'a'
-        eq_(expr.match(text), Node('all_of', text, 0, 1, children=[
-                                   Node('reg_a', text, 0, 1)]))
-
     def test_optional(self):
         """``Optional`` should return its own node wrapping the succeeded child."""
         expr = Optional(Literal('a', name='lit'), name='opt')
@@ -136,6 +124,8 @@ class TreeTests(TestCase):
         text = 'a'
         eq_(expr.match(text), Node('one', text, 0, 1, children=[
                                    Node('lit', text, 0, 1)]))
+
+    # Lookahead is covered in an integration test in test_grammar.
 
 
 class ParseTests(TestCase):

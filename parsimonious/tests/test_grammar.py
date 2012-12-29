@@ -59,9 +59,11 @@ class BootstrapingGrammarTests(TestCase):
 
         ok_(rule_grammar['ored'].parse('this / that+ / "other"'))
 
-        ok_(rule_grammar['anded'].parse('this & that+ & "other"'))
+        # + is higher precedence than &, so 'anded' should match the whole
+        # thing:
+        ok_(rule_grammar['lookahead_term'].parse('&this+'))
 
-        ok_(rule_grammar['poly_term'].parse('this & that+ & "other"'))
+        ok_(rule_grammar['poly_term'].parse('&this / that+ / "other"'))
         ok_(rule_grammar['poly_term'].parse('this / that? / "other"+'))
         ok_(rule_grammar['poly_term'].parse('this? that other*'))
 
@@ -193,3 +195,12 @@ class GrammarTests(TestCase):
         grammar = Grammar(r'''not_arp = !"arp" ~"[a-z]+"''')
         eq_(grammar.parse('arp'), None)
         ok_(grammar.parse('argle') is not None)
+
+    def test_lookahead(self):
+        grammar = Grammar(r'''starts_with_a = &"a" ~"[a-z]+"''')
+        eq_(grammar.parse('burp'), None)
+
+        s = 'arp'
+        eq_(grammar.parse('arp'), Node('starts_with_a', s, 0, 3, children=[
+                                      Node('', s, 0, 0),
+                                      Node('', s, 0, 3)]))

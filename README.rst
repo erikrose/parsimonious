@@ -129,16 +129,15 @@ space
   spots where those 3 terms appear in that order.
 ``a / b``
   Alternatives. The first to succeed of ``a / b / c`` wins.
-``a & b``
-  A lookahead assertion followed by a normal, consumed symbol. ``a & b & c``
-  means that ``a``, ``b``, and ``c`` all have to match at the current position.
-  ``c``, however, is the only bit that's actually consumed.
 ``thing?``
   An optional expression. This is greedy, always consuming ``thing`` if it
   exists.
+``&a``
+  A lookahead assertion. Ensures ``a`` matches at the current position but does
+  not consume it.
 ``!thing``
-  (Not implemented yet.) Matches if ``thing`` isn't found here. Doesn't consume
-  any text.
+  A negative lookahead assertion. Matches if ``thing`` isn't found here.
+  Doesn't consume any text.
 ``things*``
   Zero or more things. This is greedy, always consuming as many repetitions as
   it can.
@@ -247,9 +246,6 @@ Future Directions
 Rule Syntax Changes
 -------------------
 
-* Do we need a LookAhead? It might be slightly faster, but ``A Lookahead(B)``
-  is equivalent to ``AB & A``, which, while more verbose, takes full advantage
-  of packratting. Also, ``!!A`` is an effective lookahead.
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
 * Parentheses
 * Inversion
@@ -290,6 +286,11 @@ Version History
 0.3
   * Support comments in grammar definition syntax.
   * Add support for the ``!`` ("not") operator.
+  * Completely change the ``&`` operator to conform to the original PEG syntax,
+    which I neglected to read carefully enough. (Did Parsing Techniques
+    summarize it wrong? They did suggest a workaround of "AB & A" for a
+    trailing lookahead.) Now it's a unary prefix operator and more convenient
+    to use.
 
 0.2
   * Support matching of prefixes and other not-to-the-end slices of strings by

@@ -223,24 +223,21 @@ class OneOf(_Compound):
         return u' / '.join(self._unicode_members())
 
 
-class AllOf(_Compound):
-    """A series of expressions, each of which must succeed from the current
-    position.
+class Lookahead(_Compound):
+    """An expression which consumes nothing, even if its contained expression
+    succeeds"""
 
-    The returned node is from the last member. If you like, you can think of
-    the preceding members as lookaheads.
+    # TODO: Merge this and Not for better cache hit ratios and less code.
+    # Downside: pretty-printed grammars might be spelled differently than what
+    # went in. That doesn't bother me.
 
-    """
     def _uncached_match(self, text, pos, cache):
-        for m in self.members:
-            node = m.match(text, pos, cache)
-            if node is None:
-                return None
+        node = self.members[0].match(text, pos, cache)
         if node is not None:
-            return Node(self.name, text, pos, node.end, children=[node])
+            return Node(self.name, text, pos, pos)
 
     def _as_rhs(self):
-        return u' & '.join(self._unicode_members())
+        return u'&%s' % self._unicode_members()[0]
 
 
 class Not(_Compound):

@@ -8,8 +8,8 @@ by hand.
 import ast
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
-from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, AllOf,
-    Optional, ZeroOrMore, OneOrMore, Not)
+from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
+    Lookahead, Optional, ZeroOrMore, OneOrMore, Not)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr
 
@@ -142,9 +142,7 @@ class BootstrappingGrammar(Grammar):
         sequence = Sequence(term, OneOrMore(another_term), name='sequence')
         or_term = Sequence(_, Literal('/'), another_term, name='or_term')
         ored = Sequence(term, OneOrMore(or_term), name='ored')
-        and_term = Sequence(_, Literal('&'), another_term, name='and_term')
-        anded = Sequence(term, OneOrMore(and_term), name='anded')
-        poly_term = OneOf(anded, ored, sequence, name='poly_term')
+        poly_term = OneOf(ored, sequence, name='poly_term')
         rhs = OneOf(poly_term, term, name='rhs')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
         rule = Sequence(label, Optional(_), Literal('='), Optional(_), rhs,
@@ -173,16 +171,15 @@ rule_syntax = (r'''
     rule = label _? "=" _? rhs _? comment? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     eol = ~r"(?:[\r\n]|$)"
-    rhs = poly_term / term
-    poly_term = anded / ored / sequence
-    anded = term and_term+
-    and_term = _ "&" another_term
+    rhs = poly_term / term  # TODO: Merge rhs and poly_term.
+    poly_term = ored / sequence
     or_term = _ "/" another_term
     ored = term or_term+
     sequence = term another_term+
     another_term = _ term
     not_term = "!" term
-    term = not_term / quantified / atom
+    lookahead_term = "&" term
+    term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = label / literal / regex
     regex = "~" literal ~"[ilmsux]*"i
@@ -215,6 +212,9 @@ class RuleVisitor(NodeVisitor):
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
 
+    def visit_lookahead_term(self, lookahead_term, (ampersand, term)):
+        return Lookahead(term)
+
     def visit_not_term(self, not_term, (exclamation, term)):
         return Not(term)
 
@@ -245,17 +245,6 @@ class RuleVisitor(NodeVisitor):
         """Return just the term from an ``or_term``.
 
         We already know it's going to be ored, from the containing ``ored``.
-
-        """
-        return term
-
-    def visit_anded(self, anded, (first_term, other_terms)):
-        return AllOf(first_term, *other_terms)
-
-    def visit_and_term(self, and_term, (_, ampersand, term)):
-        """Return just the term from an ``and_term``.
-
-        We already know it's going to be anded, from the containing ``anded``.
 
         """
         return term
