@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from nose.tools import eq_
 
 from parsimonious.nodes import Node, NodeVisitor
@@ -5,6 +6,7 @@ from parsimonious.nodes import Node, NodeVisitor
 
 class HtmlFormatter(NodeVisitor):
     """Visitor that turns a parse tree into HTML fragments"""
+
     def visit_bold_open(self, node, visited_children):
         return '<b>'
 
@@ -43,9 +45,17 @@ def test_visitor():
     eq_(result, '<b>o hai</b>')
 
 
-def test_repr():
-    """Test repr, str, and unicode of ``Node``."""
+def test_str():
+    """Test str and unicode of ``Node``."""
     n = Node('text', 'o hai', 0, 5)
-    eq_(str(n), '<Node called "text" matching "o hai">')
-    eq_(unicode(n), '<Node called "text" matching "o hai">')
-    eq_(repr(n), '<Node called "text" matching "o hai">')
+    good = '<Node called "text" matching "o hai">'
+    eq_(str(n), good)
+    eq_(unicode(n), good)
+
+
+def test_repr():
+    """Test repr of ``Node``."""
+    s = u'hai ö'
+    n = Node(u'böogie', s, 0, 3, children=[
+            Node('', s, 3, 4), Node('', s, 4, 5)])
+    eq_(repr(n), """s = u'hai \\xf6'\nNode(u'b\\xf6ogie', s, 0, 3, children=[Node('', s, 3, 4), Node('', s, 4, 5)])""")

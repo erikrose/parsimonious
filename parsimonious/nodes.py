@@ -12,7 +12,7 @@ from parsimonious.exceptions import VisitationError
 from parsimonious.utils import StrAndRepr
 
 
-class Node(StrAndRepr):
+class Node(object):
     """A parse tree node
 
     Consider these immutable once constructed. As a side effect of a
@@ -80,7 +80,11 @@ class Node(StrAndRepr):
         return '\n'.join(ret)
 
     def __unicode__(self):
+        """Return a compact, human-readable representation of me."""
         return self.prettily()
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
@@ -93,6 +97,22 @@ class Node(StrAndRepr):
 
     def __ne__(self, other):
         return not self == other
+
+    def __repr__(self, top_level=True):
+        """Return a bit of code (though not an expression) that will recreate
+        me."""
+        # repr() of unicode flattens everything out to ASCII, so we don't need
+        # to explicitly encode things afterward.
+        ret = ["s = %r" % self.full_text] if top_level else []
+        ret.append("%s(%r, s, %s, %s%s)" % (
+            self.__class__.__name__,
+            self.expr_name,
+            self.start,
+            self.end,
+            (', children=[%s]' %
+             ', '.join([c.__repr__(top_level=False) for c in self.children]))
+            if self.children else ''))
+        return '\n'.join(ret)
 
 
 class RegexNode(Node):
