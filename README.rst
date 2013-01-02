@@ -78,7 +78,6 @@ get to 1.0.
 
 Coming up soon...
 
-* Grammar additions: comments, parentheses, and "not"
 * Optimizations to make Parsimonious worthy of its name.
 * Tighter RAM use
 * Better-thought-out grammar extensibility story
@@ -247,8 +246,6 @@ Rule Syntax Changes
 -------------------
 
 * Maybe support left-recursive rules like PyMeta, if anybody cares.
-* Parentheses
-* Inversion
 * Ultimately, I'd like to get rid of explicit regexes and break them into more
   atomic things like character classes. Then we can dynamically compile bits
   of the grammar into regexes as necessary to boost speed.
@@ -270,6 +267,10 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
+* It looks like we could make an architecture-independent .o file and use LLVM
+  to JIT it to whatever arch we're on: https://github.com/dabeaz/bitey/. Of
+  course, then everybody has to have LLVM, which is even harder to set up than
+  a vanilla C toolchain.
 
 Niceties
 --------
@@ -277,15 +278,17 @@ Niceties
 * Pijnu has a raft of tree manipulators. I don't think I want all of them, but
   a judicious subset might be nice. Don't get into mixing formatting with tree
   manipulation.
-  https://github.com/erikrose/pijnu/blob/master/library/node.py#L333
+  https://github.com/erikrose/pijnu/blob/master/library/node.py#L333. PyPy's
+  parsing lib exposes a sane subset:
+  http://doc.pypy.org/en/latest/rlib.html#tree-transformations.
 
 
 Version History
 ===============
 
 0.3
-  * Support comments in grammar definition syntax.
-  * Add support for the ``!`` ("not") operator.
+  * Support comments, the ``!`` ("not") operator, and parentheses in grammar
+    definition syntax.
   * Completely change the ``&`` operator to conform to the original PEG syntax,
     which I neglected to read carefully enough. (Did Parsing Techniques
     summarize it wrong? They did suggest a workaround of "AB & A" for a

@@ -142,17 +142,18 @@ class BootstrappingGrammar(Grammar):
         sequence = Sequence(term, OneOrMore(another_term), name='sequence')
         or_term = Sequence(_, Literal('/'), another_term, name='or_term')
         ored = Sequence(term, OneOrMore(or_term), name='ored')
-        rhs = OneOf(ored, sequence, term, name='rhs')
+        expression = OneOf(ored, sequence, term, name='expression')
         eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
-        rule = Sequence(label, Optional(_), Literal('='), Optional(_), rhs,
-                        Optional(_), Optional(comment), eol, name='rule')
+        rule = Sequence(label, Optional(_), Literal('='), Optional(_),
+                        expression, Optional(_), Optional(comment), eol,
+                        name='rule')
         rule_or_rubbish = OneOf(rule, ws, comment, name='rule_or_rubbish')
         rules = OneOrMore(rule_or_rubbish, name='rules')
 
-        # Use those hard-coded rules to parse the (possibly more extensive)
-        # rule syntax. (For example, unless I start using parentheses in the
-        # rule language definition itself, I should never have to hard-code
-        # expressions for those above.)
+        # Use those hard-coded rules to parse the (more extensive) rule syntax.
+        # (For example, unless I start using parentheses in the rule language
+        # definition itself, I should never have to hard-code expressions for
+        # those above.)
         rule_tree = rules.parse(rule_syntax)
 
         # Turn the parse tree into a map of expressions:
@@ -160,17 +161,16 @@ class BootstrappingGrammar(Grammar):
 
 
 # The grammar for parsing PEG grammar definitions:
-# TODO: Support Not. Figure out how tightly it should bind--probably very.
-# This is a nice, simple grammar. We may someday add parentheses or support for
-# multi-line rules, but it's a safe bet that the future will always be a
+# This is a nice, simple grammar. We may someday add support for multi-line
+# rules or other sugar, but it's a safe bet that the future will always be a
 # superset of this.
 rule_syntax = (r'''
     rules = rule_or_rubbish+
     rule_or_rubbish = rule / ws / comment
-    rule = label _? "=" _? rhs _? comment? eol
+    rule = label _? "=" _? expression _? comment? eol
     literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
     eol = ~r"(?:[\r\n]|$)"
-    rhs = ored / sequence / term
+    expression = ored / sequence / term
     or_term = _ "/" another_term
     ored = term or_term+
     sequence = term another_term+
@@ -179,8 +179,9 @@ rule_syntax = (r'''
     lookahead_term = "&" term
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = label / literal / regex
+    atom = label / literal / regex / parenthesized
     regex = "~" literal ~"[ilmsux]*"i
+    parenthesized = "(" expression ")"
     quantifier = ~"[*+?]"
     label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
     _ = ~r"[ \t]+"  # horizontal whitespace
@@ -204,8 +205,17 @@ class RuleVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
-    visit_rule_or_rubbish = visit_rhs = visit_term = visit_atom = \
+    visit_rule_or_rubbish = visit_expression = visit_term = visit_atom = \
         NodeVisitor.lift_child
+
+    def visit_parenthesized(self, parenthesized, (left_paren, expression,
+                                                  right_paren)):
+        """Treat a parenthesized subexpression as just its contents.
+
+        Its position in the tree suffices to maintain its grouping semantics.
+
+        """
+        return expression
 
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
@@ -218,18 +228,17 @@ class RuleVisitor(NodeVisitor):
 
     def visit_ws(self, ws, visited_children):
         """Stomp out ``ws`` nodes so visit_rules can easily filter them out."""
-        return None
 
     def visit_comment(self, comment, visited_children):
         """Stomp out ``comment`` nodes so visit_rules can easily filter them
         out."""
-        return None
 
-    def visit_rule(self, rule, (label, _2, equals, _3, rhs, _4, comment, eol)):
+    def visit_rule(self, rule, (label, _2, equals, _3, expression, _4, comment,
+                                eol)):
         """Assign a name to the Expression and return it."""
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
-        rhs.name = label  # Assign a name to the expr.
-        return rhs
+        expression.name = label  # Assign a name to the expr.
+        return expression
 
     def visit_sequence(self, sequence, (term, other_terms)):
         """A parsed Sequence looks like [term node, OneOrMore node of

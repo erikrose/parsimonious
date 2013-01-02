@@ -63,11 +63,11 @@ class BootstrapingGrammarTests(TestCase):
         # thing:
         ok_(rule_grammar['lookahead_term'].parse('&this+'))
 
-        ok_(rule_grammar['rhs'].parse('this'))
-        ok_(rule_grammar['rhs'].parse('this? that other*'))
-        ok_(rule_grammar['rhs'].parse('&this / that+ / "other"'))
-        ok_(rule_grammar['rhs'].parse('this / that? / "other"+'))
-        ok_(rule_grammar['rhs'].parse('this? that other*'))
+        ok_(rule_grammar['expression'].parse('this'))
+        ok_(rule_grammar['expression'].parse('this? that other*'))
+        ok_(rule_grammar['expression'].parse('&this / that+ / "other"'))
+        ok_(rule_grammar['expression'].parse('this / that? / "other"+'))
+        ok_(rule_grammar['expression'].parse('this? that other*'))
 
         ok_(rule_grammar['rule'].parse('this = that\r'))
         ok_(rule_grammar['rule'].parse('this = the? that other* \t\r'))
@@ -203,3 +203,20 @@ class GrammarTests(TestCase):
         eq_(grammar.parse('arp'), Node('starts_with_a', s, 0, 3, children=[
                                       Node('', s, 0, 0),
                                       Node('', s, 0, 3)]))
+
+    def test_parens(self):
+        grammar = Grammar(r'''sequence = "chitty" (" " "bang")+''')
+        # Make sure it's not as if the parens aren't there:
+        eq_(grammar.parse('chitty bangbang'), None)
+
+        s = 'chitty bang bang'
+        eq_(str(grammar.parse(s)),
+            """<Node called "sequence" matching "chitty bang bang">
+    <Node matching "chitty">
+    <Node matching " bang bang">
+        <Node matching " bang">
+            <Node matching " ">
+            <Node matching "bang">
+        <Node matching " bang">
+            <Node matching " ">
+            <Node matching "bang">""")

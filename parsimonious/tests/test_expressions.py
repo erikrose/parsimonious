@@ -125,7 +125,8 @@ class TreeTests(TestCase):
         eq_(expr.match(text), Node('one', text, 0, 1, children=[
                                    Node('lit', text, 0, 1)]))
 
-    # Lookahead is covered in an integration test in test_grammar.
+    # Things added since Grammar got implemented are covered in integration
+    # tests in test_grammar.
 
 
 class ParseTests(TestCase):
