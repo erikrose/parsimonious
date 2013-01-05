@@ -163,7 +163,7 @@ class NodeVisitor(object):
         except VisitationError:
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except Exception, e:
+        except Exception as e:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = sys.exc_info()
