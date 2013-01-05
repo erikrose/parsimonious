@@ -150,6 +150,16 @@ space
   won't be able to take advantage of our fancy debugging, once we get that
   working. Ultimately, I'd like to deprecate explicit regexes and instead have
   Parsimonious build them dynamically out of simpler primitives.
+``()``
+  Parentheses, used for grouping as usual
+
+Operator precedence, most tightly binding first:
+
+1. ``()``
+2. ``?``, ``*``, ``+``
+3. ``&``, ``!``
+4. spaces or tabs (indicating a sequence)
+5. ``/``
 
 
 Optimizing Grammars

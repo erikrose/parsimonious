@@ -109,6 +109,11 @@ class Grammar(StrAndRepr, dict):
         return "Grammar('%s')" % str(self).encode('string_escape')
 
 
+    def _as_expression_code(self):
+        """Return something like "ws = Regex(...)
+                                  thing = Literal("...")...", for bootstrapping"""
+
+
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
     grammars
@@ -188,6 +193,7 @@ rule_syntax = (r'''
     ws = ~r"\s+"
     comment = ~r"#[^\r\n]*"
     ''')
+    # TODO: Do !e+ (and &e+) do the right thing? Is the precedence right?
 
 
 class LazyReference(unicode):

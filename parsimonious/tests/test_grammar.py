@@ -220,3 +220,12 @@ class GrammarTests(TestCase):
         <Node matching " bang">
             <Node matching " ">
             <Node matching "bang">""")
+
+
+class PrecedenceTests(TestCase):
+    """Tests to confirm that operator precedence is as intended"""
+
+    def test_predicates_and_quantifiers(self):
+        """Make sure quantifiers bind more tightly than & and !."""
+        g = Grammar('''thing = "a" &"b"+ "b"+ "c"''')
+        eq_(g.parse('a bb c'), '')
