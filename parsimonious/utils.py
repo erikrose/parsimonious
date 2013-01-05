@@ -1,4 +1,4 @@
-"""General tools not dependent on any other parts of Parsimonious"""
+"""General tools which don't depend on other parts of Parsimonious"""
 
 
 class StrAndRepr(object):
@@ -8,4 +8,4 @@ class StrAndRepr(object):
     def __str__(self):
         return self.__unicode__().encode('utf-8')
 
-    __repr__ = __str__  # Lamguage spec says must be string, not unicode.
+    __repr__ = __str__  # Language spec says must be string, not unicode.
