@@ -1,7 +1,7 @@
-"""Nodes that make up parse trees
+"""Nodes that make up parse trees.
 
-Parsing spits out a tree of these, which you can then tell to walk itself and
-spit out a useful value. Or you can walk it yourself; the structural attributes
+Parsing spits out a tree of these. You can then tell the tree to walk itself and
+spit out a useful value. Or, you can walk it yourself; the structural attributes
 are public.
 
 """
@@ -13,7 +13,7 @@ from parsimonious.utils import StrAndRepr
 
 
 class Node(object):
-    """A parse tree node
+    """A parse tree node.
 
     Consider these immutable once constructed. As a side effect of a
     memory-saving strategy in the cache, multiple references to a single
@@ -28,8 +28,10 @@ class Node(object):
     another.
 
     """
+    
     # I tried making this subclass list, but it got ugly. I had to construct
     # invalid ones and patch them up later, and there were other problems.
+    
     __slots__ = ['expr_name',  # The name of the expression that generated me
                  'full_text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
@@ -58,7 +60,9 @@ class Node(object):
         """Return the text this node matched."""
         return self.full_text[self.start:self.end]
 
-    # From here down is just stuff for testing and debugging.
+    #-------------------------------------------------------------------------
+    #   Testing and debugging
+    #-------------------------------------------------------------------------
 
     def prettily(self, error=None):
         """Return a unicode, pretty-printed representation of me.
@@ -116,7 +120,7 @@ class Node(object):
 
 
 class RegexNode(Node):
-    """Node returned from a ``Regex`` expression
+    """Node returned from a ``Regex`` expression.
 
     Grants access to the ``re.Match`` object, in case you want to access
     capturing groups, etc.
@@ -126,7 +130,7 @@ class RegexNode(Node):
 
 
 class NodeVisitor(object):
-    """A shell for writing things that turn parse trees into something useful
+    """A shell for writing things that turn parse trees into something useful.
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
     each expr you care about, instantiate, and call
@@ -144,9 +148,10 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
+    
     # These could easily all be static methods, but that adds at least as much
-    # user-facing weirdness as the ``()`` chars for instantiation. And this
-    # way, we're forward compatible if we or the user ever wants to add any
+    # user-facing weirdness as the ``()`` chars for instantiation. This
+    # way, we're forward compatible if we (or the user) ever wants to add any
     # state: options, for instance, or a symbol table constructed from a
     # programming language's AST.
 
@@ -171,7 +176,7 @@ class NodeVisitor(object):
             raise visitation_exception.__class__, visitation_exception, tb
 
     def generic_visit(self, node, visited_children):
-        """Default visitor method
+        """Default visitor method.
 
         :arg node: The node we're visiting
         :arg visited_children: The results of visiting the children of that
