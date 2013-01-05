@@ -23,12 +23,11 @@ class VisitationError(Exception):
         """
         self.original_class = exc_class
         super(VisitationError, self).__init__(
-            '%s: %s\n\n'
+            '{0}: {1}\n\n'
             'Parse tree:\n'
-            '%s' %
-            (exc_class.__name__,
-             exc,
-             node.prettily(error=node)))
+            '{2}'.format(exc_class.__name__,
+                         exc,
+                         node.prettily(error=node)))
 
 
 class UndefinedLabel(VisitationError):
@@ -42,6 +41,6 @@ class UndefinedLabel(VisitationError):
         self.label = label
 
     def __unicode__(self):
-        return u'The label "%s" was never defined.' % self.label
+        return u'The label "{0}" was never defined.'.format(self.label)
 
     __str__ = __unicode__
