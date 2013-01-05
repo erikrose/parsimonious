@@ -79,7 +79,7 @@ class Expression(StrAndRepr):
         return uncached
 
     def __unicode__(self):
-        return u'<%s %s at 0x%s>' % (
+        return u'<{0} {1} at 0x{2}>'.format(
             self.__class__.__name__,
             self.as_rule(),
             id(self))
@@ -90,7 +90,7 @@ class Expression(StrAndRepr):
         Return unicode. If I have no ``name``, omit the left-hand side.
 
         """
-        return ((u'%s = %s' % (self.name, self._as_rhs())) if self.name else
+        return ((u'{0} = {1}'.format(self.name, self._as_rhs())) if self.name else
                 self._as_rhs())
 
     def _unicode_members(self):
@@ -126,7 +126,7 @@ class Literal(Expression):
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+        return '"{0}"'.format(self.literal)
 
 
 class Regex(Expression):
@@ -164,7 +164,7 @@ class Regex(Expression):
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
+        return '~"{0}"{1}'.format(self.re.pattern,
                             self._regex_flags_from_bits(self.re.flags))
 
 
@@ -237,7 +237,7 @@ class Lookahead(_Compound):
             return Node(self.name, text, pos, pos)
 
     def _as_rhs(self):
-        return u'&%s' % self._unicode_members()[0]
+        return u'&{0}'.format(self._unicode_members()[0])
 
 
 class Not(_Compound):
@@ -256,7 +256,7 @@ class Not(_Compound):
     def _as_rhs(self):
         # TODO: Make sure this parenthesizes the member properly if it's an OR
         # or AND.
-        return u'!%s' % self._unicode_members()[0]
+        return u'!{0}'.format(self._unicode_members()[0])
 
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
@@ -274,7 +274,7 @@ class Optional(_Compound):
                 Node(self.name, text, pos, node.end, children=[node]))
 
     def _as_rhs(self):
-        return u'%s?' % self._unicode_members()[0]
+        return u'{0}?'.format(self._unicode_members()[0])
 
 
 # TODO: Merge with OneOrMore.
@@ -292,7 +292,7 @@ class ZeroOrMore(_Compound):
             new_pos += node.end - node.start
 
     def _as_rhs(self):
-        return u'%s*' % self._unicode_members()[0]
+        return u'{0}*'.format(self._unicode_members()[0])
 
 
 class OneOrMore(_Compound):
@@ -327,4 +327,4 @@ class OneOrMore(_Compound):
             return Node(self.name, text, pos, new_pos, children)
 
     def _as_rhs(self):
-        return u'%s+' % self._unicode_members()[0]
+        return u'{0}+'.format(self._unicode_members()[0])

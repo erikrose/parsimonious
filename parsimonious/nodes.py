@@ -70,9 +70,9 @@ class Node(object):
         # them all. Whoops.
         def indent(text):
             return '\n'.join(('    ' + line) for line in text.splitlines())
-        ret = [u'<%s%s matching "%s">%s' % (
+        ret = [u'<{0}{1} matching "{2}">{3}'.format(
             self.__class__.__name__,
-            (' called "%s"' % self.expr_name) if self.expr_name else '',
+            (' called "{0}"'.format(self.expr_name)) if self.expr_name else '',
             self.text,
             '  <-- *** We were here. ***' if error is self else '')]
         for n in self:
@@ -103,15 +103,15 @@ class Node(object):
         me."""
         # repr() of unicode flattens everything out to ASCII, so we don't need
         # to explicitly encode things afterward.
-        ret = ["s = %r" % self.full_text] if top_level else []
-        ret.append("%s(%r, s, %s, %s%s)" % (
+        ret = ["s = {0!r}".format(self.full_text)] if top_level else []
+        ret.append("{0}({1!r}, s, {2}, {3}{4})".format(
             self.__class__.__name__,
             self.expr_name,
             self.start,
             self.end,
-            (', children=[%s]' %
-             ', '.join([c.__repr__(top_level=False) for c in self.children]))
-            if self.children else ''))
+            ('' if not self.children else ', children=[{0}]'.format(
+                ', '.join([c.__repr__(top_level=False) for c in self.children]))
+            )))
         return '\n'.join(ret)
 
 
