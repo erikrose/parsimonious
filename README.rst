@@ -8,8 +8,10 @@ feed it a simplified sort of EBNF notation. Parsimonious was designed to
 undergird a MediaWiki parser that wouldn't take 5 seconds or a GB of RAM to do
 one page.
 
-Beyond speed, secondary goals include...
+Goals
+=====
 
+* Speed
 * Frugal RAM use
 * Minimalistic, understandable, idiomatic Python code
 * Readable grammars
@@ -23,8 +25,8 @@ Beyond speed, secondary goals include...
   grammar.
 
 
-Example
-=======
+Example Usage
+=============
 
 Here's how to build a simple grammar::
 
@@ -75,9 +77,10 @@ started optimizing yet. And note that there may be API changes until we get to
   However, this is untested and may not be the final story.
 * Sphinx docs are coming, but the docstrings are quite useful now.
 
-Coming up soon...
+Coming Soon
+-----------
 
-* Optimizations to make Parsimonious worthy of its name.
+* Optimizations to make Parsimonious worthy of its name
 * Tighter RAM use
 * Better-thought-out grammar extensibility story
 
@@ -85,7 +88,7 @@ Coming up soon...
 A Little About PEG Parsers
 ==========================
 
-PEG parsers don't draw a distinction between lexing and parsing; everything's
+PEG parsers don't draw a distinction between lexing and parsing; everything is
 done at once. As a result, there is no lookahead limit, as there is with, for
 instance, Yacc. And, due to both of these properties, PEG grammars are easier
 to write: they're basically just a more practical dialect of EBNF. With
@@ -95,8 +98,8 @@ better), but they run in O(text length) time.
 More Technically
 ----------------
 
-PEGs can describe a superset of LL(k) languages, any deterministic LR(k)
-language, and many others, including some that aren't context-free
+PEGs can describe a superset of *LL(k)* languages, any deterministic *LR(k)*
+language, and many others—including some that aren't context-free
 (http://www.brynosaurus.com/pub/lang/peg.pdf). They can also deal with what
 would be ambiguous languages if described in canonical EBNF. They do this by
 trading the ``|`` alternation operator for the ``/`` operator, which works the
@@ -117,51 +120,64 @@ example will serve best::
     italic_text = "''" text "''"
     text        = ~"[A-Z 0-9]*"i
 
-Here's a syntax reference:
 
-``"some literal"``
-  Used to quote literals. Backslash escaping and Python conventions for "raw"
-  and Unicode strings help support fiddly characters.
-space
-  Sequences are made out of space- or tab-delimited things. ``a b c`` matches
-  spots where those 3 terms appear in that order.
-``a / b``
-  Alternatives. The first to succeed of ``a / b / c`` wins.
-``thing?``
-  An optional expression. This is greedy, always consuming ``thing`` if it
-  exists.
-``&thing``
-  A lookahead assertion. Ensures ``thing`` matches at the current position but
-  does not consume it.
-``!thing``
-  A negative lookahead assertion. Matches if ``thing`` isn't found here.
-  Doesn't consume any text.
-``things*``
-  Zero or more things. This is greedy, always consuming as many repetitions as
-  it can.
-``things+``
-  One or more things. This is greedy, always consuming as many repetitions as
-  it can.
-``~r"regex"ilmsux``
-  Regexes have ``~`` in front and are quoted like literals. Any flags follow
-  the end quotes as single chars. Regexes are good for representing character
-  classes (``[a-z0-9]``) and optimizing for speed. The downside is that they
-  won't be able to take advantage of our fancy debugging, once we get that
-  working. Ultimately, I'd like to deprecate explicit regexes and instead have
-  Parsimonious build them dynamically out of simpler primitives.
+Syntax Reference
+----------------
+
+====================    ========================================================
+``"some literal"``      Used to quote literals. Backslash escaping and Python 
+                        conventions for "raw" and Unicode strings help support 
+                        fiddly characters.
+
+[space]                 Sequences are made out of space- or tab-delimited
+                        things. ``a b c`` matches spots where those 3
+                        terms appear in that order.
+
+``a / b``               Alternatives. The first to succeed of ``a / b / c`` 
+                        wins.
+
+``thing?``              An optional expression. This is greedy, always consuming 
+                        ``thing`` if it exists.
+
+``&thing``              A lookahead assertion. Ensures ``thing`` matches at the 
+                        current position but does not consume it.
+
+``!thing``              A negative lookahead assertion. Matches if ``thing`` 
+                        isn't found here. Doesn't consume any text.
+
+``things*``             Zero or more things. This is greedy, always consuming as
+                        many repetitions as it can.
+
+``things+``             One or more things. This is greedy, always consuming as 
+                        many repetitions as it can.
+
+``~r"regex"ilmsux``     Regexes have ``~`` in front and are quoted like
+                        literals. Any flags follow the end quotes as single
+                        chars. Regexes are good for representing character
+                        classes (``[a-z0-9]``) and optimizing for speed. The
+                        downside is that they won't be able to take advantage
+                        of our fancy debugging, once we get that working.
+                        Ultimately, I'd like to deprecate explicit regexes and
+                        instead have Parsimonious dynamically build them out of
+                        simpler primitives.
+====================    ========================================================
 
 
 Optimizing Grammars
 ===================
 
-Don't repeat expressions. If you need a ``~"[a-z0-9]"i`` at two points in your
-grammar, don't type it twice; make it a rule of its own, and reference it from
-wherever you need it. You'll get the most out of the caching this way, since
-cache lookups are by expression object identity (for speed). Even if you have
-an expression that's very simple, not repeating it will save RAM, as there can,
-at worst, be a cached int for every char in the text you're parsing. In the
-future, we may identify repeated subexpressions automatically and factor them
-up while building the grammar.
+Don't Repeat Expressions 
+------------------------
+
+If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it 
+twice. Make it a rule of its own, and reference it from wherever you need it. 
+You'll get the most out of the caching this way, since cache lookups are by 
+expression object identity (for speed). 
+
+Even if you have an expression that's very simple, not repeating it will 
+save RAM, as there can, at worst, be a cached int for every char in the text 
+you're parsing. In the future, we may identify repeated subexpressions 
+automatically and factor them up while building the grammar.
 
 How much should you shove into one regex, versus how much should you break them
 up to not repeat yourself? That's a fine balance and worthy of benchmarking.
@@ -170,7 +186,11 @@ run any Python between pieces, but a broken-up one will give better cache
 performance if the individual pieces are re-used elsewhere. If the pieces of a
 regex aren't used anywhere else, by all means keep the whole thing together.
 
-Quantifiers: bring your ``?`` and ``*`` quantifiers up to the highest level you
+
+Quantifiers
+-----------
+
+Bring your ``?`` and ``*`` quantifiers up to the highest level you
 can. Otherwise, lower-level patterns could succeed but be empty and put a bunch
 of useless nodes in your tree that didn't really match anything.
 
@@ -179,7 +199,7 @@ Processing Parse Trees
 ======================
 
 A parse tree has a node for each expression matched, even if it matched a
-zero-length string, like ``"thing"?`` might do.
+zero-length string, like ``"thing"?`` might.
 
 The ``NodeVisitor`` class provides an inversion-of-control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
@@ -235,7 +255,7 @@ two main reasons:
    processing may be possible in the future if we use cuts.)
 
 2. It interferes with the ability to derive multiple representations from the
-   AST: for example, first HTML and then text from wiki markup.
+   AST: for example, turning wiki markup into first HTML and then text.
 
 
 Future Directions
@@ -268,7 +288,7 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
-* It looks like we could make an architecture-independent .o file and use LLVM
+* It looks like we could make an architecture-independent ``.o`` file and use LLVM
   to JIT it to whatever arch we're on: https://github.com/dabeaz/bitey/. Of
   course, then everybody has to have LLVM, which is even harder to set up than
   a vanilla C toolchain.
