@@ -258,6 +258,8 @@ Optimizations
   http://ialab.cs.tsukuba.ac.jp/~mizusima/publications/paste513-mizushima.pdf.
   This would also improve error reporting, as we wouldn't backtrack out of
   everything informative before finally failing.
+* Find all the distinct subexpressions, and unify duplicates for a better cache
+  hit ratio.
 * Think about having the user (optionally) provide some representative input
   along with a grammar. We can then profile against it, see which expressions
   are worth caching, and annotate the grammar. Perhaps there will even be
