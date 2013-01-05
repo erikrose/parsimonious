@@ -1,7 +1,7 @@
-"""A convenience which constructs expression trees from an easy-to-read syntax
+"""A convenience which constructs expression trees from an easy-to-read syntax.
 
-Use this unless you have a compelling reason not to; it performs some
-optimizations that would be tedious to do when constructing an expression tree
+Use this unless you have a compelling reason not to. It performs some
+optimizations that would be tedious if constructing an expression tree
 by hand.
 
 """
@@ -18,7 +18,7 @@ __all__ = ['Grammar']
 
 
 class Grammar(StrAndRepr, dict):
-    """A collection of expressions that describe a language
+    """A collection of expressions that describe a language.
 
     You can start parsing from the default expression by calling ``parse()``
     directly on the ``Grammar`` object::
@@ -111,7 +111,7 @@ class Grammar(StrAndRepr, dict):
 
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
-    grammars
+    grammars.
 
     This grammar gets its start from some hard-coded Expressions and claws its
     way from there to an expression tree that describes how to parse the
@@ -192,12 +192,12 @@ rule_syntax = (r'''
 
 class LazyReference(unicode):
     """A lazy reference to a rule, which we resolve after grokking all the
-    rules"""
+    rules."""
 
 
 class RuleVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression``
-    objects
+    objects.
 
     This is the magic piece that breathes life into a parsed bunch of parse
     rules, allowing them to go forth and parse other things.
@@ -295,7 +295,7 @@ class RuleVisitor(NodeVisitor):
         return Literal(ast.literal_eval(literal.text))
 
     def generic_visit(self, node, visited_children):
-        """Replace childbearing nodes with a list of their children; keep
+        """Replace childbearing nodes with a list of their children; leave
         others untouched.
 
         For our case, if a node has children, only the children are important.

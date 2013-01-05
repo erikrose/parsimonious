@@ -1,4 +1,4 @@
-"""Subexpressions that make up a parsed grammar
+"""Subexpressions that make up a parsed grammar.
 
 These do the parsing.
 
@@ -17,7 +17,7 @@ __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
 
 
 class Expression(StrAndRepr):
-    """A thing that can be matched against a piece of text"""
+    """A thing that can be matched against a piece of text."""
 
     # Slots are about twice as fast as __dict__-based attributes:
     # http://stackoverflow.com/questions/1336791/dictionary-vs-object-which-is-more-efficient-and-why
@@ -109,9 +109,9 @@ class Expression(StrAndRepr):
 
 
 class Literal(Expression):
-    """A string literal
+    """A string literal.
 
-    Use these if you can; they're the fastest.
+    Use these if you can. They're the fastest.
 
     """
     __slots__ = ['literal']
@@ -132,8 +132,8 @@ class Literal(Expression):
 class Regex(Expression):
     """An expression that matches what a regex does.
 
-    Use these as much as you can and jam as much into each one as you can;
-    they're fast.
+    These are fast. Use these as much as you can. Jam as much into each one as 
+    you can.
 
     """
     __slots__ = ['re']
@@ -169,7 +169,7 @@ class Regex(Expression):
 
 
 class _Compound(Expression):
-    """An abstract expression which contains other expressions"""
+    """An abstract expression which contains other expressions."""
 
     __slots__ = ['members']
 
@@ -181,7 +181,7 @@ class _Compound(Expression):
 
 class Sequence(_Compound):
     """A series of expressions that must match contiguous, ordered pieces of
-    the text
+    the text.
 
     In other words, it's a concatenation operator: each piece has to match, one
     after another.
@@ -206,7 +206,7 @@ class Sequence(_Compound):
         return u' '.join(self._unicode_members())
 
 class OneOf(_Compound):
-    """A series of expressions, one of which must match
+    """A series of expressions, one of which must match.
 
     Expressions are tested in order from first to last. The first to succeed
     wins.
@@ -225,7 +225,7 @@ class OneOf(_Compound):
 
 class Lookahead(_Compound):
     """An expression which consumes nothing, even if its contained expression
-    succeeds"""
+    succeeds."""
 
     # TODO: Merge this and Not for better cache hit ratios and less code.
     # Downside: pretty-printed grammars might be spelled differently than what
@@ -241,9 +241,9 @@ class Lookahead(_Compound):
 
 
 class Not(_Compound):
-    """An expression that succeeds only if the expression within it doesn't
+    """An expression that succeeds only if the expression within it doesn't.
 
-    In any case, it never consumes any characters; it's a negative lookahead.
+    In any case, it never consumes any characters. (It's a negative lookahead.)
 
     """
     def _uncached_match(self, text, pos, cache):
@@ -262,7 +262,7 @@ class Not(_Compound):
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
 class Optional(_Compound):
-    """An expression that succeeds whether or not the contained one does
+    """An expression that succeeds whether or not the contained one does.
 
     If the contained expression succeeds, it goes ahead and consumes what it
     consumes. Otherwise, it consumes nothing.
@@ -279,7 +279,7 @@ class Optional(_Compound):
 
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
-    """An expression wrapper like the * quantifier in regexes."""
+    """An expression wrapper like the ``*`` quantifier in regexes."""
     def _uncached_match(self, text, pos, cache):
         new_pos = pos
         children = []
@@ -296,7 +296,7 @@ class ZeroOrMore(_Compound):
 
 
 class OneOrMore(_Compound):
-    """An expression wrapper like the + quantifier in regexes.
+    """An expression wrapper like the ``+`` quantifier in regexes.
 
     You can also pass in an alternate minimum to make this behave like "2 or
     more", "3 or more", etc.
