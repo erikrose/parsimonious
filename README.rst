@@ -52,14 +52,13 @@ Next, let's parse something and get an abstract syntax tree::
 You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
 the tree and do something useful with it.
 
-But first, lots of scary warnings...
-
 
 Status
 ======
 
-0.2 is a usable preview release. Note that there may be API changes until we
-get to 1.0.
+0.3 is a pretty usable release for inputs that aren't huge. I haven't really
+started optimizing yet. And note that there may be API changes until we get to
+1.0.
 
 * Everything that exists works. Test coverage is good.
 * I don't plan on making any backward-incompatible changes to the rule syntax
@@ -131,9 +130,9 @@ space
 ``thing?``
   An optional expression. This is greedy, always consuming ``thing`` if it
   exists.
-``&a``
-  A lookahead assertion. Ensures ``a`` matches at the current position but does
-  not consume it.
+``&thing``
+  A lookahead assertion. Ensures ``thing`` matches at the current position but
+  does not consume it.
 ``!thing``
   A negative lookahead assertion. Matches if ``thing`` isn't found here.
   Doesn't consume any text.
@@ -291,11 +290,12 @@ Version History
 0.3
   * Support comments, the ``!`` ("not") operator, and parentheses in grammar
     definition syntax.
-  * Completely change the ``&`` operator to conform to the original PEG syntax,
-    which I neglected to read carefully enough. (Did Parsing Techniques
-    summarize it wrong? They did suggest a workaround of "AB & A" for a
-    trailing lookahead.) Now it's a unary prefix operator and more convenient
-    to use.
+  * Change the ``&`` operator to a prefix operator to conform to the original
+    PEG syntax. The version in Parsing Techniques was infix, and that's what I
+    used as a reference. However, the unary version is more convenient, as it
+    lets you spell ``AB & A`` as simply ``A &B``.
+  * Take the ``print`` statements out of the benchmark tests.
+  * Give Node an evaluate-able ``__repr__``.
 
 0.2
   * Support matching of prefixes and other not-to-the-end slices of strings by
