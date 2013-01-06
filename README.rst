@@ -307,6 +307,9 @@ Niceties
 Version History
 ===============
 
+0.4
+  * Python 3 support
+
 0.3
   * Support comments, the ``!`` ("not") operator, and parentheses in grammar
     definition syntax.

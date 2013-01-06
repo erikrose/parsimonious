@@ -167,8 +167,7 @@ class NodeVisitor(object):
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = sys.exc_info()
-            visitation_exception = VisitationError(exc, exc_class, node)
-            raise visitation_exception.__class__, visitation_exception, tb
+            raise VisitationError, (exc, exc_class, node), tb
 
     def generic_visit(self, node, visited_children):
         """Default visitor method

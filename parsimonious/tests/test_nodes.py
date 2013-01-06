@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 
-from parsimonious.nodes import Node, NodeVisitor
+from parsimonious.nodes import Node, NodeVisitor, VisitationError
 
 
 class HtmlFormatter(NodeVisitor):
@@ -19,6 +19,13 @@ class HtmlFormatter(NodeVisitor):
 
     def visit_bold_text(self, node, visited_children):
         return ''.join(visited_children)
+
+
+class ExplosiveFormatter(NodeVisitor):
+    """Visitor which raises exceptions"""
+
+    def visit_boom(self, node, visited_children):
+        raise ValueError
 
 
 def test_visitor():
@@ -43,6 +50,12 @@ def test_visitor():
                  Node('bold_close', text, 7, 9)])
     result = HtmlFormatter().visit(tree)
     eq_(result, '<b>o hai</b>')
+
+
+def test_visitation_exception():
+    assert_raises(VisitationError,
+                  ExplosiveFormatter().visit,
+                  Node('boom', '', 0, 0))
 
 
 def test_str():
