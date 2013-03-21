@@ -33,9 +33,6 @@ class Expression(StrAndRepr):
 
         Return ``None`` if the expression doesn't match the full string.
 
-        On a more technical level: initialize the packrat cache and kick off
-        the first ``match()`` call.
-
         """
         node = self.match(text)
         if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here? Are we going to add a pos kwarg or something?

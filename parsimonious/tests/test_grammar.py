@@ -8,7 +8,7 @@ from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
 
-class BootstrapingGrammarTests(TestCase):
+class BootstrappingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 
@@ -220,3 +220,13 @@ class GrammarTests(TestCase):
         <Node matching " bang">
             <Node matching " ">
             <Node matching "bang">""")
+
+    def test_resolve_refs_order(self):
+        """Smoke-test a circumstance where lazy references don't get resolved."""
+        grammar = Grammar("""
+            expression = "(" terms ")"
+            terms = term+
+            term = number
+            number = ~r"[0-9]+"
+            """)
+        grammar.parse('(3 4)')

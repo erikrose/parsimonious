@@ -268,6 +268,12 @@ Rule Syntax Changes
 * Ultimately, I'd like to get rid of explicit regexes and break them into more
   atomic things like character classes. Then we can dynamically compile bits
   of the grammar into regexes as necessary to boost speed.
+* dict grammars good:
+    You can .update() them to compose. OTOH, won't we have to redo a bunch of compilation and optimization on update? That seems like it should be named something more explicit, like compose().
+    You can enumerate the rules without getting __repr__ and such back.
+    You can use Python keywords as production names.
+
+    Maybe change or alias Expression.parse to Expression.__call__.
 
 Optimizations
 -------------
@@ -288,14 +294,25 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
-* It looks like we could make an architecture-independent ``.o`` file and use LLVM
-  to JIT it to whatever arch we're on: https://github.com/dabeaz/bitey/. Of
-  course, then everybody has to have LLVM, which is even harder to set up than
-  a vanilla C toolchain.
+* It looks like we could make an architecture-independent ``.o`` file and use
+  LLVM to JIT it to whatever arch we're on: https://github.com/dabeaz/bitey/.
+  Of course, then everybody has to have LLVM, which is even harder to set up
+  than a vanilla C toolchain.
 
 Niceties
 --------
 
+* Some decent error reporting on grammar parsing. Right now, it's really hard
+  to tell where parsing went wrong. This sucks::
+
+    AddyGrammar = Grammar("""
+        expression = "(" terms ")"
+        terms = term+
+        term = number
+        number = ~r"[0-9]+"
+        """)
+
+    AttributeError: 'LazyReference' object has no attribute 'match'
 * Pijnu has a raft of tree manipulators. I don't think I want all of them, but
   a judicious subset might be nice. Don't get into mixing formatting with tree
   manipulation.

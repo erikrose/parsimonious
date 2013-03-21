@@ -193,6 +193,12 @@ rule_syntax = (r'''
 class LazyReference(unicode):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
+    
+    # Both the added members are just for debugging.
+    name = u''
+    
+    def _as_rhs(self):
+        return u'<LazyReference to %s>' % self
 
 
 class RuleVisitor(NodeVisitor):
@@ -310,6 +316,26 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
+
+    def _resolve_refs(self, expr, rule_map):
+        """Turn references into the things they actually reference.
+
+        Walk the expression tree, looking for _LazyReferences. When we find
+        one, replace it with rules[the reference].
+
+        """
+        # TODO: Optimize: don't revisit already-visited nodes.
+        if isinstance(expr, LazyReference):
+            try:
+                return self._resolve_refs(rule_map[expr], rule_map)
+            except KeyError:
+                raise UndefinedLabel(expr)
+        else:
+            members = getattr(expr, 'members', None)
+            if members:
+                expr.members = [self._resolve_refs(m, rule_map) for m in members]
+            return expr
+
     def visit_rules(self, node, rule_or_rubbishes):
         """Collate all the rules into a map. Return (map, default rule).
 
@@ -323,24 +349,6 @@ class RuleVisitor(NodeVisitor):
         # Drop the ws and comments:
         rules = [r for r in rule_or_rubbishes if r is not None]
 
-        def resolve_refs(expr):
-            """Turn references into the things they actually reference.
-
-            Walk the expression tree, looking for _LazyReferences. When we find
-            one, replace it with rules[the reference].
-
-            """
-            if isinstance(expr, LazyReference):
-                try:
-                    return rule_map[expr]
-                except KeyError:
-                    raise UndefinedLabel(expr)
-            else:
-                members = getattr(expr, 'members', None)
-                if members:
-                    expr.members = [resolve_refs(m) for m in members]
-                return expr
-
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
         # have the last declarations win, so you can extend grammars by
@@ -349,8 +357,15 @@ class RuleVisitor(NodeVisitor):
 
         # Resolve references. This takes care of cycles and plain old forward
         # references.
+        if 'number' in rule_map:
+            import pdb;pdb.set_trace()
+
         for k, v in rule_map.iteritems():
-            rule_map[k] = resolve_refs(v)
+            rule_map[k] = self._resolve_refs(v, rule_map)
+
+        if 'number' in rule_map:
+            import pdb;pdb.set_trace()
+
 
         return rule_map, rules[0]
 
