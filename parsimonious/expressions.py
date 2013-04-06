@@ -12,8 +12,8 @@ from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 
-__all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'AllOf',
-           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore', 'ExpressionFlattener']
+__all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'Lookahead',
+           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
 
 
 class Expression(StrAndRepr):
@@ -32,9 +32,6 @@ class Expression(StrAndRepr):
         """Return a parse tree of ``text``.
 
         Return ``None`` if the expression doesn't match the full string.
-
-        On a more technical level: initialize the packrat cache and kick off
-        the first ``match()`` call.
 
         """
         node = self.match(text)
