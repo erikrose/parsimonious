@@ -396,6 +396,7 @@ class RuleVisitor(NodeVisitor):
                                                      rule_map[rule_name],
                                                      unwalked_names,
                                                      (rule_name,))
+            unwalked_names.discard(rule_name)
         return rule_map, rules[0]
 
 

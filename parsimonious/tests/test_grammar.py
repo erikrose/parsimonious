@@ -8,7 +8,7 @@ from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
 
-class BootstrapingGrammarTests(TestCase):
+class BootstrappingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 
@@ -179,8 +179,8 @@ class GrammarTests(TestCase):
                           # It sure is.
                           bold_text  = stars text stars  # nice
                           text       = ~"[A-Z 0-9]*"i #dude
-                          
-                          
+
+
                           stars      = "**"
                           # Pretty good
                           #Oh yeah.#""")  # Make sure a comment doesn't need a
@@ -220,3 +220,45 @@ class GrammarTests(TestCase):
         <Node matching " bang">
             <Node matching " ">
             <Node matching "bang">""")
+
+    def test_resolve_refs_order(self):
+        """Smoke-test a circumstance where lazy references don't get resolved."""
+        grammar = Grammar("""
+            expression = "(" terms ")"
+            terms = term+
+            term = number
+            number = ~r"[0-9]+"
+            """)
+        grammar.parse('(3 4)')
+
+    def test_infinite_loop(self):
+        """Smoke-test a grammar that was causing infinite loops while building.
+
+        This was going awry because the "int" rule was never getting marked as
+        resolved, so it would just keep trying to resolve it over and over.
+
+        """
+        Grammar("""
+            digits = digit+
+            int = digits
+            digit = ~"[0-9]"
+            number = int
+            main = number
+            """)
+
+    def test_right_recursive(self):
+        """Right-recursive refs should resolve."""
+        grammar = Grammar("""
+            digits = digit digits?
+            digit = ~r"[0-9]"
+            """)
+        ok_(grammar.parse('12') is not None)
+
+    def test_badly_circular(self):
+        """Uselessly circular references should be detected by the grammar
+        compiler."""
+        raise SkipTest('We have yet to make the grammar compiler detect these.')
+        grammar = Grammar("""
+            foo = bar
+            bar = foo
+            """)
