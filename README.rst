@@ -310,6 +310,8 @@ Version History
 0.4
   * Python 3 support
   * Fix ``import *`` for ``parsimonious.expressions``.
+  * Rewrite grammar compiler so right-recursive rules can be compiled and
+    parsing no longer fails in some cases with forward rule references.
 
 0.3
   * Support comments, the ``!`` ("not") operator, and parentheses in grammar

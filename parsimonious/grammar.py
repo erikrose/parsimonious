@@ -194,6 +194,12 @@ class LazyReference(unicode):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
+    name = u''
+
+    # Just for debugging:
+    def _as_rhs(self):
+        return u'<LazyReference to %s>' % self
+
 
 class RuleVisitor(NodeVisitor):
     """Turns a parse tree of a grammar definition into a map of ``Expression``
@@ -233,7 +239,7 @@ class RuleVisitor(NodeVisitor):
         """Stomp out ``comment`` nodes so visit_rules can easily filter them
         out."""
 
-    def visit_rule(self, rule, (label, _2, equals, _3, expression, _4, comment,
+    def visit_rule(self, rule, (label, _1, equals, _2, expression, _3, comment,
                                 eol)):
         """Assign a name to the Expression and return it."""
         label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
@@ -310,6 +316,59 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
+    def _resolve_refs(self, rule_map, expr, unwalked_names, walking_names):
+        """Return an expression with all its lazy references recursively resolved.
+
+        Resolve any lazy references in the expression ``expr``, recursing into all
+        subexpressions. Populate ``rule_map`` with any other rules (named
+        expressions) resolved along the way. Remove from ``unwalked_names`` any
+        which were resolved.
+
+        :arg walking_names: The stack of labels we are currently recursing
+            through. This prevents infinite recursion for circular refs.
+
+        """
+        # If it's a top-level (named) expression and we've already walked it,
+        # don't walk it again:
+        if expr.name and expr.name not in unwalked_names:
+            # unwalked_names started out with all the rule names in it, so, if
+            # this is a named expr and it isn't in there, it must have been
+            # resolved.
+            return rule_map[expr.name]
+
+        # If not, resolve it:
+        elif isinstance(expr, LazyReference):
+            label = unicode(expr)
+            if label not in walking_names:
+                # We aren't already working on traversing this label:
+                try:
+                    reffed_expr = rule_map[label]
+                except KeyError:
+                    raise UndefinedLabel(expr)
+                rule_map[label] = self._resolve_refs(
+                        rule_map,
+                        reffed_expr,
+                        unwalked_names,
+                        walking_names + (label,))
+
+                # If we recurse into a compound expression, the remove()
+                # happens in there. But if this label points to a non-compound
+                # expression like a literal or a regex or another lazy
+                # reference, we need to do this here:
+                unwalked_names.discard(label)
+            return rule_map[label]
+        else:
+            members = getattr(expr, 'members', [])
+            if members:
+                expr.members = [self._resolve_refs(rule_map,
+                                                   m,
+                                                   unwalked_names,
+                                                   walking_names)
+                                for m in members]
+            if expr.name:
+                unwalked_names.remove(expr.name)
+            return expr
+
     def visit_rules(self, node, rule_or_rubbishes):
         """Collate all the rules into a map. Return (map, default rule).
 
@@ -323,35 +382,20 @@ class RuleVisitor(NodeVisitor):
         # Drop the ws and comments:
         rules = [r for r in rule_or_rubbishes if r is not None]
 
-        def resolve_refs(expr):
-            """Turn references into the things they actually reference.
-
-            Walk the expression tree, looking for _LazyReferences. When we find
-            one, replace it with rules[the reference].
-
-            """
-            if isinstance(expr, LazyReference):
-                try:
-                    return rule_map[expr]
-                except KeyError:
-                    raise UndefinedLabel(expr)
-            else:
-                members = getattr(expr, 'members', None)
-                if members:
-                    expr.members = [resolve_refs(m) for m in members]
-                return expr
-
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
         # have the last declarations win, so you can extend grammars by
         # concatenation.
         rule_map = dict((expr.name, expr) for expr in rules)
 
-        # Resolve references. This takes care of cycles and plain old forward
-        # references.
-        for k, v in rule_map.iteritems():
-            rule_map[k] = resolve_refs(v)
-
+        # Resolve references. This tolerates forward references.
+        unwalked_names = set(rule_map.iterkeys())
+        while unwalked_names:
+            rule_name = next(iter(unwalked_names))  # any arbitrary item
+            rule_map[rule_name] = self._resolve_refs(rule_map,
+                                                     rule_map[rule_name],
+                                                     unwalked_names,
+                                                     (rule_name,))
         return rule_map, rules[0]
 
 
