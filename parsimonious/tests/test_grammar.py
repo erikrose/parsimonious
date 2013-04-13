@@ -186,13 +186,14 @@ class GrammarTests(TestCase):
                           # Pretty good
                           #Oh yeah.#""")  # Make sure a comment doesn't need a
                                           # \n or \r to end.
-        eq_(str(grammar), '''bold_text = stars text stars\n'''
-                          '''text = ~"[A-Z 0-9]*"i%s\n'''
-                          # Unicode flag is on by default in Python 3. I wonder
-                          # if we should turn it on all the time in
-                          # Parsimonious.
-                          '''stars = "**"''' % ('u' if version_info >= (3,)
-                                                else ''))
+        eq_(list(sorted(str(grammar).splitlines())),
+            ['''bold_text = stars text stars''',
+             # Unicode flag is on by default in Python 3. I wonder
+             # if we should turn it on all the time in
+             # Parsimonious.
+             '''stars = "**"''',
+             '''text = ~"[A-Z 0-9]*"i%s''' % ('u' if version_info >= (3,)
+                                              else '')])
 
     def test_not(self):
         """Make sure "not" predicates get parsed and work properly."""
