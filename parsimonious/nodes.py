@@ -12,7 +12,7 @@ from parsimonious.exceptions import VisitationError
 from parsimonious.utils import StrAndRepr
 
 
-class Node(object):
+class Node(StrAndRepr):
     """A parse tree node
 
     Consider these immutable once constructed. As a side effect of a
@@ -82,9 +82,6 @@ class Node(object):
     def __unicode__(self):
         """Return a compact, human-readable representation of me."""
         return self.prettily()
-
-    def __str__(self):
-        return unicode(self).encode('utf-8')
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
