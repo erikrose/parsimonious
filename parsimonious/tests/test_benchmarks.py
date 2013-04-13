@@ -1,9 +1,18 @@
-"""Tests to show that the benchmarks we based our speed optimizations on are still valid"""
+"""Tests to show that the benchmarks we based our speed optimizations on are
+still valid"""
 
 from functools import partial
 from timeit import timeit
+from unittest import TestCase
 
 from nose.tools import ok_
+try:
+    from pyparsing import CaselessLiteral, Word, Group
+    has_pyparsing = True
+except ImportError:
+    has_pyparsing = False
+
+from parsimonious.grammar import Grammar
 
 
 timeit = partial(timeit, number=500000)
@@ -43,3 +52,50 @@ def test_startswith_vs_regex():
     # Regexes take 2.24x as long as simple string matching.
     ok_(startswith_time < re_time,
         '%s (startswith) < %s (re)' % (startswith_time, re_time))
+
+
+class VersusPyparsingTests(TestCase):
+    def setup(self):
+        """Run my tests only if pyparsing is installed.
+
+        We don't want to actually depend on pyparsing in order to run the
+        tests; that would be kind of lame.
+
+        """
+        if not has_pyparsing:
+            raise SkipTest
+
+    def parsimonious_grammar(self):
+        return Grammar(r"""
+            select = ~"select"i
+            from = ~"from"i
+            ident = ~"[a-zA-Z_\$]"
+            column = ident ("." ident)*
+            column_list = column (~", +" column)*
+            columns = "*" / column_list
+            table_list = column_list  # pyparsing refines this laboriously for
+                                      # no apparent reason.
+            statement = select columns from table_list ";"
+            statements = statement (~"\n *" statement)
+            """, default_rule='statements')
+
+    def test_lots_of_sql(self):
+        """Make sure we're faster at parsing the simpleSQL example from
+        pyparsing's own tests.
+
+        The only different is that we parse a large number of SQL statements
+        all at once, because that's what I care about making fast: large bodies
+        of text.
+
+        """
+        grammar = self.parsimonious_grammar()
+        sql = ("""SELECT * from XYZZY, ABC;
+               select * from SYS.XYZZY;
+               Select A from Sys.dual;
+               Select AA,BB,CC from Sys.dual;
+               Select A, B, C from Sys.dual;
+               Select A, B, C from Sys.dual;
+               Select A, B, C frox Sys.dual;
+               Select A, B, C from Sys.dual, Table2;
+               """)
+        print grammar.parse(sql)
