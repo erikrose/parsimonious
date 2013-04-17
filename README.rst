@@ -46,7 +46,7 @@ symbol, but you can override that.
 
 Next, let's parse something and get an abstract syntax tree::
 
-    >>> grammar.parse('((bold stuff))')
+    >>> print grammar.parse('((bold stuff))')
     <Node called "bold_text" matching "((bold stuff))">
         <Node called "bold_open" matching "((">
         <RegexNode called "text" matching "bold stuff">
