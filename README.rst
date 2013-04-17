@@ -131,7 +131,7 @@ Syntax Reference
                         things. ``a b c`` matches spots where those 3
                         terms appear in that order.
 
-``a / b``               Alternatives. The first to succeed of ``a / b / c`` 
+``a / b / c``           Alternatives. The first to succeed of ``a / b / c``
                         wins.
 
 ``thing?``              An optional expression. This is greedy, always consuming 
@@ -158,6 +158,9 @@ Syntax Reference
                         Ultimately, I'd like to deprecate explicit regexes and
                         instead have Parsimonious dynamically build them out of
                         simpler primitives.
+
+``(things)``            Parentheses are used for grouping, like in every other
+                        language.
 ====================    ========================================================
 
 
