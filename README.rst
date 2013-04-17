@@ -3,10 +3,11 @@ Parsimonious
 ============
 
 Parsimonious aims to be the fastest arbitrary-lookahead parser written in pure
-Python. It's based on parsing expression grammars (PEGs), which means you
-feed it a simplified sort of EBNF notation. Parsimonious was designed to
-undergird a MediaWiki parser that wouldn't take 5 seconds or a GB of RAM to do
-one page.
+Python—and the most usable. It's based on parsing expression grammars (PEGs),
+which means you feed it a simplified sort of EBNF notation. Parsimonious was
+designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
+of RAM to do one page, but it's applicable to all sorts of languages.
+
 
 Goals
 =====
@@ -58,15 +59,11 @@ the tree and do something useful with it.
 Status
 ======
 
-0.3 is a pretty usable release for inputs that aren't huge. I haven't really
-started optimizing yet. And note that there may be API changes until we get to
-1.0.
-
 * Everything that exists works. Test coverage is good.
 * I don't plan on making any backward-incompatible changes to the rule syntax
   in the future, so you can write grammars without fear.
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
-  I have several macro- and micro-optimizations in mind.
+  I have yet to begin optimizing in earnest.
 * Error reporting is fairly uninformative, and debugging is nonexistent.
   However, ``repr`` methods of expressions, grammars, and nodes are very clear
   and helpful. Ones of ``Grammar`` objects are even round-trippable! Huge
@@ -76,6 +73,7 @@ started optimizing yet. And note that there may be API changes until we get to
   existing ones; later rules of the same name should override previous ones.
   However, this is untested and may not be the final story.
 * Sphinx docs are coming, but the docstrings are quite useful now.
+* Note that there may be API changes until we get to 1.0.
 
 Coming Soon
 -----------
@@ -308,7 +306,7 @@ Version History
 ===============
 
 0.4
-  * Python 3 support
+  * Support Python 3.
   * Fix ``import *`` for ``parsimonious.expressions``.
   * Rewrite grammar compiler so right-recursive rules can be compiled and
     parsing no longer fails in some cases with forward rule references.
@@ -345,3 +343,6 @@ Version History
 
 0.1
   * A rough but useable preview release
+
+Thanks to Wiki Loves Monuments Panama for showing their support with a generous
+gift.
