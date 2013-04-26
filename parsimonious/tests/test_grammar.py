@@ -13,31 +13,36 @@ class BootstrappingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 
-    def test_ws(self):
-        text = ' \t\r'
-        eq_(rule_grammar['ws'].parse(text), Node('ws', text, 0, 3))
-
     def test_quantifier(self):
         text = '*'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
         text = '?'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
         text = '+'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
 
-    def test_literal(self):
+    def test_spaceless_literal(self):
         text = '"anything but quotes#$*&^"'
-        eq_(rule_grammar['literal'].parse(text), Node('literal', text, 0, len(text)))
+        eq_(rule_grammar['spaceless_literal'].parse(text),
+            Node('spaceless_literal', text, 0, len(text)))
         text = r'''r"\""'''
-        eq_(rule_grammar['literal'].parse(text), Node('literal', text, 0, 5))
+        eq_(rule_grammar['spaceless_literal'].parse(text),
+            Node('spaceless_literal', text, 0, 5))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
         eq_(rule_grammar['regex'].parse(text),
             Node('regex', text, 0, len(text), children=[
                  Node('', text, 0, 1),
-                 Node('literal', text, 1, 25),
-                 Node('', text, 25, 27)]))
+                 Node('spaceless_literal', text, 1, 25),
+                 Node('', text, 25, 27),
+                 Node('_', text, 27, 27)]))
 
     def test_successes(self):
         """Make sure the PEG recognition grammar succeeds on various inputs."""
@@ -195,6 +200,18 @@ class GrammarTests(TestCase):
              '''stars = "**"''',
              '''text = ~"[A-Z 0-9]*"i%s''' % ('u' if version_info >= (3,)
                                               else '')])
+
+    def test_multi_line(self):
+        """Make sure we tolerate all sorts of crazy line breaks and comments in
+        the middle of rules."""
+        grammar = Grammar("""
+            bold_text  = bold_open  # commenty comment
+                         text  # more comment
+                         bold_close
+            text       = ~"[A-Z 0-9]*"i
+            bold_open  = "((" bold_close =  "))"
+            """)
+        ok_(grammar.parse('((booyah))') is not None)
 
     def test_not(self):
         """Make sure "not" predicates get parsed and work properly."""
