@@ -1,5 +1,34 @@
-class BadGrammar(Exception):
-    """The rule definitions passed to Grammar contain syntax errors."""
+from parsimonious.utils import StrAndRepr
+
+
+class ParseError(StrAndRepr, Exception):
+    """A call to ``Expression.parse()`` or ``match()`` didn't match."""
+
+    def __init__(self, text, pos=-1, expr=None):
+        # TODO: It would be nice to use self.args, but I don't want to pay a
+        # penalty to call descriptors or have the confusion of numerical
+        # indices in Expression._match().
+        self.text = text
+        self.pos = pos
+        self.expr = expr
+
+    def __unicode__(self):
+        if self.expr.name:
+            rule_name = u"'%s'" % self.expr.name
+        else:
+            rule_name = unicode(self.expr)
+        return u"Rule %s didn't match at '%s'." % (rule_name, self.text[self.pos:self.pos + 20])
+
+    # TODO: Add line, col, and separated-out error message so callers can build
+    # their own presentation.
+
+
+class IncompleteParseError(ParseError):
+    """A call to ``parse()`` matched a whole Expression but did not consume the
+    entire text."""
+
+    def __unicode__(self):
+        return u"Top-level rule '%s' completed, but it didn't consume the entire text. The non-matching portion of the text begins with '%s'." % (self.expr.name, self.text[self.pos:self.pos + 20])
 
 
 class VisitationError(Exception):
@@ -31,7 +60,7 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(VisitationError):
+class UndefinedLabel(StrAndRepr, VisitationError):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define
@@ -43,5 +72,3 @@ class UndefinedLabel(VisitationError):
 
     def __unicode__(self):
         return u'The label "%s" was never defined.' % self.label
-
-    __str__ = __unicode__

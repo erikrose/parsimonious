@@ -64,10 +64,9 @@ Status
   in the future, so you can write grammars without fear.
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
   I have yet to begin optimizing in earnest.
-* Error reporting is fairly uninformative, and debugging is nonexistent.
-  However, ``repr`` methods of expressions, grammars, and nodes are very clear
-  and helpful. Ones of ``Grammar`` objects are even round-trippable! Huge
-  things are planned for grammar debugging in the future.
+* Error reporting is now in place. ``repr`` methods of expressions, grammars,
+  and nodes are clear and helpful and well. Ones of ``Grammar`` objects are
+  even round-trippable!
 * The grammar extensibility story is underdeveloped at the moment. You should
   be able to extend a grammar by simply concatening more rules onto the
   existing ones; later rules of the same name should override previous ones.
@@ -81,6 +80,7 @@ Coming Soon
 * Optimizations to make Parsimonious worthy of its name
 * Tighter RAM use
 * Better-thought-out grammar extensibility story
+* Amazing grammar debugging
 
 
 A Little About PEG Parsers
@@ -109,14 +109,17 @@ Thus, ambiguity is resolved by always yielding the first successful recognition.
 Writing Grammars
 ================
 
-Grammars are defined by a series of rules, one per line. The syntax should be
-familiar to anyone who uses regexes or reads programming language manuals. An
-example will serve best::
+Grammars are defined by a series of rules. The syntax should be familiar to
+anyone who uses regexes or reads programming language manuals. An example will
+serve best::
 
     styled_text = bold_text / italic_text
     bold_text   = "((" text "))"
     italic_text = "''" text "''"
     text        = ~"[A-Z 0-9]*"i
+
+You can wrap a rule across multiple lines if you like; the syntax is very
+forgiving.
 
 
 Syntax Reference
@@ -289,10 +292,6 @@ Optimizations
 * We could possibly compile the grammar into VM instructions, like in "A
   parsing machine for PEGs" by Medeiros.
 * If the recursion gets too deep in practice, use trampolining to dodge it.
-* It looks like we could make an architecture-independent ``.o`` file and use LLVM
-  to JIT it to whatever arch we're on: https://github.com/dabeaz/bitey/. Of
-  course, then everybody has to have LLVM, which is even harder to set up than
-  a vanilla C toolchain.
 
 Niceties
 --------
@@ -309,6 +308,19 @@ Version History
 ===============
 
 0.5
+  .. warning::
+
+      This release makes some backward-incompatible changes. See below.
+
+  * Add error reporting. Now, rather than returning ``None``, ``parse()`` and
+    ``match()`` raise ``ParseError`` if they don't succeed. This makes more
+    sense, since you'd rarely attempt to parse something and not care if it
+    succeeds. It was too easy before to forget to check for a ``None`` result.
+    ``ParseError`` gives you a human-readable unicode representation as well as
+    some attributes that let you construct your own custom presentation.
+  * Grammar construction now raises ``ParseError`` rather than ``BadGrammar``
+    if it can't parse your rules.
+  * Make the ``_str__()`` method of ``UndefinedLabel`` return the right type.
   * Support splitting rules across multiple lines, interleaving comments,
     putting multiple rules on one line (but don't do that) and all sorts of
     other horrific behavior.

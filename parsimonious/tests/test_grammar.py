@@ -4,7 +4,7 @@ from unittest import TestCase
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
-from parsimonious.exceptions import UndefinedLabel, BadGrammar
+from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
@@ -176,8 +176,8 @@ class GrammarTests(TestCase):
                                          Node('bold_close', s, 6, 8)]))
 
     def test_bad_grammar(self):
-        """Constructing a Grammar with bad rules should raise BadGrammar."""
-        assert_raises(BadGrammar, Grammar, 'just a bunch of junk')
+        """Constructing a Grammar with bad rules should raise ParseError."""
+        assert_raises(ParseError, Grammar, 'just a bunch of junk')
 
     def test_comments(self):
         """Test tolerance of comments and blank lines in and around rules."""
@@ -216,12 +216,12 @@ class GrammarTests(TestCase):
     def test_not(self):
         """Make sure "not" predicates get parsed and work properly."""
         grammar = Grammar(r'''not_arp = !"arp" ~"[a-z]+"''')
-        eq_(grammar.parse('arp'), None)
+        assert_raises(ParseError, grammar.parse, 'arp')
         ok_(grammar.parse('argle') is not None)
 
     def test_lookahead(self):
         grammar = Grammar(r'''starts_with_a = &"a" ~"[a-z]+"''')
-        eq_(grammar.parse('burp'), None)
+        assert_raises(ParseError, grammar.parse, 'burp')
 
         s = 'arp'
         eq_(grammar.parse('arp'), Node('starts_with_a', s, 0, 3, children=[
@@ -231,7 +231,7 @@ class GrammarTests(TestCase):
     def test_parens(self):
         grammar = Grammar(r'''sequence = "chitty" (" " "bang")+''')
         # Make sure it's not as if the parens aren't there:
-        eq_(grammar.parse('chitty bangbang'), None)
+        assert_raises(ParseError, grammar.parse, 'chitty bangbang')
 
         s = 'chitty bang bang'
         eq_(str(grammar.parse(s)),
@@ -253,7 +253,7 @@ class GrammarTests(TestCase):
             term = number
             number = ~r"[0-9]+"
             """)
-        grammar.parse('(3 4)')
+        grammar.parse('(34)')
 
     def test_infinite_loop(self):
         """Smoke-test a grammar that was causing infinite loops while building.

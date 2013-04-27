@@ -7,7 +7,7 @@ by hand.
 """
 import ast
 
-from parsimonious.exceptions import BadGrammar, UndefinedLabel
+from parsimonious.exceptions import UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not)
 from parsimonious.nodes import NodeVisitor
@@ -76,11 +76,6 @@ class Grammar(StrAndRepr, dict):
 
         """
         tree = rule_grammar.parse(rules)
-        if tree is None:
-            raise BadGrammar('There is an error in your grammar definition. '
-                             'Sorry for the vague error reporting at the '
-                             'moment.')
-
         return RuleVisitor().visit(tree)
 
     def parse(self, text):
