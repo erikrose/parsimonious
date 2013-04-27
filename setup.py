@@ -1,4 +1,4 @@
-import sys
+from sys import version_info
 
 # Prevent spurious errors during `python setup.py test` in 2.6, a la
 # http://www.eby-sarna.com/pipermail/peak/2010-May/003357.html:
@@ -40,5 +40,5 @@ setup(
         'Topic :: Software Development :: Libraries',
         'Topic :: Text Processing :: General'],
     keywords=['parse', 'parser', 'parsing', 'peg', 'packrat', 'grammar', 'language'],
-    use_2to3=sys.version_info >= (3,)
+    use_2to3=version_info >= (3,)
 )

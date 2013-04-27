@@ -127,65 +127,85 @@ class BootstrappingGrammar(Grammar):
         """
         # Hard-code enough of the rules to parse the grammar that describes the
         # grammar description language, to bootstrap:
-        ws = Regex(r'\s+', name='ws')
         comment = Regex(r'#[^\r\n]*', name='comment')
-        _ = Regex(r'[ \t]+', name='_')
-        label = Regex(r'[a-zA-Z_][a-zA-Z_0-9]*', name='label')
-        quantifier = Regex(r'[*+?]', name='quantifier')
+        meaninglessness = OneOf(Regex(r'\s+'), comment, name='meaninglessness')
+        _ = ZeroOrMore(meaninglessness, name='_')
+        equals = Sequence(Literal('='), _, name='equals')
+        label = Sequence(Regex(r'[a-zA-Z_][a-zA-Z_0-9]*'), _, name='label')
+        reference = Sequence(label, Not(equals), name='reference')
+        quantifier = Sequence(Regex(r'[*+?]'), _, name='quantifier')
         # This pattern supports empty literals. TODO: A problem?
-        literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"', ignore_case=True, dot_all=True, name='literal')
-        regex = Sequence(Literal('~'), literal, Regex('[ilmsux]*', ignore_case=True), name='regex')
-        atom = OneOf(label, literal, regex, name='atom')
+        spaceless_literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"',
+                                  ignore_case=True,
+                                  dot_all=True,
+                                  name='spaceless_literal')
+        literal = Sequence(spaceless_literal, _, name='literal')
+        regex = Sequence(Literal('~'),
+                         literal,
+                         Regex('[ilmsux]*', ignore_case=True),
+                         _,
+                         name='regex')
+        atom = OneOf(reference, literal, regex, name='atom')
         quantified = Sequence(atom, quantifier, name='quantified')
+
         term = OneOf(quantified, atom, name='term')
-        another_term = Sequence(_, term, name='another_term')
-        sequence = Sequence(term, OneOrMore(another_term), name='sequence')
-        or_term = Sequence(_, Literal('/'), another_term, name='or_term')
+        not_term = Sequence(Literal('!'), term, _, name='not_term')
+        term.members = (not_term,) + term.members
+
+        sequence = Sequence(term, OneOrMore(term), name='sequence')
+        or_term = Sequence(Literal('/'), _, term, name='or_term')
         ored = Sequence(term, OneOrMore(or_term), name='ored')
         expression = OneOf(ored, sequence, term, name='expression')
-        eol = Regex(r'[\r\n$]', name='eol')  # TODO: Support $.
-        rule = Sequence(label, Optional(_), Literal('='), Optional(_),
-                        expression, Optional(_), Optional(comment), eol,
-                        name='rule')
-        rule_or_rubbish = OneOf(rule, ws, comment, name='rule_or_rubbish')
-        rules = OneOrMore(rule_or_rubbish, name='rules')
+        rule = Sequence(label, equals, expression, name='rule')
+        rules = Sequence(_, OneOrMore(rule), name='rules')
 
         # Use those hard-coded rules to parse the (more extensive) rule syntax.
         # (For example, unless I start using parentheses in the rule language
         # definition itself, I should never have to hard-code expressions for
         # those above.)
+
         rule_tree = rules.parse(rule_syntax)
 
         # Turn the parse tree into a map of expressions:
         return RuleVisitor().visit(rule_tree)
 
-
 # The grammar for parsing PEG grammar definitions:
-# This is a nice, simple grammar. We may someday add support for multi-line
-# rules or other sugar, but it's a safe bet that the future will always be a
-# superset of this.
+# This is a nice, simple grammar. We may someday add to it, but it's a safe bet
+# that the future will always be a superset of this.
 rule_syntax = (r'''
-    rules = rule_or_rubbish+
-    rule_or_rubbish = rule / ws / comment
-    rule = label _? "=" _? expression _? comment? eol
-    literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
-    eol = ~r"(?:[\r\n]|$)"
+    # Ignored things (represented by _) are typically hung off the end of the
+    # leafmost kinds of nodes. Literals like "/" count as leaves.
+
+    rules = _ rule+
+    rule = label equals expression
+    equals = "=" _
+    literal = spaceless_literal _
+
+    # So you can't spell a regex like `~"..." ilm`:
+    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
+
     expression = ored / sequence / term
-    or_term = _ "/" another_term
+    or_term = "/" _ term
     ored = term or_term+
-    sequence = term another_term+
-    another_term = _ term
-    not_term = "!" term
-    lookahead_term = "&" term
+    sequence = term term+
+    not_term = "!" term _
+    lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = label / literal / regex / parenthesized
-    regex = "~" literal ~"[ilmsux]*"i
-    parenthesized = "(" expression ")"
-    quantifier = ~"[*+?]"
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*"
-    _ = ~r"[ \t]+"  # horizontal whitespace
-    ws = ~r"\s+"
+    atom = reference / literal / regex / parenthesized
+    regex = "~" spaceless_literal ~"[ilmsux]*"i _
+    parenthesized = "(" expression ")" _
+    quantifier = ~"[*+?]" _
+    reference = label !equals
+
+    # A subsequent equal sign is the only thing that distinguishes a label
+    # (which begins a new rule) from a reference (which is just a pointer to a
+    # rule defined somewhere else):
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+
+    # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
+    _ = meaninglessness*
+    meaninglessness = ~r"\s+" / comment
     comment = ~r"#[^\r\n]*"
     ''')
 
@@ -193,6 +213,12 @@ rule_syntax = (r'''
 class LazyReference(unicode):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
+
+    name = u''
+
+    # Just for debugging:
+    def _as_rhs(self):
+        return u'<LazyReference to %s>' % self
 
 
 class RuleVisitor(NodeVisitor):
@@ -205,11 +231,10 @@ class RuleVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
-    visit_rule_or_rubbish = visit_expression = visit_term = visit_atom = \
-        NodeVisitor.lift_child
+    visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
 
     def visit_parenthesized(self, parenthesized, (left_paren, expression,
-                                                  right_paren)):
+                                                  right_paren, _)):
         """Treat a parenthesized subexpression as just its contents.
 
         Its position in the tree suffices to maintain its grouping semantics.
@@ -217,26 +242,21 @@ class RuleVisitor(NodeVisitor):
         """
         return expression
 
+    def visit_quantifier(self, quantifier, (symbol, _)):
+        """Turn a quantifier into just its symbol-matching node."""
+        return symbol
+
     def visit_quantified(self, quantified, (atom, quantifier)):
         return self.quantifier_classes[quantifier.text](atom)
 
-    def visit_lookahead_term(self, lookahead_term, (ampersand, term)):
+    def visit_lookahead_term(self, lookahead_term, (ampersand, term, _)):
         return Lookahead(term)
 
-    def visit_not_term(self, not_term, (exclamation, term)):
+    def visit_not_term(self, not_term, (exclamation, term, _)):
         return Not(term)
 
-    def visit_ws(self, ws, visited_children):
-        """Stomp out ``ws`` nodes so visit_rules can easily filter them out."""
-
-    def visit_comment(self, comment, visited_children):
-        """Stomp out ``comment`` nodes so visit_rules can easily filter them
-        out."""
-
-    def visit_rule(self, rule, (label, _2, equals, _3, expression, _4, comment,
-                                eol)):
+    def visit_rule(self, rule, (label, equals, expression)):
         """Assign a name to the Expression and return it."""
-        label = unicode(label)  # Turn lazy reference back into text.  # TODO: Remove backtracking.
         expression.name = label  # Assign a name to the expr.
         return expression
 
@@ -248,7 +268,7 @@ class RuleVisitor(NodeVisitor):
     def visit_ored(self, ored, (first_term, other_terms)):
         return OneOf(first_term, *other_terms)
 
-    def visit_or_term(self, or_term, (_, slash, term)):
+    def visit_or_term(self, or_term, (slash, _, term)):
         """Return just the term from an ``or_term``.
 
         We already know it's going to be ored, from the containing ``ored``.
@@ -256,25 +276,19 @@ class RuleVisitor(NodeVisitor):
         """
         return term
 
-    def visit_another_term(self, another_term, (_, term)):
-        """Strip off the space, and just return the actual term involved in
-        ``another_term``.
+    def visit_label(self, label, (name, _)):
+        """Turn a label into a unicode string."""
+        return name.text
 
-        This lets us avoid repeating the stripping of the leading space in
-        ``visit_or_term``, ``visit_and_term``, and elsewhere.
-
-        """
-        return term
-
-    def visit_label(self, label, visited_children):
+    def visit_reference(self, reference, (label, not_equals)):
         """Stick a :class:`LazyReference` in the tree as a placeholder.
 
-        We resolve them all later according to the names in the `rules` hash.
+        We resolve them all later.
 
         """
-        return LazyReference(label.text)
+        return LazyReference(label)
 
-    def visit_regex(self, regex, (tilde, literal, flags)):
+    def visit_regex(self, regex, (tilde, literal, flags, _)):
         """Return a ``Regex`` expression."""
         flags = flags.text.upper()
         pattern = literal.literal  # Pull the string back out of the Literal
@@ -286,13 +300,17 @@ class RuleVisitor(NodeVisitor):
                               unicode='U' in flags,
                               verbose='X' in flags)
 
-    def visit_literal(self, literal, visited_children):
+    def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
         # Piggyback on Python's string support so we can have backslash
         # escaping and niceties like \n, \t, etc.
         # string.decode('string_escape') would have been a lower-level
         # possibility.
-        return Literal(ast.literal_eval(literal.text))
+        return Literal(ast.literal_eval(spaceless_literal.text))
+
+    def visit_literal(self, literal, (spaceless_literal, _)):
+        """Pick just the literal out of a literal-and-junk combo."""
+        return spaceless_literal
 
     def generic_visit(self, node, visited_children):
         """Replace childbearing nodes with a list of their children; keep
@@ -310,7 +328,61 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
-    def visit_rules(self, node, rule_or_rubbishes):
+    def _resolve_refs(self, rule_map, expr, unwalked_names, walking_names):
+        """Return an expression with all its lazy references recursively
+        resolved.
+
+        Resolve any lazy references in the expression ``expr``, recursing into
+        all subexpressions. Populate ``rule_map`` with any other rules (named
+        expressions) resolved along the way. Remove from ``unwalked_names`` any
+        which were resolved.
+
+        :arg walking_names: The stack of labels we are currently recursing
+            through. This prevents infinite recursion for circular refs.
+
+        """
+        # If it's a top-level (named) expression and we've already walked it,
+        # don't walk it again:
+        if expr.name and expr.name not in unwalked_names:
+            # unwalked_names started out with all the rule names in it, so, if
+            # this is a named expr and it isn't in there, it must have been
+            # resolved.
+            return rule_map[expr.name]
+
+        # If not, resolve it:
+        elif isinstance(expr, LazyReference):
+            label = unicode(expr)
+            if label not in walking_names:
+                # We aren't already working on traversing this label:
+                try:
+                    reffed_expr = rule_map[label]
+                except KeyError:
+                    raise UndefinedLabel(expr)
+                rule_map[label] = self._resolve_refs(
+                        rule_map,
+                        reffed_expr,
+                        unwalked_names,
+                        walking_names + (label,))
+
+                # If we recurse into a compound expression, the remove()
+                # happens in there. But if this label points to a non-compound
+                # expression like a literal or a regex or another lazy
+                # reference, we need to do this here:
+                unwalked_names.discard(label)
+            return rule_map[label]
+        else:
+            members = getattr(expr, 'members', [])
+            if members:
+                expr.members = [self._resolve_refs(rule_map,
+                                                   m,
+                                                   unwalked_names,
+                                                   walking_names)
+                                for m in members]
+            if expr.name:
+                unwalked_names.remove(expr.name)
+            return expr
+
+    def visit_rules(self, node, (_, rules)):
         """Collate all the rules into a map. Return (map, default rule).
 
         The default rule is the first one. Or, if you have more than one rule
@@ -318,40 +390,21 @@ class RuleVisitor(NodeVisitor):
         override the default rule when you extend a grammar.)
 
         """
-        rule_map = {}
-
-        # Drop the ws and comments:
-        rules = [r for r in rule_or_rubbishes if r is not None]
-
-        def resolve_refs(expr):
-            """Turn references into the things they actually reference.
-
-            Walk the expression tree, looking for _LazyReferences. When we find
-            one, replace it with rules[the reference].
-
-            """
-            if isinstance(expr, LazyReference):
-                try:
-                    return rule_map[expr]
-                except KeyError:
-                    raise UndefinedLabel(expr)
-            else:
-                members = getattr(expr, 'members', None)
-                if members:
-                    expr.members = [resolve_refs(m) for m in members]
-                return expr
-
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
         # have the last declarations win, so you can extend grammars by
         # concatenation.
         rule_map = dict((expr.name, expr) for expr in rules)
 
-        # Resolve references. This takes care of cycles and plain old forward
-        # references.
-        for k, v in rule_map.iteritems():
-            rule_map[k] = resolve_refs(v)
-
+        # Resolve references. This tolerates forward references.
+        unwalked_names = set(rule_map.iterkeys())
+        while unwalked_names:
+            rule_name = next(iter(unwalked_names))  # any arbitrary item
+            rule_map[rule_name] = self._resolve_refs(rule_map,
+                                                     rule_map[rule_name],
+                                                     unwalked_names,
+                                                     (rule_name,))
+            unwalked_names.discard(rule_name)
         return rule_map, rules[0]
 
 

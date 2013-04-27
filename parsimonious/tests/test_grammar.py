@@ -1,3 +1,4 @@
+from sys import version_info
 from unittest import TestCase
 
 from nose import SkipTest
@@ -8,35 +9,40 @@ from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
 
-class BootstrapingGrammarTests(TestCase):
+class BootstrappingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 
-    def test_ws(self):
-        text = ' \t\r'
-        eq_(rule_grammar['ws'].parse(text), Node('ws', text, 0, 3))
-
     def test_quantifier(self):
         text = '*'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
         text = '?'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
         text = '+'
-        eq_(rule_grammar['quantifier'].parse(text), Node('quantifier', text, 0, 1))
+        eq_(rule_grammar['quantifier'].parse(text),
+            Node('quantifier', text, 0, 1, children=[
+                Node('', text, 0, 1), Node('_', text, 1, 1)]))
 
-    def test_literal(self):
+    def test_spaceless_literal(self):
         text = '"anything but quotes#$*&^"'
-        eq_(rule_grammar['literal'].parse(text), Node('literal', text, 0, len(text)))
+        eq_(rule_grammar['spaceless_literal'].parse(text),
+            Node('spaceless_literal', text, 0, len(text)))
         text = r'''r"\""'''
-        eq_(rule_grammar['literal'].parse(text), Node('literal', text, 0, 5))
+        eq_(rule_grammar['spaceless_literal'].parse(text),
+            Node('spaceless_literal', text, 0, 5))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
         eq_(rule_grammar['regex'].parse(text),
             Node('regex', text, 0, len(text), children=[
                  Node('', text, 0, 1),
-                 Node('literal', text, 1, 25),
-                 Node('', text, 25, 27)]))
+                 Node('spaceless_literal', text, 1, 25),
+                 Node('', text, 25, 27),
+                 Node('_', text, 27, 27)]))
 
     def test_successes(self):
         """Make sure the PEG recognition grammar succeeds on various inputs."""
@@ -149,7 +155,8 @@ class GrammarTests(TestCase):
                           """)
         lines = unicode(grammar).splitlines()
         eq_(lines[0], 'bold_text = bold_open text bold_close')
-        ok_('text = ~"[A-Z 0-9]*"i' in lines)
+        ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
+            in lines)
         ok_('bold_open = "(("' in lines)
         ok_('bold_close = "))"' in lines)
         eq_(len(lines), 4)
@@ -179,15 +186,32 @@ class GrammarTests(TestCase):
                           # It sure is.
                           bold_text  = stars text stars  # nice
                           text       = ~"[A-Z 0-9]*"i #dude
-                          
-                          
+
+
                           stars      = "**"
                           # Pretty good
                           #Oh yeah.#""")  # Make sure a comment doesn't need a
                                           # \n or \r to end.
-        eq_(str(grammar), '''bold_text = stars text stars\n'''
-                          '''text = ~"[A-Z 0-9]*"i\n'''
-                          '''stars = "**"''')
+        eq_(list(sorted(str(grammar).splitlines())),
+            ['''bold_text = stars text stars''',
+             # Unicode flag is on by default in Python 3. I wonder
+             # if we should turn it on all the time in
+             # Parsimonious.
+             '''stars = "**"''',
+             '''text = ~"[A-Z 0-9]*"i%s''' % ('u' if version_info >= (3,)
+                                              else '')])
+
+    def test_multi_line(self):
+        """Make sure we tolerate all sorts of crazy line breaks and comments in
+        the middle of rules."""
+        grammar = Grammar("""
+            bold_text  = bold_open  # commenty comment
+                         text  # more comment
+                         bold_close
+            text       = ~"[A-Z 0-9]*"i
+            bold_open  = "((" bold_close =  "))"
+            """)
+        ok_(grammar.parse('((booyah))') is not None)
 
     def test_not(self):
         """Make sure "not" predicates get parsed and work properly."""
@@ -220,3 +244,45 @@ class GrammarTests(TestCase):
         <Node matching " bang">
             <Node matching " ">
             <Node matching "bang">""")
+
+    def test_resolve_refs_order(self):
+        """Smoke-test a circumstance where lazy references don't get resolved."""
+        grammar = Grammar("""
+            expression = "(" terms ")"
+            terms = term+
+            term = number
+            number = ~r"[0-9]+"
+            """)
+        grammar.parse('(3 4)')
+
+    def test_infinite_loop(self):
+        """Smoke-test a grammar that was causing infinite loops while building.
+
+        This was going awry because the "int" rule was never getting marked as
+        resolved, so it would just keep trying to resolve it over and over.
+
+        """
+        Grammar("""
+            digits = digit+
+            int = digits
+            digit = ~"[0-9]"
+            number = int
+            main = number
+            """)
+
+    def test_right_recursive(self):
+        """Right-recursive refs should resolve."""
+        grammar = Grammar("""
+            digits = digit digits?
+            digit = ~r"[0-9]"
+            """)
+        ok_(grammar.parse('12') is not None)
+
+    def test_badly_circular(self):
+        """Uselessly circular references should be detected by the grammar
+        compiler."""
+        raise SkipTest('We have yet to make the grammar compiler detect these.')
+        grammar = Grammar("""
+            foo = bar
+            bar = foo
+            """)

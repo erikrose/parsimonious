@@ -69,6 +69,7 @@ def test_str():
 def test_repr():
     """Test repr of ``Node``."""
     s = u'hai ö'
-    n = Node(u'böogie', s, 0, 3, children=[
+    boogie = u'böogie'
+    n = Node(boogie, s, 0, 3, children=[
             Node('', s, 3, 4), Node('', s, 4, 5)])
-    eq_(repr(n), """s = u'hai \\xf6'\nNode(u'b\\xf6ogie', s, 0, 3, children=[Node('', s, 3, 4), Node('', s, 4, 5)])""")
+    eq_(repr(n), """s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node('', s, 3, 4), Node('', s, 4, 5)])""".format(hai_o=repr(s), boogie=repr(boogie)))
