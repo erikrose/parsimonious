@@ -236,7 +236,6 @@ class RepresentationTests(TestCase):
         """Make sure matched unicode strings don't crash ``__str__``."""
         grammar = Grammar(r'string = ~r"\S+"u')
         str(grammar.parse(u'中文'))
-        # Okay, this is passing now, because I commented out __str__ etc. in Node.
 
     def test_unicode(self):
         """Smoke-test the conversion of expressions to bits of rules.

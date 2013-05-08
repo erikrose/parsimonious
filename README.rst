@@ -65,7 +65,7 @@ Status
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
   I have yet to begin optimizing in earnest.
 * Error reporting is now in place. ``repr`` methods of expressions, grammars,
-  and nodes are clear and helpful and well. Ones of ``Grammar`` objects are
+  and nodes are clear and helpful as well. The ``Grammar`` ones are
   even round-trippable!
 * The grammar extensibility story is underdeveloped at the moment. You should
   be able to extend a grammar by simply concatening more rules onto the
@@ -320,6 +320,7 @@ Version History
     some attributes that let you construct your own custom presentation.
   * Grammar construction now raises ``ParseError`` rather than ``BadGrammar``
     if it can't parse your rules.
+  * ``parse()`` now takes an optional ``pos`` argument, like ``match()``.
   * Make the ``_str__()`` method of ``UndefinedLabel`` return the right type.
   * Support splitting rules across multiple lines, interleaving comments,
     putting multiple rules on one line (but don't do that) and all sorts of

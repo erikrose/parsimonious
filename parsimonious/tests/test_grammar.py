@@ -194,9 +194,8 @@ class GrammarTests(TestCase):
                                           # \n or \r to end.
         eq_(list(sorted(str(grammar).splitlines())),
             ['''bold_text = stars text stars''',
-             # Unicode flag is on by default in Python 3. I wonder
-             # if we should turn it on all the time in
-             # Parsimonious.
+             # TODO: Unicode flag is on by default in Python 3. I wonder if we
+             # should turn it on all the time in Parsimonious.
              '''stars = "**"''',
              '''text = ~"[A-Z 0-9]*"i%s''' % ('u' if version_info >= (3,)
                                               else '')])

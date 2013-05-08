@@ -5,9 +5,9 @@ class ParseError(StrAndRepr, Exception):
     """A call to ``Expression.parse()`` or ``match()`` didn't match."""
 
     def __init__(self, text, pos=-1, expr=None):
-        # TODO: It would be nice to use self.args, but I don't want to pay a
-        # penalty to call descriptors or have the confusion of numerical
-        # indices in Expression._match().
+        # It would be nice to use self.args, but I don't want to pay a penalty
+        # to call descriptors or have the confusion of numerical indices in
+        # Expression._match().
         self.text = text
         self.pos = pos
         self.expr = expr

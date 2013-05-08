@@ -37,11 +37,7 @@ class Expression(StrAndRepr):
         consume the full string.
 
         """
-        error = ParseError(text)
-        node = self._match(text, pos, {}, error)
-        if node is None:
-            # It was not a complete parse.
-            raise error
+        node = self.match(text, pos=pos)
         if node.end < len(text):
             raise IncompleteParseError(text, node.end, self)
         return node
