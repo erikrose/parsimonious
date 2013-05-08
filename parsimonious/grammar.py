@@ -78,9 +78,9 @@ class Grammar(StrAndRepr, dict):
         tree = rule_grammar.parse(rules)
         return RuleVisitor().visit(tree)
 
-    def parse(self, text):
+    def parse(self, text, pos=0):
         """Parse some text with the default rule."""
-        return self.default_rule.parse(text)
+        return self.default_rule.parse(text, pos=pos)
 
     def match(self, text, pos=0):
         """Parse some text with the default rule but not necessarily all the
