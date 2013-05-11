@@ -1,7 +1,7 @@
 #coding=utf-8
 from unittest import TestCase
 
-from nose.tools import eq_, assert_raises
+from nose.tools import eq_, ok_, assert_raises
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
@@ -170,7 +170,7 @@ class ErrorReportingTests(TestCase):
             eq_(error.pos, 6)
             eq_(error.expr, grammar['close_parens'])
             eq_(error.text, text)
-            eq_(unicode(error), u"Rule 'close_parens' didn't match at '!!'.")
+            eq_(unicode(error), u"Rule 'close_parens' didn't match at '!!' (line 1, column 7).")
 
     def test_rewinding(self):
         """Make sure rewinding the stack and trying an alternative (which
@@ -216,7 +216,7 @@ class ErrorReportingTests(TestCase):
         try:
             grammar.parse('chitty bangbang')
         except IncompleteParseError as error:
-            eq_(unicode(error), u"Top-level rule 'sequence' completed, but it didn't consume the entire text. The non-matching portion of the text begins with 'bang'.")
+            eq_(unicode(error), u"Rule 'sequence' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with 'bang' (line 1, column 12).")
 
     def test_favoring_named_rules(self):
         """Named rules should be used in error messages in favor of anonymous
@@ -226,7 +226,21 @@ class ErrorReportingTests(TestCase):
         try:
             grammar.parse('burp')
         except ParseError as error:
-            eq_(unicode(error), u"Rule 'starts_with_a' didn't match at 'burp'.")
+            eq_(unicode(error), u"Rule 'starts_with_a' didn't match at 'burp' (line 1, column 1).")
+
+    def test_line_and_column(self):
+        """Make sure we got the line and column computation right."""
+        grammar = Grammar(r"""
+            whee_lah = whee "\n" lah "\n"
+            whee = "whee"
+            lah = "lah"
+            """)
+        try:
+            grammar.parse('whee\nlahGOO')
+        except ParseError as error:
+            # TODO: Right now, this says "Rule <Literal "\n" at 0x4368250432>
+            # didn't match". That's not the greatest. Fix that, then fix this.
+            ok_(unicode(error).endswith(ur"""didn't match at 'GOO' (line 2, column 4)."""))
 
 
 class RepresentationTests(TestCase):

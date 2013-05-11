@@ -86,7 +86,7 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
-        node = cache.get((expr_id, pos), ())
+        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
         if node is ():
             node = cache[(expr_id, pos)] = self._uncached_match(text,
                                                                 pos,
@@ -185,7 +185,7 @@ class Regex(Expression):
             return node
 
     def _regex_flags_from_bits(self, bits):
-        """Return the textual eqivalent of numerically encoded regex flags."""
+        """Return the textual equivalent of numerically encoded regex flags."""
         flags = 'tilmsux'
         return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
 
