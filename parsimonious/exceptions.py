@@ -13,16 +13,14 @@ class ParseError(StrAndRepr, Exception):
         self.expr = expr
 
     def __unicode__(self):
-        rule_name = ((u"'%s'" % self.expr.name) if self.expr.name else
-                     unicode(self.expr))
+        rule_name = u"'%s'" % (self.expr.name if self.expr.name else
+                               self.expr.as_rhs())
         return u"Rule %s didn't match at '%s' (line %s, column %s)." % (
                 rule_name,
                 self.text[self.pos:self.pos + 20],
                 self.line(),
                 self.column())
 
-    # TODO: Add line, col, and separated-out error message so callers can build
-    # their own presentation.
 
     def line(self):
         """Return the 1-based line number where the expression ceased to

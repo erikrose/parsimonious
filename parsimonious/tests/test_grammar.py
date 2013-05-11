@@ -1,3 +1,4 @@
+#coding=utf-8
 from sys import version_info
 from unittest import TestCase
 
@@ -285,3 +286,16 @@ class GrammarTests(TestCase):
             foo = bar
             bar = foo
             """)
+
+
+class RepresentationTests(TestCase):
+    """Tests for the repr of Grammars"""
+
+    def test_unicode_and_line_breaks(self):
+        """Make sure non-ASCII chars and weird things like \\n, which should
+        always be backslashed, are."""
+        grammar = Grammar(ur"""
+            newline = "\n"
+            ideograph = "文"
+            """)
+        eq_(repr(grammar), 'hi')

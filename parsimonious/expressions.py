@@ -117,16 +117,16 @@ class Expression(StrAndRepr):
         Return unicode. If I have no ``name``, omit the left-hand side.
 
         """
-        return ((u'%s = %s' % (self.name, self._as_rhs())) if self.name else
-                self._as_rhs())
+        return ((u'%s = %s' % (self.name, self.as_rhs())) if self.name else
+                self.as_rhs())
 
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
         descent when we hit a named node so the returned value resembles the
         input rule."""
-        return [(m.name or m._as_rhs()) for m in self.members]
+        return [(m.name or m.as_rhs()) for m in self.members]
 
-    def _as_rhs(self):
+    def as_rhs(self):
         """Return the right-hand side of a rule that represents me.
 
         Implemented by subclasses.
@@ -147,13 +147,14 @@ class Literal(Expression):
         super(Literal, self).__init__(name)
         self.literal = literal
 
+
     def _uncached_match(self, text, pos, cache, error):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
 
-    def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+    def as_rhs(self):
+        # TODO: Work even if the grammar is a bytestring rather than Unicode.
+        return u'"%s"' % self.literal.encode('unicode_escape')
 
 
 class Regex(Expression):
@@ -189,10 +190,10 @@ class Regex(Expression):
         flags = 'tilmsux'
         return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
 
-    def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
-                            self._regex_flags_from_bits(self.re.flags))
+    def as_rhs(self):
+        # TODO: Work even if the pattern is a bytestring rather than Unicode.
+        return u'~"%s"%s' % (self.re.pattern.encode('unicode_escape'),
+                             self._regex_flags_from_bits(self.re.flags))
 
 
 class _Compound(Expression):
@@ -229,7 +230,7 @@ class Sequence(_Compound):
         # Hooray! We got through all the members!
         return Node(self.name, text, pos, pos + length_of_sequence, children)
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u' '.join(self._unicode_members())
 
 class OneOf(_Compound):
@@ -246,7 +247,7 @@ class OneOf(_Compound):
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u' / '.join(self._unicode_members())
 
 
@@ -263,7 +264,7 @@ class Lookahead(_Compound):
         if node is not None:
             return Node(self.name, text, pos, pos)
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u'&%s' % self._unicode_members()[0]
 
 
@@ -280,7 +281,7 @@ class Not(_Compound):
         if node is None:
             return Node(self.name, text, pos, pos)
 
-    def _as_rhs(self):
+    def as_rhs(self):
         # TODO: Make sure this parenthesizes the member properly if it's an OR
         # or AND.
         return u'!%s' % self._unicode_members()[0]
@@ -300,7 +301,7 @@ class Optional(_Compound):
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u'%s?' % self._unicode_members()[0]
 
 
@@ -318,7 +319,7 @@ class ZeroOrMore(_Compound):
             children.append(node)
             new_pos += node.end - node.start
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u'%s*' % self._unicode_members()[0]
 
 
@@ -353,5 +354,5 @@ class OneOrMore(_Compound):
         if len(children) >= self.min:
             return Node(self.name, text, pos, new_pos, children)
 
-    def _as_rhs(self):
+    def as_rhs(self):
         return u'%s+' % self._unicode_members()[0]

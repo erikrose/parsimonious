@@ -97,7 +97,7 @@ class Grammar(StrAndRepr, dict):
         exprs = [self.default_rule]
         exprs.extend(expr for expr in self.itervalues() if
                      expr is not self.default_rule)
-        return '\n'.join(expr.as_rule() for expr in exprs)
+        return u'\n'.join(expr.as_rule() for expr in exprs)
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
@@ -122,33 +122,40 @@ class BootstrappingGrammar(Grammar):
         """
         # Hard-code enough of the rules to parse the grammar that describes the
         # grammar description language, to bootstrap:
-        comment = Regex(r'#[^\r\n]*', name='comment')
-        meaninglessness = OneOf(Regex(r'\s+'), comment, name='meaninglessness')
+        comment = Regex(r'#[^\r\n]*', unicode=True, name='comment')
+        meaninglessness = OneOf(Regex(r'\s+', unicode=True),
+                                comment,
+                                name='meaninglessness')
         _ = ZeroOrMore(meaninglessness, name='_')
-        equals = Sequence(Literal('='), _, name='equals')
-        label = Sequence(Regex(r'[a-zA-Z_][a-zA-Z_0-9]*'), _, name='label')
+        equals = Sequence(Literal(u'='), _, name='equals')
+        label = Sequence(Regex(r'[a-zA-Z_][a-zA-Z_0-9]*', unicode=True),
+                         _,
+                         name='label')
         reference = Sequence(label, Not(equals), name='reference')
-        quantifier = Sequence(Regex(r'[*+?]'), _, name='quantifier')
+        quantifier = Sequence(Regex(r'[*+?]', unicode=True),
+                              _,
+                              name='quantifier')
         # This pattern supports empty literals. TODO: A problem?
         spaceless_literal = Regex(r'u?r?"[^"\\]*(?:\\.[^"\\]*)*"',
                                   ignore_case=True,
                                   dot_all=True,
+                                  unicode=True,
                                   name='spaceless_literal')
         literal = Sequence(spaceless_literal, _, name='literal')
-        regex = Sequence(Literal('~'),
+        regex = Sequence(Literal(u'~'),
                          literal,
-                         Regex('[ilmsux]*', ignore_case=True),
+                         Regex('[ilmsux]*', ignore_case=True, unicode=True),
                          _,
                          name='regex')
         atom = OneOf(reference, literal, regex, name='atom')
         quantified = Sequence(atom, quantifier, name='quantified')
 
         term = OneOf(quantified, atom, name='term')
-        not_term = Sequence(Literal('!'), term, _, name='not_term')
+        not_term = Sequence(Literal(u'!'), term, _, name='not_term')
         term.members = (not_term,) + term.members
 
         sequence = Sequence(term, OneOrMore(term), name='sequence')
-        or_term = Sequence(Literal('/'), _, term, name='or_term')
+        or_term = Sequence(Literal(u'/'), _, term, name='or_term')
         ored = Sequence(term, OneOrMore(or_term), name='ored')
         expression = OneOf(ored, sequence, term, name='expression')
         rule = Sequence(label, equals, expression, name='rule')
@@ -167,7 +174,7 @@ class BootstrappingGrammar(Grammar):
 # The grammar for parsing PEG grammar definitions:
 # This is a nice, simple grammar. We may someday add to it, but it's a safe bet
 # that the future will always be a superset of this.
-rule_syntax = (r'''
+rule_syntax = (ur'''
     # Ignored things (represented by _) are typically hung off the end of the
     # leafmost kinds of nodes. Literals like "/" count as leaves.
 
@@ -177,7 +184,7 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
+    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""isu
 
     expression = ored / sequence / term
     or_term = "/" _ term
@@ -188,20 +195,19 @@ rule_syntax = (r'''
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
-    regex = "~" spaceless_literal ~"[ilmsux]*"i _
+    regex = "~" spaceless_literal ~"[ilmsux]*"iu _
     parenthesized = "(" expression ")" _
-    quantifier = ~"[*+?]" _
+    quantifier = ~"[*+?]"u _
     reference = label !equals
 
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
     # rule defined somewhere else):
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*"u _
 
-    # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
-    meaninglessness = ~r"\s+" / comment
-    comment = ~r"#[^\r\n]*"
+    meaninglessness = ~r"\s+"u / comment
+    comment = ~r"#[^\r\n]*"u
     ''')
 
 
@@ -212,7 +218,7 @@ class LazyReference(unicode):
     name = u''
 
     # Just for debugging:
-    def _as_rhs(self):
+    def as_rhs(self):
         return u'<LazyReference to %s>' % self
 
 
