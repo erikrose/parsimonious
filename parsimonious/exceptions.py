@@ -1,5 +1,55 @@
-class BadGrammar(Exception):
-    """The rule definitions passed to Grammar contain syntax errors."""
+from parsimonious.utils import StrAndRepr
+
+
+class ParseError(StrAndRepr, Exception):
+    """A call to ``Expression.parse()`` or ``match()`` didn't match."""
+
+    def __init__(self, text, pos=-1, expr=None):
+        # It would be nice to use self.args, but I don't want to pay a penalty
+        # to call descriptors or have the confusion of numerical indices in
+        # Expression._match().
+        self.text = text
+        self.pos = pos
+        self.expr = expr
+
+    def __unicode__(self):
+        rule_name = ((u"'%s'" % self.expr.name) if self.expr.name else
+                     unicode(self.expr))
+        return u"Rule %s didn't match at '%s' (line %s, column %s)." % (
+                rule_name,
+                self.text[self.pos:self.pos + 20],
+                self.line(),
+                self.column())
+
+    # TODO: Add line, col, and separated-out error message so callers can build
+    # their own presentation.
+
+    def line(self):
+        """Return the 1-based line number where the expression ceased to
+        match."""
+        # This is a method rather than a property in case we ever wanted to
+        # pass in which line endings we want to use.
+        return self.text.count('\n', 0, self.pos) + 1
+
+    def column(self):
+        """Return the 1-based column where the expression ceased to match."""
+        # We choose 1-based because that's what Python does with SyntaxErrors.
+        try:
+            return self.pos - self.text.rindex('\n', 0, self.pos)
+        except ValueError:
+            return self.pos + 1
+
+
+class IncompleteParseError(ParseError):
+    """A call to ``parse()`` matched a whole Expression but did not consume the
+    entire text."""
+
+    def __unicode__(self):
+        return u"Rule '%s' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with '%s' (line %s, column %s)." % (
+                self.expr.name,
+                self.text[self.pos:self.pos + 20],
+                self.line(),
+                self.column())
 
 
 class VisitationError(Exception):
@@ -31,7 +81,7 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(VisitationError):
+class UndefinedLabel(StrAndRepr, VisitationError):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define
@@ -43,5 +93,3 @@ class UndefinedLabel(VisitationError):
 
     def __unicode__(self):
         return u'The label "%s" was never defined.' % self.label
-
-    __str__ = __unicode__

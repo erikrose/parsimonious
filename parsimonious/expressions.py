@@ -8,6 +8,7 @@ These do the parsing.
 
 import re
 
+from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
@@ -28,25 +29,47 @@ class Expression(StrAndRepr):
     def __init__(self, name=''):
         self.name = name
 
-    def parse(self, text):
+    def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
 
-        Return ``None`` if the expression doesn't match the full string.
+        Raise ``ParseError`` if the expression wasn't satisfied. Raise
+        ``IncompleteParseError`` if the expression was satisfied but didn't
+        consume the full string.
 
         """
-        node = self.match(text)
-        if node is None or node.end - node.start != len(text):  # TODO: Why not test just end here? Are we going to add a pos kwarg or something?
-            # If it was not a complete parse, return None:
-            return None
+        node = self.match(text, pos=pos)
+        if node.end < len(text):
+            raise IncompleteParseError(text, node.end, self)
         return node
 
-    def match(self, text, pos=0, cache=None):
-        """Return the ``Node`` matching this expression at the given position.
+    def match(self, text, pos=0):
+        """Return the parse tree matching this expression at the given
+        position, not necessarily extending all the way to the end of ``text``.
 
-        Return ``None`` if it doesn't match there. Check the cache first.
+        Raise ``ParseError`` if there is no match there.
 
         :arg pos: The index at which to start matching
 
+        """
+        error = ParseError(text)
+        node = self._match(text, pos, {}, error)
+        if node is None:
+            raise error
+        return node
+
+    def _match(self, text, pos, cache, error):
+        """Internal-only guts of ``match()``
+
+        :arg cache: The packrat cache::
+
+            {(oid, pos): Node tree matched by object `oid` at index `pos` ...}
+
+        :arg error: A ParseError instance with ``text`` already filled in but
+            otherwise blank. We update the error reporting info on this object
+            as we go. (Sticking references on an existing instance is faster
+            than allocating a new one for each expression that fails.) We
+            return None rather than raising and catching ParseErrors because
+            catching is slow.
         """
         # TODO: Optimize. Probably a hot spot.
         #
@@ -62,18 +85,25 @@ class Expression(StrAndRepr):
         # only the results of entire rules, not subexpressions (probably a
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
-        if cache is None:
-            # The packrat cache. {(oid, pos): Node tree matched by object `oid`
-            #                                 at index `pos`
-            #                     ...}
-            cache = {}
         expr_id = id(self)
-        cached = cache.get((expr_id, pos), ())
-        if cached is not ():
-            return cached
-        uncached = self._uncached_match(text, pos, cache)
-        cache[(expr_id, pos)] = uncached
-        return uncached
+        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        if node is ():
+            node = cache[(expr_id, pos)] = self._uncached_match(text,
+                                                                pos,
+                                                                cache,
+                                                                error)
+
+        # Record progress for error reporting:
+        if node is None and pos >= error.pos and (
+                self.name or getattr(error.expr, 'name', None) is None):
+            # Don't bother reporting on unnamed expressions (unless that's all
+            # we've seen so far), as they're hard to track down for a human.
+            # Perhaps we could include the unnamed subexpressions later as
+            # auxilliary info.
+            error.expr = self
+            error.pos = pos
+
+        return node
 
     def __unicode__(self):
         return u'<%s %s at 0x%s>' % (
@@ -117,7 +147,7 @@ class Literal(Expression):
         super(Literal, self).__init__(name)
         self.literal = literal
 
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
 
@@ -145,7 +175,7 @@ class Regex(Expression):
                                       (unicode and re.U) |
                                       (verbose and re.X))
 
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         """Return length of match, ``None`` if no match."""
         m = self.re.match(text, pos)
         if m is not None:
@@ -155,7 +185,7 @@ class Regex(Expression):
             return node
 
     def _regex_flags_from_bits(self, bits):
-        """Return the textual eqivalent of numerically encoded regex flags."""
+        """Return the textual equivalent of numerically encoded regex flags."""
         flags = 'tilmsux'
         return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
 
@@ -184,12 +214,12 @@ class Sequence(_Compound):
     after another.
 
     """
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         length_of_sequence = 0
         children = []
         for m in self.members:
-            node = m.match(text, new_pos, cache)
+            node = m._match(text, new_pos, cache, error)
             if node is None:
                 return None
             children.append(node)
@@ -209,9 +239,9 @@ class OneOf(_Compound):
     wins.
 
     """
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         for m in self.members:
-            node = m.match(text, pos, cache)
+            node = m._match(text, pos, cache, error)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
@@ -228,8 +258,8 @@ class Lookahead(_Compound):
     # Downside: pretty-printed grammars might be spelled differently than what
     # went in. That doesn't bother me.
 
-    def _uncached_match(self, text, pos, cache):
-        node = self.members[0].match(text, pos, cache)
+    def _uncached_match(self, text, pos, cache, error):
+        node = self.members[0]._match(text, pos, cache, error)
         if node is not None:
             return Node(self.name, text, pos, pos)
 
@@ -243,10 +273,10 @@ class Not(_Compound):
     In any case, it never consumes any characters; it's a negative lookahead.
 
     """
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
-        node = self.members[0].match(text, pos, cache)
+        node = self.members[0]._match(text, pos, cache, error)
         if node is None:
             return Node(self.name, text, pos, pos)
 
@@ -265,8 +295,8 @@ class Optional(_Compound):
     consumes. Otherwise, it consumes nothing.
 
     """
-    def _uncached_match(self, text, pos, cache):
-        node = self.members[0].match(text, pos, cache)
+    def _uncached_match(self, text, pos, cache, error):
+        node = self.members[0]._match(text, pos, cache, error)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
@@ -277,11 +307,11 @@ class Optional(_Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
     """An expression wrapper like the * quantifier in regexes."""
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0].match(text, new_pos, cache)
+            node = self.members[0]._match(text, new_pos, cache, error)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
                 return Node(self.name, text, pos, new_pos, children)
@@ -308,11 +338,11 @@ class OneOrMore(_Compound):
         super(OneOrMore, self).__init__(member, name=name)
         self.min = min
 
-    def _uncached_match(self, text, pos, cache):
+    def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0].match(text, new_pos, cache)
+            node = self.members[0]._match(text, new_pos, cache, error)
             if node is None:
                 break
             children.append(node)
