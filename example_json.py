@@ -9,8 +9,8 @@ array = "[" elements "]"
 elements = (value ("," value)*)?
 true_false_null = "true" / "false" / "null"
 
-string = space "\"" char* "\"" space
-char = ~"[^\"]"  # TODO implement the real thing
+string = space "\"" chars "\"" space
+chars = ~"[^\"]*"  # TODO implement the real thing
 number = (int frac exp) / (int exp) / (int frac) / int
 int = "-"? ((digit1to9 digits) / digit)
 frac = "." digits
