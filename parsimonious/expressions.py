@@ -52,12 +52,12 @@ class Expression(StrAndRepr):
 
         """
         error = ParseError(text)
-        node = self._match(text, pos, {}, error)
+        node = self._match(text, pos, {}, error, self)
         if node is None:
             raise error
         return node
 
-    def _match(self, text, pos, cache, error):
+    def _match(self, text, pos, cache, error, current_named_expr):
         """Internal-only guts of ``match()``
 
         :arg cache: The packrat cache::
@@ -70,6 +70,8 @@ class Expression(StrAndRepr):
             than allocating a new one for each expression that fails.) We
             return None rather than raising and catching ParseErrors because
             catching is slow.
+        :arg current_named_expr: The name of the deepest named expression
+            currently on the call stack, for error reporting
         """
         # TODO: Optimize. Probably a hot spot.
         #
@@ -86,20 +88,14 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
-        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.  # TODO: Try subbing in a 5 or something instead of () to save a construction.
         if node is ():
-            node = cache[(expr_id, pos)] = self._uncached_match(text,
-                                                                pos,
-                                                                cache,
-                                                                error)
+            node = cache[(expr_id, pos)] = self._uncached_match(
+                    text, pos, cache, error, current_named_expr)  # This isn't going to work, because of the cache. We won't recover the stack frames that were traversed as part of filling the cache cell.  # One thing we could do is to wait for an error to occur, then backtrack and redo part of the parse (from the last encountered named expr at whatever position it started) without cache (which we could do by just passing a dummy cache to _match()) to come up with a perfect error message.  # Okay, here's what should work: keep the latest named expr AND its pos on the call stack (passing them in an arg). On failure, call its _match() with that pos, a dummy cache, and maybe a new exc. Then, raise the exc, which it will scribble on appropriately.
 
         # Record progress for error reporting:
-        if node is None and pos >= error.pos and (
-                self.name or getattr(error.expr, 'name', None) is None):
-            # Don't bother reporting on unnamed expressions (unless that's all
-            # we've seen so far), as they're hard to track down for a human.
-            # Perhaps we could include the unnamed subexpressions later as
-            # auxilliary info.
+        if node is None and pos >= error.pos:
+            error.named_expr = current_named_expr
             error.expr = self
             error.pos = pos
 
@@ -147,7 +143,7 @@ class Literal(Expression):
         super(Literal, self).__init__(name)
         self.literal = literal
 
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
 
@@ -175,7 +171,7 @@ class Regex(Expression):
                                       (unicode and re.U) |
                                       (verbose and re.X))
 
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         """Return length of match, ``None`` if no match."""
         m = self.re.match(text, pos)
         if m is not None:
@@ -214,12 +210,12 @@ class Sequence(_Compound):
     after another.
 
     """
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         new_pos = pos
         length_of_sequence = 0
         children = []
         for m in self.members:
-            node = m._match(text, new_pos, cache, error)
+            node = m._match(text, new_pos, cache, error, current_named_expr)
             if node is None:
                 return None
             children.append(node)
@@ -239,9 +235,9 @@ class OneOf(_Compound):
     wins.
 
     """
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         for m in self.members:
-            node = m._match(text, pos, cache, error)
+            node = m._match(text, pos, cache, error, current_named_expr)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
@@ -258,8 +254,8 @@ class Lookahead(_Compound):
     # Downside: pretty-printed grammars might be spelled differently than what
     # went in. That doesn't bother me.
 
-    def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
+        node = self.members[0]._match(text, pos, cache, error, current_named_expr)
         if node is not None:
             return Node(self.name, text, pos, pos)
 
@@ -273,10 +269,10 @@ class Not(_Compound):
     In any case, it never consumes any characters; it's a negative lookahead.
 
     """
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0]._match(text, pos, cache, error, current_named_expr)
         if node is None:
             return Node(self.name, text, pos, pos)
 
@@ -295,8 +291,8 @@ class Optional(_Compound):
     consumes. Otherwise, it consumes nothing.
 
     """
-    def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
+        node = self.members[0]._match(text, pos, cache, error, current_named_expr)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
@@ -307,11 +303,11 @@ class Optional(_Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
     """An expression wrapper like the * quantifier in regexes."""
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0]._match(text, new_pos, cache, error, current_named_expr)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
                 return Node(self.name, text, pos, new_pos, children)
@@ -338,11 +334,11 @@ class OneOrMore(_Compound):
         super(OneOrMore, self).__init__(member, name=name)
         self.min = min
 
-    def _uncached_match(self, text, pos, cache, error):
+    def _uncached_match(self, text, pos, cache, error, current_named_expr):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0]._match(text, new_pos, cache, error, current_named_expr)
             if node is None:
                 break
             children.append(node)

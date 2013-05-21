@@ -2,27 +2,41 @@ from parsimonious.utils import StrAndRepr
 
 
 class ParseError(StrAndRepr, Exception):
-    """A call to ``Expression.parse()`` or ``match()`` didn't match."""
+    """A call to ``Expression.parse()`` or ``match()`` didn't match.
 
-    def __init__(self, text, pos=-1, expr=None):
+    We identify the rightmost position reached in attempting to parse the text.
+    Then we report the deepest named expression reached on the path to this
+    spot. For additional precision, we also report the subexpression that
+    finally failed to match.
+
+    """
+
+    def __init__(self, text, pos=-1, expr=None, named_expr=None):
+        """Construct.
+
+        :arg expr: The expression that has progressed farthest in the text.
+            May be named or unnamed.
+        :arg named_expr: The deepest named expression which resulted in a call
+            to ``expr``. If there was no named expression in the call stack,
+            this must be an unnamed one by the time the exception is raised.
+        """
         # It would be nice to use self.args, but I don't want to pay a penalty
         # to call descriptors or have the confusion of numerical indices in
         # Expression._match().
         self.text = text
         self.pos = pos
         self.expr = expr
+        self.named_expr = named_expr
 
     def __unicode__(self):
-        rule_name = ((u"'%s'" % self.expr.name) if self.expr.name else
-                     unicode(self.expr))
-        return u"Rule %s didn't match at '%s' (line %s, column %s)." % (
+        rule_name = ((u"'%s'" % self.named_expr.name) if self.named_expr.name
+                     else unicode(self.named_expr))
+        return u"Rule %s expected a match for '%s' at '%s' (line %s, column %s)." % (
                 rule_name,
+                self.expr,
                 self.text[self.pos:self.pos + 20],
                 self.line(),
                 self.column())
-
-    # TODO: Add line, col, and separated-out error message so callers can build
-    # their own presentation.
 
     def line(self):
         """Return the 1-based line number where the expression ceased to
