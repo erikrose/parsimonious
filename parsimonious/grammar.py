@@ -177,7 +177,8 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
+    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
+                        ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
     expression = ored / sequence / term
     or_term = "/" _ term

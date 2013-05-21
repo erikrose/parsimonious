@@ -327,6 +327,7 @@ Version History
     putting multiple rules on one line (but don't do that) and all sorts of
     other horrific behavior.
   * Tolerate whitespace after opening parens.
+  * Add support for single-quoted literals.
 
 0.4
   * Support Python 3.

@@ -30,17 +30,20 @@ class BootstrappingGrammarTests(TestCase):
     def test_spaceless_literal(self):
         text = '"anything but quotes#$*&^"'
         eq_(rule_grammar['spaceless_literal'].parse(text),
-            Node('spaceless_literal', text, 0, len(text)))
+            Node('spaceless_literal', text, 0, len(text), children=[
+                Node('', text, 0, len(text))]))
         text = r'''r"\""'''
         eq_(rule_grammar['spaceless_literal'].parse(text),
-            Node('spaceless_literal', text, 0, 5))
+            Node('spaceless_literal', text, 0, 5, children=[
+                Node('', text, 0, 5)]))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
         eq_(rule_grammar['regex'].parse(text),
             Node('regex', text, 0, len(text), children=[
                  Node('', text, 0, 1),
-                 Node('spaceless_literal', text, 1, 25),
+                 Node('spaceless_literal', text, 1, 25, children=[
+                     Node('', text, 1, 25)]),
                  Node('', text, 25, 27),
                  Node('_', text, 27, 27)]))
 
@@ -290,3 +293,6 @@ class GrammarTests(TestCase):
         """Make sure a parenthesized expression is allowed to have leading
         whitespace when nested directly inside another."""
         Grammar("""foo = ( ("c") )""").parse('c')
+
+    def test_single_quoted_literals(self):
+        Grammar("""foo = 'a' '"'""").parse('a"')
