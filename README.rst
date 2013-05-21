@@ -61,7 +61,7 @@ Status
 
 * Everything that exists works. Test coverage is good.
 * I don't plan on making any backward-incompatible changes to the rule syntax
-  in the future, so you can write grammars without fear.
+  in the future, so you can write grammars with confidence.
 * It may be slow and use a lot of RAM; I haven't measured either yet. However,
   I have yet to begin optimizing in earnest.
 * Error reporting is now in place. ``repr`` methods of expressions, grammars,
@@ -72,7 +72,8 @@ Status
   existing ones; later rules of the same name should override previous ones.
   However, this is untested and may not be the final story.
 * Sphinx docs are coming, but the docstrings are quite useful now.
-* Note that there may be API changes until we get to 1.0.
+* Note that there may be API changes until we get to 1.0, so be sure to pin to
+  the version you're using.
 
 Coming Soon
 -----------

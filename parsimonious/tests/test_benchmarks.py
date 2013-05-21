@@ -1,4 +1,5 @@
-"""Tests to show that the benchmarks we based our speed optimizations on are still valid"""
+"""Tests to show that the benchmarks we based our speed optimizations on are
+still valid"""
 
 from functools import partial
 from timeit import timeit
