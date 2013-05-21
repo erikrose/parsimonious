@@ -285,3 +285,8 @@ class GrammarTests(TestCase):
             foo = bar
             bar = foo
             """)
+
+    def test_parens_with_leading_whitespace(self):
+        """Make sure a parenthesized expression is allowed to have leading
+        whitespace when nested directly inside another."""
+        Grammar("""foo = ( ("c") )""").parse('c')

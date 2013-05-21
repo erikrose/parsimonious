@@ -189,7 +189,7 @@ rule_syntax = (r'''
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
-    parenthesized = "(" expression ")" _
+    parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]" _
     reference = label !equals
 
@@ -228,8 +228,9 @@ class RuleVisitor(NodeVisitor):
 
     visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
 
-    def visit_parenthesized(self, parenthesized, (left_paren, expression,
-                                                  right_paren, _)):
+    def visit_parenthesized(self, parenthesized, (left_paren, _1,
+                                                  expression,
+                                                  right_paren, _2)):
         """Treat a parenthesized subexpression as just its contents.
 
         Its position in the tree suffices to maintain its grouping semantics.

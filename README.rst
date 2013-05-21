@@ -326,6 +326,7 @@ Version History
   * Support splitting rules across multiple lines, interleaving comments,
     putting multiple rules on one line (but don't do that) and all sorts of
     other horrific behavior.
+  * Tolerate whitespace after opening parens.
 
 0.4
   * Support Python 3.
