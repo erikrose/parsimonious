@@ -313,12 +313,13 @@ Version History
 
       This release makes some backward-incompatible changes. See below.
 
-  * Add error reporting. Now, rather than returning ``None``, ``parse()`` and
-    ``match()`` raise ``ParseError`` if they don't succeed. This makes more
-    sense, since you'd rarely attempt to parse something and not care if it
-    succeeds. It was too easy before to forget to check for a ``None`` result.
-    ``ParseError`` gives you a human-readable unicode representation as well as
-    some attributes that let you construct your own custom presentation.
+  * Add alpha-quality error reporting. Now, rather than returning ``None``,
+    ``parse()`` and ``match()`` raise ``ParseError`` if they don't succeed.
+    This makes more sense, since you'd rarely attempt to parse something and
+    not care if it succeeds. It was too easy before to forget to check for a
+    ``None`` result. ``ParseError`` gives you a human-readable unicode
+    representation as well as some attributes that let you construct your own
+    custom presentation.
   * Grammar construction now raises ``ParseError`` rather than ``BadGrammar``
     if it can't parse your rules.
   * ``parse()`` now takes an optional ``pos`` argument, like ``match()``.
