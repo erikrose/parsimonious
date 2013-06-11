@@ -177,7 +177,8 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is
+    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
+                        ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
     expression = ored / sequence / term
     or_term = "/" _ term
@@ -189,7 +190,7 @@ rule_syntax = (r'''
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
-    parenthesized = "(" expression ")" _
+    parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]" _
     reference = label !equals
 
@@ -228,8 +229,9 @@ class RuleVisitor(NodeVisitor):
 
     visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
 
-    def visit_parenthesized(self, parenthesized, (left_paren, expression,
-                                                  right_paren, _)):
+    def visit_parenthesized(self, parenthesized, (left_paren, _1,
+                                                  expression,
+                                                  right_paren, _2)):
         """Treat a parenthesized subexpression as just its contents.
 
         Its position in the tree suffices to maintain its grouping semantics.

@@ -1,8 +1,8 @@
 """Benchmarks for Parsimonious
 
-Run these with ``nosetests -s parsimonious/tests/bench.py``. They don't run
-during normal test runs because they're not tests--they don't assert anything.
-Also, they're a bit slow.
+Run these with ``nosetests parsimonious/tests/bench.py``. They don't run during
+normal test runs because they're not tests--they don't assert anything. Also,
+they're a bit slow.
 
 These differ from the ones in test_benchmarks in that these are meant to be
 compared from revision to revision of Parsimonious to make sure we're not
