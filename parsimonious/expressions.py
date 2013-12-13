@@ -85,10 +85,10 @@ class Expression(StrAndRepr):
         # only the results of entire rules, not subexpressions (probably a
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
-        expr_id = id(self)
-        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        key = (id(self)<<30) | pos
+        node = cache.get(key, ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
         if node is ():
-            node = cache[(expr_id, pos)] = self._uncached_match(text,
+            node = cache[key] = self._uncached_match(text,
                                                                 pos,
                                                                 cache,
                                                                 error)
