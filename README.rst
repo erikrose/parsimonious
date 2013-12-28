@@ -308,6 +308,9 @@ Niceties
 Version History
 ===============
 
+0.6
+  * Improve exception message when you forget to declare a visitor method.
+
 0.5
   .. warning::
 

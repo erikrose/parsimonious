@@ -178,7 +178,8 @@ class NodeVisitor(object):
         for now.
 
         """
-        raise NotImplementedError
+        raise NotImplementedError("No visitor method was defined for %s." %
+                                  node.expr_name)
 
     # Convenience methods you can call from your own visitors:
 
