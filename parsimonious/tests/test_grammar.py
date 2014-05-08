@@ -5,6 +5,7 @@ from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
+from parsimonious.expressions import Token
 from parsimonious.nodes import Node
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
 
@@ -296,3 +297,20 @@ class GrammarTests(TestCase):
 
     def test_single_quoted_literals(self):
         Grammar("""foo = 'a' '"'""").parse('a"')
+
+
+class TokenListTests(TestCase):
+    def test_token_list_grammar(self):
+        """Token literals should work."""
+        grammar = Grammar("""
+            foo = %TOKEN1% %TOKEN2%
+            """)
+        ok_(grammar.parse([Token("TOKEN1"), Token("TOKEN2")]) is not None)
+
+    def test_token_list_grammar_false(self):
+        """Token literals should work."""
+        grammar = Grammar("""
+            foo = %TOKEN1% %TOKEN2%
+            """)
+        assert_raises(ParseError, grammar.parse, [Token("TOKEN"), Token("TOKEN2")])
+
