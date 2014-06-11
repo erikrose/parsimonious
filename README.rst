@@ -114,10 +114,12 @@ Grammars are defined by a series of rules. The syntax should be familiar to
 anyone who uses regexes or reads programming language manuals. An example will
 serve best::
 
-    styled_text = bold_text / italic_text
-    bold_text   = "((" text "))"
-    italic_text = "''" text "''"
-    text        = ~"[A-Z 0-9]*"i
+    my_grammar = Grammar(r"""
+        styled_text = bold_text / italic_text
+        bold_text   = "((" text "))"
+        italic_text = "''" text "''"
+        text        = ~"[A-Z 0-9]*"i
+        """)
 
 You can wrap a rule across multiple lines if you like; the syntax is very
 forgiving.
