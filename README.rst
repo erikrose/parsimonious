@@ -217,6 +217,10 @@ iterability by using tuple unpacks in the formal parameter lists::
     def visit_or_term(self, or_term, (_, slash, term)):
         ...
 
+For reference, here is the production the above unpacks::
+
+    or_term = "/" _ term
+
 When something goes wrong in your visitor, you get a nice error like this::
 
     [normal traceback here...]
