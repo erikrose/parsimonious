@@ -214,7 +214,7 @@ on it. For now, have a look at its docstrings for more detail. There's also a
 good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
 iterability by using tuple unpacks in the formal parameter lists::
 
-    def visit_or_term(self, or_term, (_, slash, term)):
+    def visit_or_term(self, or_term, (slash, _, term)):
         ...
 
 For reference, here is the production the above unpacks::
