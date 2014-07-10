@@ -242,6 +242,17 @@ class ErrorReportingTests(TestCase):
             # didn't match". That's not the greatest. Fix that, then fix this.
             ok_(unicode(error).endswith(ur"""didn't match at 'GOO' (line 2, column 4)."""))
 
+    def test_cache_busting(self):
+        """Errors should be reported as if there were no caching."""
+        grammar = Grammar(r"""
+            phrase = color " smoo" | color " bar"
+            color = "blue"
+            """)
+        try:
+            grammar.parse('blue something else')
+        except ParseError as error:
+            # If cache-busting didn't work, the parse of "color" should end up in the cache
+
 
 class RepresentationTests(TestCase):
     """Tests for str(), unicode(), and repr() of expressions"""

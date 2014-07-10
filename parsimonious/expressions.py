@@ -54,10 +54,15 @@ class Expression(StrAndRepr):
         error = ParseError(text)
         node = self._match(text, pos, {}, error, self)
         if node is None:
+            named_expr = error.named_expr  # some named expr on the way to the actual mismatch
+            named_expr_pos = error.pos
+            error = ParseError(text)
+            node = named_expr._match(text, pos, DummyCache(), error, self)
+            assert node is None
             raise error
         return node
 
-    def _match(self, text, pos, cache, error, current_named_expr):
+    def _match(self, text, pos, cache, error, current_named_expr, current_named_pos?):
         """Internal-only guts of ``match()``
 
         :arg cache: The packrat cache::
@@ -72,6 +77,8 @@ class Expression(StrAndRepr):
             catching is slow.
         :arg current_named_expr: The name of the deepest named expression
             currently on the call stack, for error reporting
+        :arg current_named_pos: The pos at which we attempted to match
+            ``current_named_expr`` 
         """
         # TODO: Optimize. Probably a hot spot.
         #
@@ -96,6 +103,7 @@ class Expression(StrAndRepr):
         # Record progress for error reporting:
         if node is None and pos >= error.pos:
             error.named_expr = current_named_expr
+            error.current_named_pos = current_named_pos?
             error.expr = self
             error.pos = pos
 
