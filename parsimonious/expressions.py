@@ -17,6 +17,10 @@ __all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'Lookahead',
            'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
 
 
+class Token(StrAndRepr):
+    def __init__(self, type):
+        self.type = type
+
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -88,7 +92,7 @@ class Expression(StrAndRepr):
         expr_id = id(self)
         node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
         if node is ():
-            node = cache[(expr_id, pos)] = self._uncached_match(text,
+            node = cache[(expr_id, pos)] = self.__uncached_match(text,
                                                                 pos,
                                                                 cache,
                                                                 error)
@@ -104,6 +108,12 @@ class Expression(StrAndRepr):
             error.pos = pos
 
         return node
+
+    def __uncached_match(self, text, pos, cache, error):
+        if isinstance(text, basestring):
+            return self._uncached_match(text, pos, cache, error)
+        elif isinstance(text, list):
+            return self._uncached_match_list(text, pos, cache, error)
 
     def __unicode__(self):
         return u'<%s %s at 0x%s>' % (
@@ -151,9 +161,31 @@ class Literal(Expression):
         if text.startswith(self.literal, pos):
             return Node(self.name, text, pos, pos + len(self.literal))
 
+    def _uncached_match_list(self, token_list, pos, cache, error):
+        if token_list[pos].text == self.literal:
+            return Node(self.name, token_list, pos, pos + 1)
+
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
         return '"%s"' % self.literal
+
+class TokenExpression(Expression):
+    """An expression matching a single token of a given type.
+
+    """
+    __slots__ = ['type']
+
+    def __init__(self, type, name=''):
+        super(TokenExpression, self).__init__(name)
+        self.type = type
+
+    def _uncached_match_list(self, token_list, pos, cache, error):
+        if token_list[pos].type == self.type:
+            return Node(self.name, token_list[pos], pos, pos + 1)
+
+    def _as_rhs(self):
+        # TODO: Get backslash escaping right.
+        return '"#%s"' % self.type
 
 
 class Regex(Expression):
@@ -214,6 +246,11 @@ class Sequence(_Compound):
     after another.
 
     """
+
+    def __init__(self, *members, **kwargs):
+        super(Sequence, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         length_of_sequence = 0
@@ -229,6 +266,7 @@ class Sequence(_Compound):
         # Hooray! We got through all the members!
         return Node(self.name, text, pos, pos + length_of_sequence, children)
 
+
     def _as_rhs(self):
         return u' '.join(self._unicode_members())
 
@@ -239,12 +277,18 @@ class OneOf(_Compound):
     wins.
 
     """
+
+    def __init__(self, *members, **kwargs):
+        super(OneOf, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+
     def _uncached_match(self, text, pos, cache, error):
         for m in self.members:
             node = m._match(text, pos, cache, error)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
+
 
     def _as_rhs(self):
         return u' / '.join(self._unicode_members())
@@ -257,6 +301,10 @@ class Lookahead(_Compound):
     # TODO: Merge this and Not for better cache hit ratios and less code.
     # Downside: pretty-printed grammars might be spelled differently than what
     # went in. That doesn't bother me.
+
+    def __init__(self, *members, **kwargs):
+        super(Lookahead, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
 
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0]._match(text, pos, cache, error)
@@ -273,6 +321,10 @@ class Not(_Compound):
     In any case, it never consumes any characters; it's a negative lookahead.
 
     """
+    def __init__(self, *members, **kwargs):
+        super(Not, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+
     def _uncached_match(self, text, pos, cache, error):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
@@ -295,6 +347,11 @@ class Optional(_Compound):
     consumes. Otherwise, it consumes nothing.
 
     """
+
+    def __init__(self, *members, **kwargs):
+        super(Optional, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0]._match(text, pos, cache, error)
         return (Node(self.name, text, pos, pos) if node is None else
@@ -307,6 +364,10 @@ class Optional(_Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(_Compound):
     """An expression wrapper like the * quantifier in regexes."""
+    def __init__(self, *members, **kwargs):
+        super(ZeroOrMore, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
@@ -334,9 +395,10 @@ class OneOrMore(_Compound):
     # TODO: Add max. It should probably succeed if there are more than the max
     # --just not consume them.
 
-    def __init__(self, member, name='', min=1):
-        super(OneOrMore, self).__init__(member, name=name)
-        self.min = min
+    def __init__(self, *members, **kwargs):
+        super(OneOrMore, self).__init__(*members, **kwargs)
+        self._uncached_match_list = self._uncached_match
+        self.min = kwargs['min'] if 'min' in kwargs else 1
 
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos

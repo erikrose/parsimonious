@@ -9,7 +9,7 @@ import ast
 
 from parsimonious.exceptions import UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Optional, ZeroOrMore, OneOrMore, Not)
+    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenExpression)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr
 
@@ -175,6 +175,11 @@ rule_syntax = (r'''
     rule = label equals expression
     equals = "=" _
     literal = spaceless_literal _
+    token_literal = spaceless_token_literal _
+
+    # A token literal is denoted %TOKEN_TYPE%; the character % is not allowed as part of the token type
+    spaceless_token_literal = ~"%[^%]+%"is
+
 
     # So you can't spell a regex like `~"..." ilm`:
     spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
@@ -188,7 +193,7 @@ rule_syntax = (r'''
     lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = reference / literal / regex / parenthesized
+    atom = reference / literal / regex / parenthesized / token_literal
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]" _
@@ -306,6 +311,18 @@ class RuleVisitor(NodeVisitor):
         return Literal(ast.literal_eval(spaceless_literal.text))
 
     def visit_literal(self, literal, (spaceless_literal, _)):
+        """Pick just the literal out of a literal-and-junk combo."""
+        return spaceless_literal
+
+    def visit_spaceless_token_literal(self, expr, visited_children):
+        """Turn a string literal into a ``Literal`` that recognizes it."""
+        # Piggyback on Python's string support so we can have backslash
+        # escaping and niceties like \n, \t, etc.
+        # string.decode('string_escape') would have been a lower-level
+        # possibility.
+        return TokenExpression(expr.text[1:-1])
+
+    def visit_token_literal(self, literal, (spaceless_literal, _)):
         """Pick just the literal out of a literal-and-junk combo."""
         return spaceless_literal
 
