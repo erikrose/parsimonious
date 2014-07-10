@@ -145,6 +145,9 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
+    #: The grammar recommended for use with this visitor. If you populate this,
+    #: you will be able to call :meth:`NodeVisitor.parse()` as a shortcut.
+    grammar = None
 
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
@@ -193,8 +196,47 @@ class NodeVisitor(object):
         raise NotImplementedError("No visitor method was defined for %s." %
                                   node.expr_name)
 
-    # Convenience methods you can call from your own visitors:
+    # Convenience methods:
+
+    def parse(self, text, pos=0):
+        """Parse some text with this Visitor's default grammar.
+
+        ``SomeVisitor().parse('some_string')`` is a shortcut for
+        ``SomeVisitor().visit(some_grammar.parse('some_string'))``.
+
+        """
+        return self._parse_or_match(text, pos, 'parse')
+
+    def match(self, text, pos=0):
+        """Parse some text with this Visitor's default grammar, but don't
+        insist on parsing all the way to the end.
+
+        ``SomeVisitor().match('some_string')`` is a shortcut for
+        ``SomeVisitor().visit(some_grammar.match('some_string'))``.
+
+        """
+        return self._parse_or_match(text, pos, 'match')
+
+    # Internal convenience methods to help you write your own visitors:
 
     def lift_child(self, node, (first_child,)):
         """Lift the sole child of ``node`` up to replace the node."""
         return first_child
+
+    # Private methods:
+
+    def _parse_or_match(self, text, pos, method_name):
+        """Execute a parse or match on the default grammar, followed by a
+        visitation.
+
+        Raise RuntimeError if there is no default grammar specified.
+
+        """
+        if not self.grammar:
+            raise RuntimeError(
+                "The {cls}.{method}() shortcut won't work because {cls} was "
+                "never associated with a specific " "grammar. Fill out its "
+                "`grammar` attribute, and try again.".format(
+                    cls=self.__class__.__name__,
+                    method=method_name))
+        return self.visit(getattr(self.grammar, method_name)(text, pos=pos))

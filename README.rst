@@ -316,6 +316,9 @@ Version History
 
 0.6
   * Improve exception message when you forget to declare a visitor method.
+  * Add ``parse()`` and ``match()`` convenience methods to ``NodeVisitor``.
+    This makes the common case of parsing a string and applying exactly one
+    visitor to the AST shorter and simpler.
 
 0.5
   .. warning::

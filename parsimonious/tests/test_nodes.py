@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 from nose.tools import eq_, assert_raises
 
+from parsimonious.grammar import Grammar
 from parsimonious.nodes import Node, NodeVisitor, VisitationError
 
 
 class HtmlFormatter(NodeVisitor):
     """Visitor that turns a parse tree into HTML fragments"""
+
+    grammar = Grammar("""bold_open  = '(('""")  # just partial
 
     def visit_bold_open(self, node, visited_children):
         return '<b>'
@@ -73,3 +76,13 @@ def test_repr():
     n = Node(boogie, s, 0, 3, children=[
             Node('', s, 3, 4), Node('', s, 4, 5)])
     eq_(repr(n), """s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node('', s, 3, 4), Node('', s, 4, 5)])""".format(hai_o=repr(s), boogie=repr(boogie)))
+
+
+def test_parse_shortcut():
+    """Exercise the simple case in which the visitor takes care of parsing."""
+    eq_(HtmlFormatter().parse('(('), '<b>')
+
+
+def test_match_shortcut():
+    """Exercise the simple case in which the visitor takes care of matching."""
+    eq_(HtmlFormatter().match('((other things'), '<b>')
