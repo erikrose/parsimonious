@@ -127,9 +127,13 @@ class NodeVisitor(object):
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
     each expr you care about, instantiate, and call
-    ``visit(top_node_of_parse_tree)``. It'll return the useful stuff.
+    ``visit(top_node_of_parse_tree)``. It'll return the useful stuff. This API
+    is very similar to that of ``ast.NodeVisitor``.
 
-    This API is very similar to that of ``ast.NodeVisitor``.
+    These could easily all be static methods, but that would add at least as
+    much weirdness at the call site as the ``()`` for instantiation. And this
+    way, we support subclasses that require state state: options, for example,
+    or a symbol table constructed from a programming language's AST.
 
     We never transform the parse tree in place, because...
 
@@ -141,16 +145,24 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-    # These could easily all be static methods, but that adds at least as much
-    # user-facing weirdness as the ``()`` chars for instantiation. And this
-    # way, we're forward compatible if we or the user ever wants to add any
-    # state: options, for instance, or a symbol table constructed from a
-    # programming language's AST.
 
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
     # mark nodes as not descent-worthy in the grammar.
     def visit(self, node):
+        """Walk a parse tree, transforming it into another representation.
+
+        Recursively descend a parse tree, dispatching to the method named after
+        the rule in the :class:`~parsimonious.grammar.Grammar` that produced
+        each node. If, for example, a rule was... ::
+
+            bold = '<b>'
+
+        ...the ``visit_bold()`` method would be called. It is your
+        responsibility to subclass :class:`NodeVisitor` and implement those
+        methods.
+
+        """
         method = getattr(self, 'visit_' + node.expr_name, self.generic_visit)
 
         # Call that method, and show where in the tree it failed if it blows
