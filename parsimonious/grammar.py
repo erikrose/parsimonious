@@ -17,9 +17,9 @@ from parsimonious.utils import StrAndRepr
 
 
 class Grammar(StrAndRepr, dict):
-    """A collection of expressions that describe a language
+    """A collection of rules that describe a language
 
-    You can start parsing from the default expression by calling ``parse()``
+    You can start parsing from the default rule by calling ``parse()``
     directly on the ``Grammar`` object::
 
         g = Grammar('''
@@ -29,10 +29,10 @@ class Grammar(StrAndRepr, dict):
                     ''')
         g.parse('Hello, my good sir')
 
-    Or start parsing from any of the other expressions; you can pull them out
-    of the grammar as if it were a dictionary::
+    Or start parsing from any of the other rules; you can pull them out of the
+    grammar as if it were a dictionary::
 
-        g['greeting'].parse('Hi')
+        g['title'].parse('sir')
 
     You could also just construct a bunch of ``Expression`` objects yourself
     and stitch them together into a language, but using a ``Grammar`` has some
@@ -162,6 +162,7 @@ class BootstrappingGrammar(Grammar):
 
         # Turn the parse tree into a map of expressions:
         return RuleVisitor().visit(rule_tree)
+
 
 # The grammar for parsing PEG grammar definitions:
 # This is a nice, simple grammar. We may someday add to it, but it's a safe bet
@@ -411,6 +412,7 @@ rule_grammar = BootstrappingGrammar(rule_syntax)
 # grammars. And the correctness of that tree is tested, indirectly, in
 # test_grammar.
 rule_grammar = Grammar(rule_syntax)
+
 
 # TODO: Teach Expression trees how to spit out Python representations of
 # themselves. Then we can just paste that in above, and we won't have to
