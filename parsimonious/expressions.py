@@ -13,10 +13,6 @@ from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 
-__all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'Lookahead',
-           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
-
-
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 

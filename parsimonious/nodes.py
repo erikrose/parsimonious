@@ -145,8 +145,9 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-    #: The grammar recommended for use with this visitor. If you populate this,
-    #: you will be able to call :meth:`NodeVisitor.parse()` as a shortcut.
+    #: The :term:`default grammar`: the one recommended for use with this
+    #: visitor. If you populate this, you will be able to call
+    #: :meth:`NodeVisitor.parse()` as a shortcut.
     grammar = None
 
     # TODO: If we need to optimize this, we can go back to putting subclasses

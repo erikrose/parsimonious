@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from nose.tools import eq_, assert_raises
 
-from parsimonious.grammar import Grammar
-from parsimonious.nodes import Node, NodeVisitor, VisitationError
+from parsimonious import Grammar, NodeVisitor, VisitationError, GrammarFromDocstrings
+from parsimonious.nodes import Node
 
 
 class HtmlFormatter(NodeVisitor):
@@ -86,3 +86,25 @@ def test_parse_shortcut():
 def test_match_shortcut():
     """Exercise the simple case in which the visitor takes care of matching."""
     eq_(HtmlFormatter().match('((other things'), '<b>')
+
+
+def test_docstring_grammar():
+    class CoupledFormatter(NodeVisitor, GrammarFromDocstrings):
+        def visit_bold_text(self, node, visited_children):
+            """bold_text = bold_open text bold_close"""
+            return ''.join(visited_children)
+
+        def visit_bold_open(self, node, visited_children):
+            """bold_open = '(('"""
+            return '<b>'
+
+        def visit_bold_close(self, node, visited_children):
+            """bold_close = '))'"""
+            return '</b>'
+
+        def visit_text(self, node, visited_children):
+            """text = ~'[a-zA-Z 0-9]*'"""
+            # Return the text verbatim.
+            return node.text
+
+    eq_(CoupledFormatter().parse('((hi))'), '<b>hi</b>')
