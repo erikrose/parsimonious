@@ -13,6 +13,9 @@ from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 
+MARKER = object()
+
+
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -82,8 +85,8 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
-        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
-        if node is ():
+        node = cache.get((expr_id, pos), MARKER)  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        if node is MARKER:
             node = cache[(expr_id, pos)] = self._uncached_match(text,
                                                                 pos,
                                                                 cache,
