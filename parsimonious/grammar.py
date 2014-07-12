@@ -325,58 +325,32 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
-    def _resolve_refs(self, rule_map, expr, unwalked_names, walking_names):
+    def _resolve_refs(self, rule_map, expr):
         """Return an expression with all its lazy references recursively
         resolved.
 
         Resolve any lazy references in the expression ``expr``, recursing into
-        all subexpressions. Populate ``rule_map`` with any other rules (named
-        expressions) resolved along the way. Remove from ``unwalked_names`` any
-        which were resolved.
-
-        :arg walking_names: The stack of labels we are currently recursing
-            through. This prevents infinite recursion for circular refs.
+        all subexpressions.
 
         """
-        # If it's a top-level (named) expression and we've already walked it,
-        # don't walk it again:
-        if expr.name and expr.name not in unwalked_names:
-            # unwalked_names started out with all the rule names in it, so, if
-            # this is a named expr and it isn't in there, it must have been
-            # resolved.
-            return rule_map[expr.name]
-
-        # If not, resolve it:
-        elif isinstance(expr, LazyReference):
+        if isinstance(expr, LazyReference):
             label = unicode(expr)
-            if label not in walking_names:
-                # We aren't already working on traversing this label:
-                try:
-                    reffed_expr = rule_map[label]
-                except KeyError:
-                    raise UndefinedLabel(expr)
-                rule_map[label] = self._resolve_refs(
-                        rule_map,
-                        reffed_expr,
-                        unwalked_names,
-                        walking_names + (label,))
+            try:
+                reffed_expr = rule_map[label]
+            except KeyError:
+                raise UndefinedLabel(expr)
+            return self._resolve_refs(rule_map, reffed_expr)
 
-                # If we recurse into a compound expression, the remove()
-                # happens in there. But if this label points to a non-compound
-                # expression like a literal or a regex or another lazy
-                # reference, we need to do this here:
-                unwalked_names.discard(label)
-            return rule_map[label]
         else:
-            members = getattr(expr, 'members', [])
-            if members:
-                expr.members = [self._resolve_refs(rule_map,
-                                                   m,
-                                                   unwalked_names,
-                                                   walking_names)
-                                for m in members]
-            if expr.name:
-                unwalked_names.remove(expr.name)
+            original_members = getattr(expr, 'members', ())
+            if original_members:
+                # Prevents infinite recursion for circular refs. At worst, one
+                # of `expr.members` can refer back to `expr`, but it can't go
+                # any farther.
+                expr.members = ()
+                resolved_members = [self._resolve_refs(rule_map, member)
+                                    for member in original_members]
+                expr.members = resolved_members
             return expr
 
     def visit_rules(self, node, (_, rules)):
@@ -394,14 +368,8 @@ class RuleVisitor(NodeVisitor):
         rule_map = dict((expr.name, expr) for expr in rules)
 
         # Resolve references. This tolerates forward references.
-        unwalked_names = set(rule_map.iterkeys())
-        while unwalked_names:
-            rule_name = next(iter(unwalked_names))  # any arbitrary item
-            rule_map[rule_name] = self._resolve_refs(rule_map,
-                                                     rule_map[rule_name],
-                                                     unwalked_names,
-                                                     (rule_name,))
-            unwalked_names.discard(rule_name)
+        rule_map = dict((expr.name, self._resolve_refs(rule_map, expr))
+                        for expr in rules)
         return rule_map, rules[0]
 
 
