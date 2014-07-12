@@ -5,8 +5,9 @@ from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
+from parsimonious.expressions import Sequence
 from parsimonious.nodes import Node
-from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar
+from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, LazyReference
 
 
 class BootstrappingGrammarTests(TestCase):
@@ -296,3 +297,77 @@ class GrammarTests(TestCase):
 
     def test_single_quoted_literals(self):
         Grammar("""foo = 'a' '"'""").parse('a"')
+
+    def test_simple_custom_rules(self):
+        """Run 2-arg custom-coded rules through their paces."""
+        grammar = Grammar("""
+            bracketed_digit = start digit end
+            start = '['
+            end = ']'""",
+            digit = lambda text, pos:
+                        (pos + 1) if text[pos].isdigit() else None)
+        s = '[6]'
+        eq_(grammar.parse(s),
+            Node('bracketed_digit', s, 0, 3, children=[
+                Node('start', s, 0, 1),
+                Node('digit', s, 1, 2),
+                Node('end', s, 2, 3)]))
+
+    def test_complex_custom_rules(self):
+        """Run 5-arg custom rules through their paces.
+
+        Incidentally tests returning an actual Node from the custom rule.
+
+        """
+        grammar = Grammar("""
+            bracketed_digit = start digit end
+            start = '['
+            end = ']'
+            real_digit = '6'""",
+            # In this particular implementation of the digit rule, no node is
+            # generated for `digit`; it falls right through to `real_digit`.
+            # I'm not sure if this could lead to problems; I can't think of
+            # any, but it's probably not a great idea.
+            digit = lambda text, pos, cache, error, grammar:
+                        grammar['real_digit']._match(text, pos, cache, error))
+        s = '[6]'
+        eq_(grammar.parse(s),
+            Node('bracketed_digit', s, 0, 3, children=[
+                Node('start', s, 0, 1),
+                Node('real_digit', s, 1, 2),
+                Node('end', s, 2, 3)]))
+
+    def test_lazy_custom_rules(self):
+        """Make sure LazyReferences manually shoved into custom rules are
+        resolved.
+
+        Incidentally test passing full-on Expressions as custom rules and
+        having a custom rule as the default one.
+
+        """
+        grammar = Grammar("""
+            four = '4'
+            five = '5'""",
+            forty_five = Sequence(LazyReference('four'),
+                                  LazyReference('five'),
+                                  name='forty_five'),
+            default_rule='forty_five')
+        s = '45'
+        eq_(grammar.parse(s),
+            Node('forty_five', s, 0, 2, children=[
+                Node('four', s, 0, 1),
+                Node('five', s, 1, 2)]))
+
+    def test_unconnected_custom_rules(self):
+        """Make sure custom rules that aren't hooked to any other rules still
+        get included in the grammar and that lone ones get set as the
+        default.
+
+        Incidentally test Grammar's `rules` default arg.
+
+        """
+        grammar = Grammar(one_char=lambda text, pos: pos + 1,
+                          default_rule='one_char')
+        s = '4'
+        eq_(grammar.parse(s),
+            Node('one_char', s, 0, 1))

@@ -6,12 +6,12 @@ by hand.
 
 """
 import ast
-from inspect import isfunction
+from inspect import isfunction, ismethod
 from sys import version_info
 
 from parsimonious.exceptions import UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Optional, ZeroOrMore, OneOrMore, Not)
+    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, expression)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr
 
@@ -45,26 +45,30 @@ class Grammar(StrAndRepr, dict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
-    def __init__(self, rules, default_rule=None):
+    def __init__(self, rules='', default_rule=None, **custom_rules):
         """Construct a grammar.
 
-        :arg rules: A string of production rules, one per line. There must be
-            at least one rule.
+        :arg rules: A string of production rules, one per line.
         :arg default_rule: The name of the rule invoked when you call
-            ``parse()`` on the grammar. Defaults to the first rule.
+            :meth:`parse()` or :meth:`match()` on the grammar. Defaults to the
+            first rule. Falls back to None if there are no string-based rules
+            in this grammar.
+        :arg custom_rules: Custom-coded rules: Expressions or plain callables
+            to accomplish things the built-in rule syntax cannot. These take
+            precedence over ``rules`` in case of naming conflicts.
 
         """
-        # We can either have extending callers pull the rule text out of repr,
-        # or we could get fancy and define __add__ on Grammars and strings. Or
-        # maybe, if you want to extend a grammar, just prepend (or append?)
-        # your string to its, and yours will take precedence. Or use the OMeta
-        # delegation syntax.
-        exprs, first = self._expressions_from_rules(rules)
+        decorated_custom_rules = dict(
+            (k, expression(v, k, self) if isfunction(v) or
+                                          ismethod(v) else
+                v) for k, v in custom_rules.iteritems())
+
+        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
 
         self.update(exprs)
         self.default_rule = exprs[default_rule] if default_rule else first
 
-    def _expressions_from_rules(self, rules):
+    def _expressions_from_rules(self, rules, custom_rules):
         """Return a 2-tuple: a dict of rule names pointing to their
         expressions, and then the first rule.
 
@@ -73,12 +77,20 @@ class Grammar(StrAndRepr, dict):
         starting symbol for parsing, but there's nothing saying you can't have
         multiple roots.
 
+        :arg custom_rules: A map of rule names to custom-coded rules:
+            Expressions
+
         """
         tree = rule_grammar.parse(rules)
-        return RuleVisitor().visit(tree)
+        return RuleVisitor(custom_rules).visit(tree)
 
     def parse(self, text, pos=0):
-        """Parse some text with the default rule."""
+        """Parse some text with the default rule.
+
+        :arg pos: The index at which to start parsing
+
+        """
+        self._check_default_rule()
         return self.default_rule.parse(text, pos=pos)
 
     def match(self, text, pos=0):
@@ -88,12 +100,20 @@ class Grammar(StrAndRepr, dict):
         :arg pos: The index at which to start parsing
 
         """
+        self._check_default_rule()
         return self.default_rule.match(text, pos=pos)
+
+    def _check_default_rule(self):
+        """Raise RuntimeError if there is no default rule defined."""
+        if not self.default_rule:
+            raise RuntimeError("Can't call parse() on a Grammar that has no "
+                               "default rule. Choose a specific rule instead, "
+                               "like some_grammar['some_rule'].parse(...).")
 
     def __unicode__(self):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
-        exprs = [self.default_rule]
+        exprs = [self.default_rule] if self.default_rule else []
         exprs.extend(expr for expr in self.itervalues() if
                      expr is not self.default_rule)
         return '\n'.join(expr.as_rule() for expr in exprs)
@@ -112,7 +132,7 @@ class BootstrappingGrammar(Grammar):
     grammar description syntax.
 
     """
-    def _expressions_from_rules(self, rule_syntax):
+    def _expressions_from_rules(self, rule_syntax, custom_rules):
         """Return the rules for parsing the grammar definition syntax.
 
         Return a 2-tuple: a dict of rule names pointing to their expressions,
@@ -171,7 +191,7 @@ rule_syntax = (r'''
     # Ignored things (represented by _) are typically hung off the end of the
     # leafmost kinds of nodes. Literals like "/" count as leaves.
 
-    rules = _ rule+
+    rules = _ rule*
     rule = label equals expression
     equals = "=" _
     literal = spaceless_literal _
@@ -228,6 +248,15 @@ class RuleVisitor(NodeVisitor):
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
     visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
+
+    def __init__(self, custom_rules=None):
+        """Construct.
+
+        :arg custom_rules: A dict of {rule name: expression} holding custom
+            rules which will take precedence over the others
+
+        """
+        self.custom_rules = custom_rules or {}
 
     def visit_parenthesized(self, parenthesized, (left_paren, _1,
                                                   expression,
@@ -340,7 +369,6 @@ class RuleVisitor(NodeVisitor):
             except KeyError:
                 raise UndefinedLabel(expr)
             return self._resolve_refs(rule_map, reffed_expr)
-
         else:
             original_members = getattr(expr, 'members', ())
             if original_members:
@@ -358,19 +386,30 @@ class RuleVisitor(NodeVisitor):
 
         The default rule is the first one. Or, if you have more than one rule
         of that name, it's the last-occurring rule of that name. (This lets you
-        override the default rule when you extend a grammar.)
+        override the default rule when you extend a grammar.) If there are no
+        string-based rules, the default rule is None, because the custom rules,
+        due to being kwarg-based, are unordered.
 
         """
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
-        # have the last declarations win, so you can extend grammars by
+        # have the last declaration win, so you can extend grammars by
         # concatenation.
         rule_map = dict((expr.name, expr) for expr in rules)
 
+        # And custom rules override string-based rules. This is the least
+        # surprising choice when you compare the dict constructor:
+        # dict({'x': 5}, x=6).
+        rule_map.update(self.custom_rules)
+
         # Resolve references. This tolerates forward references.
         rule_map = dict((expr.name, self._resolve_refs(rule_map, expr))
-                        for expr in rules)
-        return rule_map, rules[0]
+                        for expr in rule_map.itervalues())
+
+        # isinstance() is a temporary hack around the fact that * rules don't
+        # always get transformed into lists by NodeVisitor. We should fix that;
+        # it's surprising and requires writing lame branches like this.
+        return rule_map, rules[0] if isinstance(rules, list) and rules else None
 
 
 # Bootstrap to level 1...
