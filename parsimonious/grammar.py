@@ -342,13 +342,14 @@ class RuleVisitor(NodeVisitor):
             return self._resolve_refs(rule_map, reffed_expr)
 
         else:
-            original_members = getattr(expr, 'members', None)
-            if original_members is not None:
-                # Prevents infinite recursion for circular refs.
-                expr.members = None
+            original_members = getattr(expr, 'members', ())
+            if original_members:
+                # Prevents infinite recursion for circular refs. At worst, one
+                # of `expr.members` can refer back to `expr`, but it can't go
+                # any farther.
+                expr.members = ()
                 resolved_members = [self._resolve_refs(rule_map, member)
                                     for member in original_members]
-
                 expr.members = resolved_members
             return expr
 
