@@ -6,7 +6,8 @@ are public.
 
 """
 # TODO: If this is slow, think about using cElementTree or something.
-import sys
+from inspect import isfunction
+from sys import version_info, exc_info
 
 from parsimonious.exceptions import VisitationError
 from parsimonious.utils import StrAndRepr
@@ -122,6 +123,31 @@ class RegexNode(Node):
     __slots__ = ['match']
 
 
+class RuleDecoratorMeta(type):
+    def __new__(metaclass, name, bases, namespace):
+        def unvisit(name):
+            """Remove any leading "visit_" from a method name."""
+            return name[6:] if name.startswith('visit_') else name
+
+        methods = [v for k, v in namespace.iteritems() if
+                   hasattr(v, '_rule') and isfunction(v)]
+        if methods:
+            from parsimonious.grammar import Grammar  # circular import dodge
+
+            methods.sort(key=(lambda x: x.func_code.co_firstlineno)
+                             if version_info[0] < 3 else
+                             (lambda x: x.__code__.co_firstlineno))
+            # Possible enhancement: once we get the Grammar extensibility story
+            # solidified, we can have @rules *add* to the default grammar
+            # rather than pave over it.
+            namespace['grammar'] = Grammar(
+                '\n'.join('{name} = {expr}'.format(name=unvisit(m.__name__),
+                                                   expr=m._rule)
+                          for m in methods))
+        return super(RuleDecoratorMeta,
+                     metaclass).__new__(metaclass, name, bases, namespace)
+
+
 class NodeVisitor(object):
     """A shell for writing things that turn parse trees into something useful
 
@@ -145,6 +171,8 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
+    __metaclass__ = RuleDecoratorMeta
+
     #: The :term:`default grammar`: the one recommended for use with this
     #: visitor. If you populate this, you will be able to call
     #: :meth:`NodeVisitor.parse()` as a shortcut.
@@ -179,7 +207,7 @@ class NodeVisitor(object):
         except Exception as e:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
-            exc_class, exc, tb = sys.exc_info()
+            exc_class, exc, tb = exc_info()
             raise VisitationError, (exc, exc_class, node), tb
 
     def generic_visit(self, node, visited_children):
@@ -241,3 +269,41 @@ class NodeVisitor(object):
                     cls=self.__class__.__name__,
                     method=method_name))
         return self.visit(getattr(self.grammar, method_name)(text, pos=pos))
+
+
+def rule(rule_string):
+    """Decorate a NodeVisitor ``visit_*`` method to tie a grammar rule to it.
+
+    The following will arrange for the ``visit_digit`` method to receive the
+    results of the ``~"[0-9]"`` parse rule::
+
+        @rule('~"[0-9]"')
+        def visit_digit(self, node, visited_children):
+            ...
+
+    Notice that there is no "digit = " as part of the rule; that gets inferred
+    from the method name.
+
+    In cases where there is only one kind of visitor interested in a grammar,
+    using ``@rule`` saves you having to look back and forth between the visitor
+    and the grammar definition.
+
+    On an implementation level, all ``@rule`` rules get stitched together into
+    a :class:`~parsimonoius.Grammar` that becomes the NodeVisitor's
+    :term:`default grammar`.
+
+    Typically, the choice of a default rule for this grammar is simple: whatever
+    ``@rule`` comes first in the class is the default. But the choice may become
+    surprising if you divide the ``@rule`` calls among subclasses. At the
+    moment, which method "comes first" is decided simply by comparing line
+    numbers, so whatever method is on the smallest-numbered line will be the
+    default. In a future release, this will change to pick the
+    first ``@rule`` call on the basemost class that has one. That way, a
+    subclass which does not override the default rule's ``visit_*`` method
+    won't unintentionally change which rule is the default.
+
+    """
+    def decorator(method):
+        method._rule = rule_string  # XXX: Maybe register them on a class var instead so we can just override a @rule'd visitor method on a subclass without blowing away the rule string that comes with it.
+        return method
+    return decorator

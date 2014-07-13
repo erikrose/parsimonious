@@ -7,7 +7,6 @@ by hand.
 """
 import ast
 from inspect import isfunction, ismethod
-from sys import version_info
 
 from parsimonious.exceptions import UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -426,48 +425,3 @@ rule_grammar = Grammar(rule_syntax)
 # bootstrap on import. Though it'll be a little less DRY. [Ah, but this is not
 # so clean, because it would have to output multiple statements to get multiple
 # refs to a single expression hooked up.]
-
-
-# These are here because they cause unavoidable circular imports if they're in
-# the nodes module:
-
-class GrammarFromDocstringsMeta(type):
-    def __new__(metaclass, name, bases, namespace):  # XXX: Sort by line num.
-        methods = [v for k, v in namespace.iteritems() if
-                   k.startswith('visit_') and
-                   isfunction(v) and
-                   getattr(v, '__doc__', None)]
-        if methods:
-            methods.sort(key=(lambda x: x.func_code.co_firstlineno)
-                              if version_info[0] < 3 else
-                             (lambda x: x.__code__.co_firstlineno))
-            namespace['grammar'] = Grammar('\n'.join(m.__doc__ for m in methods))
-        return super(GrammarFromDocstringsMeta,
-                     metaclass).__new__(metaclass, name, bases, namespace)
-
-
-class GrammarFromDocstrings(object):
-    """Mixin that constructs a default grammar for a
-    :class:`NodeVisitor` from its docstrings
-
-    In cases where there is only one kind of visitor interested in a grammar,
-    using this saves you having to look back and forth between the visitor and
-    the grammar definition.
-
-    Mix this into NodeVisitor subclasses. It will stitch together the
-    docstrings of all ``visit_*`` methods into a
-    :class:`~parsimonious.grammar.Grammar` and attach that to the class's
-    ``grammar`` attribute.
-
-    In simple cases, the choice of a default rule is likewise simple: whatever
-    method comes first in the class is the default. But the choice may become
-    surprising if you divide the ``visit_*`` methods among subclasses. At the
-    moment, which method "comes first" is decided simply by comparing line
-    numbers, so whatever method is on the smallest-numbered line will be the
-    default. When implementation time permits, this will change to pick the
-    first ``visit_*`` method on the basemost class that has one. That way, a
-    subclass which does not override the default rule's ``visit_*`` method
-    won't unintentionally change which rule is the default.
-
-    """
-    __metaclass__ = GrammarFromDocstringsMeta

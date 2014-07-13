@@ -316,13 +316,13 @@ Version History
 
 0.6
   * Improve exception message when you forget to declare a visitor method.
+  * Add ``@rule`` decorator, allowing grammars to be constructed out of
+    notations on ``NodeVisitor`` methods. This saves looking back and forth
+    between the visitor and the grammar when there is only one visitor per
+    grammar.
   * Add ``parse()`` and ``match()`` convenience methods to ``NodeVisitor``.
     This makes the common case of parsing a string and applying exactly one
     visitor to the AST shorter and simpler.
-  * Add ``GrammarFromDocstrings`` mixin, allowing grammars to be constructed
-    out of the concatenation of the docstrings of ``NodeVisitors``. This saves
-    looking back and forth between the visitor and the grammar when there is
-    only one visitor per grammar.
 
 0.5
   .. warning::

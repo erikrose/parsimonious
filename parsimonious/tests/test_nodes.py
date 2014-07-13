@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+from nose import SkipTest
 from nose.tools import eq_, assert_raises
 
-from parsimonious import Grammar, NodeVisitor, VisitationError, GrammarFromDocstrings
+from parsimonious import Grammar, NodeVisitor, VisitationError, rule
 from parsimonious.nodes import Node
 
 
@@ -88,23 +89,42 @@ def test_match_shortcut():
     eq_(HtmlFormatter().match('((other things'), '<b>')
 
 
-def test_docstring_grammar():
-    class CoupledFormatter(NodeVisitor, GrammarFromDocstrings):
-        def visit_bold_text(self, node, visited_children):
-            """bold_text = bold_open text bold_close"""
-            return ''.join(visited_children)
+class CoupledFormatter(NodeVisitor):
+    @rule('bold_open text bold_close')
+    def visit_bold_text(self, node, visited_children):
+        return ''.join(visited_children)
 
-        def visit_bold_open(self, node, visited_children):
-            """bold_open = '(('"""
-            return '<b>'
+    @rule('"(("')
+    def visit_bold_open(self, node, visited_children):
+        return '<b>'
 
-        def visit_bold_close(self, node, visited_children):
-            """bold_close = '))'"""
-            return '</b>'
+    @rule('"))"')
+    def visit_bold_close(self, node, visited_children):
+        return '</b>'
 
-        def visit_text(self, node, visited_children):
-            """text = ~'[a-zA-Z 0-9]*'"""
-            # Return the text verbatim.
-            return node.text
+    @rule('~"[a-zA-Z 0-9]*"')
+    def visit_text(self, node, visited_children):
+        """Return the text verbatim."""
+        return node.text
 
+
+def test_rule_decorator():
+    """Make sure the @rule decorator works."""
     eq_(CoupledFormatter().parse('((hi))'), '<b>hi</b>')
+
+
+def test_rule_decorator_subclassing():
+    """Make sure we can subclass and override visitor methods without blowing
+    away the rules attached to them."""
+    class OverridingFormatter(CoupledFormatter):
+        def visit_text(self, node, visited_children):
+            """Return the text capitalized."""
+            return node.text.upper()
+
+        @rule('"not used"')
+        def visit_useless(self, node, visited_children):
+            """Get in the way. Tempt the metaclass to pave over the
+            superclass's grammar with a new one."""
+
+    raise SkipTest("I haven't got around to making this work yet.")
+    eq_(OverridingFormatter().parse('((hi))'), '<b>HI</b>')
