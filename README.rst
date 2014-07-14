@@ -315,7 +315,14 @@ Version History
 ===============
 
 0.6
-  * Improve exception message when you forget to declare a visitor method.
+  * Add support for "custom rules" in Grammars. These provide a hook for simple
+    custom parsing hooks spelled as Python lambdas. For heavy-duty needs,
+    you can put in Compound Expressions with LazyReferences as subexpressions,
+    and the Grammar will hook them up for optimal efficiency--no trips through
+    the Grammar's hash at parse time.
+  * Allow grammars without a default rule (in cases where there are no string
+    rules), which leads to also allowing empty grammars. Perhaps someone
+    building up grammars dynamically will find that useful.
   * Add ``@rule`` decorator, allowing grammars to be constructed out of
     notations on ``NodeVisitor`` methods. This saves looking back and forth
     between the visitor and the grammar when there is only one visitor per
@@ -323,6 +330,7 @@ Version History
   * Add ``parse()`` and ``match()`` convenience methods to ``NodeVisitor``.
     This makes the common case of parsing a string and applying exactly one
     visitor to the AST shorter and simpler.
+  * Improve exception message when you forget to declare a visitor method.
 
 0.5
   .. warning::
