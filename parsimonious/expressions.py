@@ -266,18 +266,18 @@ class Regex(Expression):
                             self._regex_flags_from_bits(self.re.flags))
 
 
-class _Compound(Expression):
+class Compound(Expression):
     """An abstract expression which contains other expressions"""
 
     __slots__ = ['members']
 
     def __init__(self, *members, **kwargs):
         """``members`` is a sequence of expressions."""
-        super(_Compound, self).__init__(kwargs.get('name', ''))
+        super(Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
 
 
-class Sequence(_Compound):
+class Sequence(Compound):
     """A series of expressions that must match contiguous, ordered pieces of
     the text
 
@@ -303,7 +303,7 @@ class Sequence(_Compound):
     def _as_rhs(self):
         return u' '.join(self._unicode_members())
 
-class OneOf(_Compound):
+class OneOf(Compound):
     """A series of expressions, one of which must match
 
     Expressions are tested in order from first to last. The first to succeed
@@ -321,7 +321,7 @@ class OneOf(_Compound):
         return u' / '.join(self._unicode_members())
 
 
-class Lookahead(_Compound):
+class Lookahead(Compound):
     """An expression which consumes nothing, even if its contained expression
     succeeds"""
 
@@ -338,7 +338,7 @@ class Lookahead(_Compound):
         return u'&%s' % self._unicode_members()[0]
 
 
-class Not(_Compound):
+class Not(Compound):
     """An expression that succeeds only if the expression within it doesn't
 
     In any case, it never consumes any characters; it's a negative lookahead.
@@ -359,7 +359,7 @@ class Not(_Compound):
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
-class Optional(_Compound):
+class Optional(Compound):
     """An expression that succeeds whether or not the contained one does
 
     If the contained expression succeeds, it goes ahead and consumes what it
@@ -376,7 +376,7 @@ class Optional(_Compound):
 
 
 # TODO: Merge with OneOrMore.
-class ZeroOrMore(_Compound):
+class ZeroOrMore(Compound):
     """An expression wrapper like the * quantifier in regexes."""
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
@@ -393,7 +393,7 @@ class ZeroOrMore(_Compound):
         return u'%s*' % self._unicode_members()[0]
 
 
-class OneOrMore(_Compound):
+class OneOrMore(Compound):
     """An expression wrapper like the + quantifier in regexes.
 
     You can also pass in an alternate minimum to make this behave like "2 or
