@@ -303,9 +303,9 @@ class GrammarTests(TestCase):
         grammar = Grammar("""
             bracketed_digit = start digit end
             start = '['
-            end = ']'""",
+            end = ']'""", custom=dict(
             digit = lambda text, pos:
-                        (pos + 1) if text[pos].isdigit() else None)
+                    (pos + 1) if text[pos].isdigit() else None))
         s = '[6]'
         eq_(grammar.parse(s),
             Node('bracketed_digit', s, 0, 3, children=[
@@ -323,13 +323,13 @@ class GrammarTests(TestCase):
             bracketed_digit = start digit end
             start = '['
             end = ']'
-            real_digit = '6'""",
+            real_digit = '6'""", custom=dict(
             # In this particular implementation of the digit rule, no node is
             # generated for `digit`; it falls right through to `real_digit`.
             # I'm not sure if this could lead to problems; I can't think of
             # any, but it's probably not a great idea.
             digit = lambda text, pos, cache, error, grammar:
-                        grammar['real_digit']._match(text, pos, cache, error))
+                        grammar['real_digit']._match(text, pos, cache, error)))
         s = '[6]'
         eq_(grammar.parse(s),
             Node('bracketed_digit', s, 0, 3, children=[
@@ -347,10 +347,10 @@ class GrammarTests(TestCase):
         """
         grammar = Grammar("""
             four = '4'
-            five = '5'""",
+            five = '5'""", custom=dict(
             forty_five = Sequence(LazyReference('four'),
                                   LazyReference('five'),
-                                  name='forty_five'),
+                                  name='forty_five')),
             default_rule='forty_five')
         s = '45'
         eq_(grammar.parse(s),
@@ -366,7 +366,7 @@ class GrammarTests(TestCase):
         Incidentally test Grammar's `rules` default arg.
 
         """
-        grammar = Grammar(one_char=lambda text, pos: pos + 1,
+        grammar = Grammar(custom=dict(one_char=lambda text, pos: pos + 1),
                           default_rule='one_char')
         s = '4'
         eq_(grammar.parse(s),

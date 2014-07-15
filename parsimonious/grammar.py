@@ -44,7 +44,7 @@ class Grammar(StrAndRepr, dict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
-    def __init__(self, rules='', default_rule=None, **custom_rules):
+    def __init__(self, rules='', default_rule=None, custom=None):
         """Construct a grammar.
 
         :arg rules: A string of production rules, one per line.
@@ -52,15 +52,16 @@ class Grammar(StrAndRepr, dict):
             :meth:`parse()` or :meth:`match()` on the grammar. Defaults to the
             first rule. Falls back to None if there are no string-based rules
             in this grammar.
-        :arg custom_rules: Custom-coded rules: Expressions or plain callables
-            to accomplish things the built-in rule syntax cannot. These take
-            precedence over ``rules`` in case of naming conflicts.
+        :arg custom_rules: A map of names to custom-coded rules, Expressions or
+            plain callables to accomplish things the built-in rule syntax
+            cannot. These take precedence over ``rules`` in case of naming
+            conflicts.
 
         """
         decorated_custom_rules = dict(
             (k, expression(v, k, self) if isfunction(v) or
                                           ismethod(v) else
-                v) for k, v in custom_rules.iteritems())
+                v) for k, v in (custom or {}).iteritems())
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
 
