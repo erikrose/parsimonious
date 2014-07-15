@@ -329,7 +329,7 @@ class GrammarTests(TestCase):
             # I'm not sure if this could lead to problems; I can't think of
             # any, but it's probably not a great idea.
             digit = lambda text, pos, cache, error, grammar:
-                        grammar['real_digit']._match(text, pos, cache, error)))
+                    grammar['real_digit'].match_core(text, pos, cache, error)))
         s = '[6]'
         eq_(grammar.parse(s),
             Node('bracketed_digit', s, 0, 3, children=[

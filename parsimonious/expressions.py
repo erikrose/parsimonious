@@ -41,7 +41,7 @@ def expression(callable, rule_name, grammar):
 
         def foo(text, pos, cache, error, grammar):
             # Call out to other rules:
-            node = grammar['another_rule']._match(text, pos, cache, error)
+            node = grammar['another_rule'].match_core(text, pos, cache, error)
             ...
             # Return values as above.
 
@@ -119,13 +119,16 @@ class Expression(StrAndRepr):
 
         """
         error = ParseError(text)
-        node = self._match(text, pos, {}, error)
+        node = self.match_core(text, pos, {}, error)
         if node is None:
             raise error
         return node
 
-    def _match(self, text, pos, cache, error):
-        """Internal-only guts of ``match()``
+    def match_core(self, text, pos, cache, error):
+        """Internal guts of ``match()``
+
+        This is appropriate to call only from custom rules or Expression
+        subclasses.
 
         :arg cache: The packrat cache::
 
@@ -287,7 +290,7 @@ class Sequence(_Compound):
         length_of_sequence = 0
         children = []
         for m in self.members:
-            node = m._match(text, new_pos, cache, error)
+            node = m.match_core(text, new_pos, cache, error)
             if node is None:
                 return None
             children.append(node)
@@ -309,7 +312,7 @@ class OneOf(_Compound):
     """
     def _uncached_match(self, text, pos, cache, error):
         for m in self.members:
-            node = m._match(text, pos, cache, error)
+            node = m.match_core(text, pos, cache, error)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
@@ -327,7 +330,7 @@ class Lookahead(_Compound):
     # went in. That doesn't bother me.
 
     def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         if node is not None:
             return Node(self.name, text, pos, pos)
 
@@ -344,7 +347,7 @@ class Not(_Compound):
     def _uncached_match(self, text, pos, cache, error):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         if node is None:
             return Node(self.name, text, pos, pos)
 
@@ -364,7 +367,7 @@ class Optional(_Compound):
 
     """
     def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
@@ -379,7 +382,7 @@ class ZeroOrMore(_Compound):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
                 return Node(self.name, text, pos, new_pos, children)
@@ -410,7 +413,7 @@ class OneOrMore(_Compound):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
                 break
             children.append(node)
