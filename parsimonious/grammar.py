@@ -84,14 +84,14 @@ class Grammar(StrAndRepr, dict):
         tree = rule_grammar.parse(rules)
         return RuleVisitor(custom_rules).visit(tree)
 
-    def parse(self, text, pos=0):
+    def parse(self, text, pos=0, parseAll=True):
         """Parse some text with the default rule.
 
         :arg pos: The index at which to start parsing
 
         """
         self._check_default_rule()
-        return self.default_rule.parse(text, pos=pos)
+        return self.default_rule.parse(text, pos=pos, parseAll=parseAll)
 
     def match(self, text, pos=0):
         """Parse some text with the default rule but not necessarily all the
