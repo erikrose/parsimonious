@@ -315,11 +315,19 @@ Version History
 ===============
 
 0.6
+  .. warning::
+
+      This release makes a backward-incompatible change: the ``default_rule``
+      arg to Grammar's constructor has been replaced with a method,
+      ``some_grammar.default('rule_name')``, which returns a new grammar just
+      like the old except with its default rule changed. This is to free up
+      the constructor kwargs for custom rules.
+
   * Add support for "custom rules" in Grammars. These provide a hook for simple
     custom parsing hooks spelled as Python lambdas. For heavy-duty needs,
     you can put in Compound Expressions with LazyReferences as subexpressions,
-    and the Grammar will hook them up for optimal efficiency--no trips through
-    the Grammar's hash at parse time.
+    and the Grammar will hook them up for optimal efficiency--no calling
+    ``__getitem__`` on Grammar at parse time.
   * Allow grammars without a default rule (in cases where there are no string
     rules), which leads to also allowing empty grammars. Perhaps someone
     building up grammars dynamically will find that useful.

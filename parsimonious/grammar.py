@@ -44,7 +44,7 @@ class Grammar(StrAndRepr, dict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
-    def __init__(self, rules='', default_rule=None, custom=None):
+    def __init__(self, rules='', **more_rules):
         """Construct a grammar.
 
         :arg rules: A string of production rules, one per line.
@@ -52,21 +52,39 @@ class Grammar(StrAndRepr, dict):
             :meth:`parse()` or :meth:`match()` on the grammar. Defaults to the
             first rule. Falls back to None if there are no string-based rules
             in this grammar.
-        :arg custom_rules: A map of names to custom-coded rules, Expressions or
-            plain callables to accomplish things the built-in rule syntax
-            cannot. These take precedence over ``rules`` in case of naming
-            conflicts.
+        :arg more_rules: Additional kwargs whose names are rule names and
+            values are Expressions or custom-coded callables which accomplish
+            things the built-in rule syntax cannot. These take precedence over
+            ``rules`` in case of naming conflicts.
 
         """
         decorated_custom_rules = dict(
             (k, expression(v, k, self) if isfunction(v) or
                                           ismethod(v) else
-                v) for k, v in (custom or {}).iteritems())
+                v) for k, v in more_rules.iteritems())
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
 
         self.update(exprs)
-        self.default_rule = exprs[default_rule] if default_rule else first
+        self.default_rule = first  # may be None
+
+    def default(self, rule_name):
+        """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
+        new = self._copy()
+        new.default_rule = new[rule_name]
+        return new
+
+    def _copy(self):
+        """Return a shallow copy of myself.
+
+        Deep is unnecessary, since Expression trees are immutable. Subgrammars
+        recreate all the Expressions from scratch, and AbstractGrammars have
+        no Expressions.
+
+        """
+        new = Grammar(**self)
+        new.default_rule = self.default_rule
+        return new
 
     def _expressions_from_rules(self, rules, custom_rules):
         """Return a 2-tuple: a dict of rule names pointing to their
@@ -85,7 +103,7 @@ class Grammar(StrAndRepr, dict):
         return RuleVisitor(custom_rules).visit(tree)
 
     def parse(self, text, pos=0):
-        """Parse some text with the default rule.
+        """Parse some text with the :term:`default rule`.
 
         :arg pos: The index at which to start parsing
 
@@ -94,8 +112,8 @@ class Grammar(StrAndRepr, dict):
         return self.default_rule.parse(text, pos=pos)
 
     def match(self, text, pos=0):
-        """Parse some text with the default rule but not necessarily all the
-        way to the end.
+        """Parse some text with the :term:`default rule` but not necessarily
+        all the way to the end.
 
         :arg pos: The index at which to start parsing
 
