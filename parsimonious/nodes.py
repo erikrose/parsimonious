@@ -9,7 +9,7 @@ are public.
 from inspect import isfunction
 from sys import version_info, exc_info
 
-from parsimonious.exceptions import VisitationError
+from parsimonious.exceptions import VisitationError, UndefinedLabel
 from parsimonious.utils import StrAndRepr
 
 
@@ -201,7 +201,7 @@ class NodeVisitor(object):
         # up.
         try:
             return method(node, [self.visit(n) for n in node])
-        except VisitationError:
+        except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
         except Exception as e:

@@ -81,7 +81,7 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(StrAndRepr, VisitationError):
+class UndefinedLabel(StrAndRepr, Exception):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define

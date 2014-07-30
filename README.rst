@@ -317,11 +317,16 @@ Version History
 0.6
   .. warning::
 
-      This release makes a backward-incompatible change: the ``default_rule``
-      arg to Grammar's constructor has been replaced with a method,
-      ``some_grammar.default('rule_name')``, which returns a new grammar just
-      like the old except with its default rule changed. This is to free up
-      the constructor kwargs for custom rules.
+      This release makes backward-incompatible changes:
+
+      * The ``default_rule`` arg to Grammar's constructor has been replaced
+        with a method, ``some_grammar.default('rule_name')``, which returns a
+        new grammar just like the old except with its default rule changed.
+        This is to free up the constructor kwargs for custom rules.
+      * ``UndefinedLabel`` is no longer a subclass of ``VisitationError``. This
+        matters only in the unlikely case that you were catching
+        ``VisitationError`` exceptions and expecting to thus also catch
+        ``UndefinedLabel``.
 
   * Add support for "custom rules" in Grammars. These provide a hook for simple
     custom parsing hooks spelled as Python lambdas. For heavy-duty needs,
