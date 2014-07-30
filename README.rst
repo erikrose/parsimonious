@@ -129,8 +129,8 @@ Syntax Reference
 ----------------
 
 ====================    ========================================================
-``"some literal"``      Used to quote literals. Backslash escaping and Python 
-                        conventions for "raw" and Unicode strings help support 
+``"some literal"``      Used to quote literals. Backslash escaping and Python
+                        conventions for "raw" and Unicode strings help support
                         fiddly characters.
 
 [space]                 Sequences are made out of space- or tab-delimited
@@ -140,19 +140,19 @@ Syntax Reference
 ``a / b / c``           Alternatives. The first to succeed of ``a / b / c``
                         wins.
 
-``thing?``              An optional expression. This is greedy, always consuming 
+``thing?``              An optional expression. This is greedy, always consuming
                         ``thing`` if it exists.
 
-``&thing``              A lookahead assertion. Ensures ``thing`` matches at the 
+``&thing``              A lookahead assertion. Ensures ``thing`` matches at the
                         current position but does not consume it.
 
-``!thing``              A negative lookahead assertion. Matches if ``thing`` 
+``!thing``              A negative lookahead assertion. Matches if ``thing``
                         isn't found here. Doesn't consume any text.
 
 ``things*``             Zero or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``things+``             One or more things. This is greedy, always consuming as 
+``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
 ``~r"regex"ilmsux``     Regexes have ``~`` in front and are quoted like
@@ -173,10 +173,10 @@ Syntax Reference
 Optimizing Grammars
 ===================
 
-Don't Repeat Expressions 
+Don't Repeat Expressions
 ------------------------
 
-If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it 
+If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it
 twice. Make it a rule of its own, and reference it from wherever you need it. 
 You'll get the most out of the caching this way, since cache lookups are by 
 expression object identity (for speed). 
