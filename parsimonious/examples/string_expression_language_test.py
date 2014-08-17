@@ -4,7 +4,6 @@ from parsimonious.examples.string_expression_language import StringExpressionLan
 
 
 class StringExpressionLanguageTest(unittest.TestCase):
-
     def setUp(self):
         self.string_expression_language = StringExpressionLanguage()
 
@@ -20,13 +19,13 @@ class StringExpressionLanguageTest(unittest.TestCase):
         self.string_expression_language.evaluate("{foo = 'bar'}")
         self.string_expression_language.evaluate("{foo = 'abc' \n baz = 'def'}")
 
-    def test_expression_group(self):
-        expected_result = { 'foo': 'abc', 'bar': 'xyz', 'baz': 'def', 'frob': 'abcxyzdef'}
-        actual_result = self.string_expression_language.evaluate("{foo = 'abc' \n bar = 'xyz' \n baz = 'def' \n frob = foo bar baz }")
-        self.assertEqual(expected_result, actual_result)
-
-
     def test_evaluation(self):
         result = self.string_expression_language.evaluate("{foo = 'bar'}")
         print result
+
+    def test_expression_group_evaluation(self):
+        expected_result = {'foo': 'abc', 'bar': 'xyz', 'baz': 'def', 'frob': 'abcxyzdef'}
+        actual_result = self.string_expression_language.evaluate(
+            "{foo = 'abc' \n bar = 'xyz' \n baz = 'def' \n frob = foo bar baz }")
+        self.assertEqual(expected_result, actual_result)
 
