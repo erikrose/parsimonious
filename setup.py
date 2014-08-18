@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 setup(
     name='parsimonious',
     version='0.5',
-    description='(Soon to be) the fastest pure-Python PEG parser I could muster',
+    description='A friendly, Pythonic parsing library with unlimited lookahead',
     long_description=open('README.rst').read(),
     author='Erik Rose',
     author_email='erikrose@grinchcentral.com',

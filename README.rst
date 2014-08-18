@@ -2,18 +2,47 @@
 Parsimonious
 ============
 
-Parsimonious aims to be the fastest arbitrary-lookahead parser written in pure
-Python—and the most usable. It's based on parsing expression grammars (PEGs),
-which means you feed it a simplified sort of EBNF notation. Parsimonious was
-designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
-of RAM to do one page, but it's applicable to all sorts of languages.
+If you've ever read a UNIX man page or learned a programming langauge from
+formal notation, you'll be right at home with Parsimonious. Here's how you
+might set up a simple wiki-like language where pairs of matched parentheses
+signify boldface::
+
+    >>> from parsimonious.grammar import Grammar
+    >>> grammar = Grammar(
+    ...     """
+    ...     bold_text  = bold_open text bold_close
+    ...     text       = ~'[A-Z 0-9]*'i  # ~ means regex in Parsimonious.
+    ...     bold_open  = '(('
+    ...     bold_close = '))'
+    ...     """)
+
+Then, let's turn some wiki text into a syntax tree:
+
+    >>> print grammar.parse('((hi))')
+    <Node called "bold_text" matching "((hi))">
+        <Node called "bold_open" matching "((">
+        <RegexNode called "text" matching "hi">
+        <Node called "bold_close" matching "))">
+
+You can then walk that tree structure to render the text in a different format
+or do other computations. Write your tree-walking from scratch if you like, or
+use some of the `included handy framework`_.
 
 
-Goals
-=====
+Design Goals
+============
+
+Parsimonious aims to be the fastest and most usable arbitrary-lookahead parser
+written in pure Python: no source code generation that complicates your
+deployments, no C build step—just fast, in-memory expression graphs that tear
+through input text at a peppy rate. We've done only the simplest optimizations
+so far, but already we get 300K/s on a naive JSON grammar.
+
+In more detail, our goals are these, in rough order of priority:
 
 * Speed
-* Frugal RAM use
+* Frugal RAM use so we can parse large grammars and inputs like
+  MediaWiki/Wikipedia.
 * Minimalistic, understandable, idiomatic Python code
 * Readable grammars
 * Extensible grammars
@@ -22,7 +51,7 @@ Goals
   instructions about how to turn the resulting tree into some kind of other
   representation. This is limiting when you want to do several different things
   with a tree: for example, render wiki markup to HTML *or* to text.
-* Good error reporting. I want the parser to work *with* me as I develop a
+* Good error reporting. We want the parser to work *with* us as we develop a
   grammar.
 
 
@@ -35,7 +64,7 @@ Here's how to build a simple grammar::
     >>> grammar = Grammar(
     ...     """
     ...     bold_text  = bold_open text bold_close
-    ...     text       = ~"[A-Z 0-9]*"i
+    ...     text       = ~"[A-Z 0-9]*"i  # ~ means regex in Parsimonious.
     ...     bold_open  = "(("
     ...     bold_close = "))"
     ...     """)
@@ -408,3 +437,10 @@ Version History
 
 Thanks to Wiki Loves Monuments Panama for showing their support with a generous
 gift.
+
+
+Scraps:
+The formal model behind it, the parsing expression grammar (PEG),
+allows us to represent the full spectrum of context-free grammars as well as many others, and it even allows us to compose grammars through a kind of subclassing. which is, as shown above, a simplified sort of EBNF. Parsimonious was
+designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
+of RAM to do one page, but it's applicable to all sorts of languages.
