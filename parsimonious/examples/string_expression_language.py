@@ -73,12 +73,12 @@ newline = "\n"
 """
 
 
-class IdentifierGroupNodeVisitor(object):
+class IdentifierGroupNodeVisitor(NodeVisitor):
     def __init__(self, identifiers=None):
         super(IdentifierGroupNodeVisitor, self).__init__()
         self.identifiers = identifiers or {}
 
-    def visit_identifier(self, node):
+    def visit_identifier(self, node, visited_children):
         result = self.identifiers[node.text]
         return result
 
@@ -88,7 +88,7 @@ class IdentifierGroupNodeVisitor(object):
 
     def collect_matching_children(self, node, expr_name):
         if node.expr_name == expr_name:
-            return self.visit_identifier(node)
+            return super(IdentifierGroupNodeVisitor, self).visit(node)
         else:
             nodes = []
             if len(node.children) > 0:
