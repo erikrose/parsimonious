@@ -2,7 +2,7 @@ from sys import version_info
 from unittest import TestCase
 
 from nose import SkipTest
-from nose.tools import eq_, assert_raises, ok_
+from nose.tools import eq_, assert_raises, ok_, fail
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Sequence
@@ -369,3 +369,30 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node('one_char', s, 0, 1))
+
+
+class AbstractGrammarTests(TestCase):
+    """Tests for abstract grammars"""
+    
+    def test_parse_and_match(self):
+        """Trying to parse or match with an abstract grammar should raise
+        UndefinedLabel errors."""
+
+        def raises_undefined_hello(callable):
+            try:
+                callable()
+            except UndefinedLabel as exc:
+                eq_(exc.label, 'hello')
+            else:
+                fail("Method call on an AbstractGrammar should have failed.")
+
+        a = AbstractGrammar("""
+            greeting = hello / informal_greeting
+            """)
+        raises_undefined_hello(lambda: a.parse('gah'))
+        raises_undefined_hello(lambda: a.match('gah'))
+        # NEXT: Why should we prevent people getiteming an incomplete rule out of an AbstractGrammar? The error should be deferred until they try to actually parse with it. That way, they can suck rules out of an AbstractGrammar and glom them onto other grammars as they construct them. Hey, why not? [Because then the user somehow needs to know what's an abstract rule and what's a complete one, because the former will hook up to references in the new grammar, and the latter won't.] So go teach LazyReference how to parse() and match(), which should both raise errors. OTOH, that will mean you can fail to notice an undefined label that's hiding in an obscure OR branch. But then again, that's only for abstract grammars. Normal Grammars will complain. Abstract ones just take all the restraints off.    And then decouple UndefinedLabel raising from resolve_refs. Just return it or something so the caller (AbstractGrammar or Grammar) can decide whether to raise it or swallow it.
+
+    def something_else        
+        # For now, even existing
+        raises_undefined_hello(lambda: a[greeting])
