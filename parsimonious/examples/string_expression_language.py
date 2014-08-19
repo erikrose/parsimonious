@@ -34,7 +34,7 @@ import sys
 from parsimonious import Grammar, NodeVisitor
 
 
-string_expression_grammar = r"""
+string_expression_grammar = Grammar(r"""
     program = program_body / ignored_line*
     program_body = ignored_line* begin line* end ignored_line*
     ignored_line = comment_line / blank_line
@@ -65,27 +65,27 @@ string_expression_grammar = r"""
     assignment_symbol = "="
     plus_symbol = "+"
     newline = "\n"
-    """
+    """)
 
 
-class IdentifierGroupNodeVisitor(NodeVisitor):
+class IdentifierGroupVisitor(NodeVisitor):
     def __init__(self, identifiers=None):
-        super(IdentifierGroupNodeVisitor, self).__init__()
+        super(IdentifierGroupVisitor, self).__init__()
         self.identifiers = identifiers or {}
 
     def visit_identifier(self, node, visited_children):
         return self.identifiers[node.text]
 
     def visit(self, node):
-        values = self.collect_matching_children(node, "identifier")
+        values = self.collect_matching_children(node, 'identifier')
         return ''.join(values)
 
     def collect_matching_children(self, node, expr_name):
         if node.expr_name == expr_name:
-            return super(IdentifierGroupNodeVisitor, self).visit(node)
+            return super(IdentifierGroupVisitor, self).visit(node)
         else:
             nodes = []
-            if len(node.children) > 0:
+            if node.children:
                 for child_node in node.children:
                     value = self.collect_matching_children(child_node, expr_name)
                     if type(value) != type([]):
@@ -95,9 +95,9 @@ class IdentifierGroupNodeVisitor(NodeVisitor):
             return nodes
 
 
-class StringExpressionNodeVisitor(NodeVisitor):
+class StringExpressionVisitor(NodeVisitor):
     def __init__(self, identifiers = None):
-        super(StringExpressionNodeVisitor, self).__init__()
+        super(StringExpressionVisitor, self).__init__()
         self.identifiers = identifiers or {}
 
     def visit_literal_string(self, node, visited_children):
@@ -120,29 +120,26 @@ class StringExpressionNodeVisitor(NodeVisitor):
         self.identifiers[variable_name] = expression_value
 
     def visit_identifier_group(self, node, visited_children):
-        identifier_group_node_visitor = IdentifierGroupNodeVisitor(identifiers=self.identifiers)
+        identifier_group_node_visitor = IdentifierGroupVisitor(identifiers=self.identifiers)
         return identifier_group_node_visitor.visit(node)
 
     def generic_visit(self, node, visited_children):
         pass
 
 
-class StringExpressionLanguage(object):
-    def __init__(self):
-        self._grammar = Grammar(string_expression_grammar)
-
-    def evaluate(self, text):
-        root_node = self._grammar.parse(text)
-        node_visitor = StringExpressionNodeVisitor()
-        node_visitor.visit(root_node)
-        return node_visitor.identifiers
-
-    def main(self):
-        filename = sys.argv[1]
-        with open(filename) as file:
-            contents = file.read()
-        print self.evaluate(contents)
+def evaluate(string_expressions):
+    root_node = string_expression_grammar.parse(string_expressions)
+    node_visitor = StringExpressionVisitor()
+    node_visitor.visit(root_node)
+    return node_visitor.identifiers
 
 
-if __name__ == "__main__":
-    StringExpressionLanguage().main()
+def main(self):
+    filename = sys.argv[1]
+    with open(filename) as file:
+        contents = file.read()
+    print evaluate(contents)
+
+
+if __name__ == '__main__':
+    main()
