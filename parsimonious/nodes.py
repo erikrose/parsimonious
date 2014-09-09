@@ -204,7 +204,7 @@ class NodeVisitor(object):
         except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except Exception as e:
+        except Exception:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = exc_info()
