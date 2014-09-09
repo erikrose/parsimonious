@@ -128,3 +128,18 @@ def test_rule_decorator_subclassing():
 
     raise SkipTest("I haven't got around to making this work yet.")
     eq_(OverridingFormatter().parse('((hi))'), '<b>HI</b>')
+
+
+class PrimalScream(Exception):
+    pass
+
+
+def test_unwrapped_exceptions():
+    class Screamer(NodeVisitor):
+        grammar = Grammar("""greeting = 'howdy'""")
+        unwrapped_exceptions = (PrimalScream,)
+
+        def visit_greeting(self, thing, visited_children):
+            raise PrimalScream('This should percolate up!')
+
+    assert_raises(PrimalScream, Screamer().parse, 'howdy')

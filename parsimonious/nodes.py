@@ -178,6 +178,11 @@ class NodeVisitor(object):
     #: :meth:`NodeVisitor.parse()` as a shortcut.
     grammar = None
 
+    #: Classes of exceptions you actually intend to raise during visitation
+    #: and which should propogate out of the visitor. These will not be
+    #: wrapped in a VisitationError when they arise.
+    unwrapped_exceptions = ()
+
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
     # mark nodes as not descent-worthy in the grammar.
@@ -203,6 +208,8 @@ class NodeVisitor(object):
             return method(node, [self.visit(n) for n in node])
         except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
+            raise
+        except self.unwrapped_exceptions:
             raise
         except Exception:
             # Catch any exception, and tack on a parse tree so it's easier to

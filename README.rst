@@ -344,6 +344,9 @@ Version History
     This makes the common case of parsing a string and applying exactly one
     visitor to the AST shorter and simpler.
   * Improve exception message when you forget to declare a visitor method.
+  * Add ``unwrapped_exceptions`` attribute to ``NodeVisitor``, letting you
+    name certain exceptions which propagate out of visitors without being
+    wrapped by ``VisitationError`` exceptions.
 
 0.5
   .. warning::
