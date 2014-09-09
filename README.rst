@@ -347,6 +347,9 @@ Version History
   * Add ``unwrapped_exceptions`` attribute to ``NodeVisitor``, letting you
     name certain exceptions which propagate out of visitors without being
     wrapped by ``VisitationError`` exceptions.
+  * Expose much more of the library in ``__init__``, making your imports
+    shorter.
+  * Drastically simplify reference resolution machinery. (Vladimir Keleshev)
 
 0.5
   .. warning::
