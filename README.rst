@@ -2,21 +2,22 @@
 Parsimonious
 ============
 
-If you've ever read a UNIX man page or learned a programming langauge from
-formal notation, you'll be right at home with Parsimonious. Here's how you
-might set up a simple wiki-like language where pairs of matched parentheses
-signify boldface::
+If you've ever learned a programming langauge from formal notation or read the
+docs for a command-line tool, you already know how to use Parsimonious::
 
     >>> from parsimonious.grammar import Grammar
     >>> grammar = Grammar(
     ...     """
     ...     bold_text  = bold_open text bold_close
-    ...     text       = ~'[A-Z 0-9]*'i  # ~ means regex in Parsimonious.
-    ...     bold_open  = '(('
-    ...     bold_close = '))'
+    ...     text       = ~"[A-Z 0-9]*"i  # ~ means regex in Parsimonious.
+    ...     bold_open  = "(("
+    ...     bold_close = "))"
     ...     """)
 
-Then, let's turn some wiki text into a syntax tree:
+The above sets up a simple wiki-like language where pairs of matched
+parentheses signify boldface.
+
+Now let's feed our grammar some wiki text and pull out a syntax tree::
 
     >>> print grammar.parse('((hi))')
     <Node called "bold_text" matching "((hi))">
@@ -24,27 +25,93 @@ Then, let's turn some wiki text into a syntax tree:
         <RegexNode called "text" matching "hi">
         <Node called "bold_close" matching "))">
 
-You can then walk that tree structure to render the text in a different format
-or do other computations. Write your tree-walking from scratch if you like, or
-use some of the `included handy framework`_.
+Parent nodes are iterables of child ones; you can just treat them as nested
+lists. Thus, the whole tree is easy to navigate using the built-in facilities
+of the Python language.
+
+If you like, you can use our ``NodeVisitor`` framework to make walking trees
+even easier. It saves you writing recursive code, so you can focus on rendering
+out text or performing whatever other computations you like.
+
+There are many more niceties, but those are the basics.
+
+
+The Pitch
+=========
+
+Parsimonious is an answer to parsing kits that are hard to use, generate code
+needlessly, are 3000 lines long, or have shoddy test coverage. Instead,
+Parsimonious offers...
+
+* **Readable grammars.** Parsimonious grammars look like syntax documentation you
+  might write for a human. We resisted the temptation to shoehorn our grammar
+  definition language into Python constructs that would compromise our
+  readability. As a result, we're able to reach a higher level of concision and
+  familiarity, while also leaving open avenues to whole-grammar optimization
+  passes. You can use forward references and even right recursion; everything
+  just works. In addition, we plan to add spelling compatibility with generic
+  Parsing Expression Grammars, making your grammars portable to kits in other
+  languages, like peg.js.
+
+* **Powerful grammars.** Parsimonious is an implementation of Parsing Expression
+  Grammars (PEGs). It thus supports a superset of *LL(k)* languages, all
+  deterministic *LR(k)* languages, and many others—including some that aren't
+  even context-free. It can also deal with languages that would be ambiguous if
+  described in canonical EBNF, by dint of the prioritized "or" operator. And,
+  since PEG parsers don't draw a distinction between lexing and parsing, there
+  is no lookahead limit as with Yacc-alikes.
+
+* **Grammar extensibility.** This is coming soon. Part of the beauty of PEGs is
+  that they can be composed. Imagine being able to add your own flourishes to a
+  wiki grammar without copying and pasting or depending on the original
+  author's anticipation of the right hook points. Parsimonious will deliver
+  this in a fashion worthy of the formalism's beauty.
+
+* **Simple deployment.** Many parsing kits like to generate code and lay it
+  down on the filesystem. As you might imagine, this makes for extra build
+  steps, checked-in generated artifacts, or, worst of all, applications which
+  expect write access somewhere on the PYTHONPATH. Even if we were generating
+  machine code, such vulgarities would not be required. Parsimonious keeps
+  everything in memory, and its grammar compiler is so fast that you won't
+  even notice it running.
+
+* **Speed.** Parsimonious, as a packrat-caching PEG parser, takes O(grammar
+  size * text length) memory and runs in O(text length) time. The grammar
+  compiler builds an in-memory expression graph that tears through input as
+  fast as generated Python could while preserving a whole-grammar view amenable
+  to automatic optimization. We've only scratched the surface of possible
+  optimizations so far, but already a *naive* JSON grammar runs at 300K/s.
+
+* **Decoupled formatting.** It is tempting, when designing a parsing library or
+  even implementing a first grammar, to weave output directives directly into a
+  grammar definition. Though we do make simple cases simple with the ``@rule``
+  decorator, the spirit of our design decouples the two phases. This lets you
+  parse some wiki text (for instance) once, then generate both HTML and plain
+  text from the resulting tree without needing to parse again. Or you can do
+  your own computations on parse trees from other people's grammar without
+  relying on them having anticipated your needs.
+
+* **Custom-coded rules.** For those odd cases where a grammar is hard or
+  impossible to describe using the provided constructs, Parsimonious supports
+  defining rules using arbitrary code: ``lambda`` expressions for simple
+  things, whole ``Expression`` subclasses for more ambitious needs.
+
 
 
 Design Goals
 ============
 
 Parsimonious aims to be the fastest and most usable arbitrary-lookahead parser
-written in pure Python: no source code generation that complicates your
-deployments, no C build step—just fast, in-memory expression graphs that tear
-through input text at a peppy rate. We've done only the simplest optimizations
-so far, but already we get 300K/s on a naive JSON grammar.
+written in pure Python: no source code generation to complicate deployments, no
+C build step—just fast, 
 
 In more detail, our goals are these, in rough order of priority:
 
 * Speed
 * Frugal RAM use so we can parse large grammars and inputs like
   MediaWiki/Wikipedia.
-* Minimalistic, understandable, idiomatic Python code
 * Readable grammars
+* Minimalistic, understandable, idiomatic Python code
 * Extensible grammars
 * Complete test coverage
 * Separation of concerns. Some Python parsing kits mix recognition with
@@ -58,31 +125,9 @@ In more detail, our goals are these, in rough order of priority:
 Example Usage
 =============
 
-Here's how to build a simple grammar::
-
-    >>> from parsimonious.grammar import Grammar
-    >>> grammar = Grammar(
-    ...     """
-    ...     bold_text  = bold_open text bold_close
-    ...     text       = ~"[A-Z 0-9]*"i  # ~ means regex in Parsimonious.
-    ...     bold_open  = "(("
-    ...     bold_close = "))"
-    ...     """)
-
-You can have forward references and even right recursion; it's all taken care
+; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
 symbol, but you can override that.
-
-Next, let's parse something and get an abstract syntax tree::
-
-    >>> print grammar.parse('((bold stuff))')
-    <Node called "bold_text" matching "((bold stuff))">
-        <Node called "bold_open" matching "((">
-        <RegexNode called "text" matching "bold stuff">
-        <Node called "bold_close" matching "))">
-
-You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
-the tree and do something useful with it.
 
 
 Status
