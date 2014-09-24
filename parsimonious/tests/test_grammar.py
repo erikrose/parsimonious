@@ -369,3 +369,15 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node('one_char', s, 0, 1))
+
+    def test_lazy_default_rule(self):
+        """Make sure we get an actual rule set as our default rule, even when
+        the first rule has forward references and is thus a LazyReference at
+        some point during grammar compilation.
+
+        """
+        grammar = Grammar(r"""
+            styled_text = text
+            text        = "hi"
+            """)
+        eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))

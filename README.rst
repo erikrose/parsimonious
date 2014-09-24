@@ -314,6 +314,10 @@ Niceties
 Version History
 ===============
 
+0.6.1
+    * Fix bug which made the default rule of a grammar invalid when it
+      contained a forward reference.
+
 0.6
   .. warning::
 

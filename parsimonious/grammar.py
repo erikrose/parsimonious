@@ -427,7 +427,8 @@ class RuleVisitor(NodeVisitor):
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;
         # it's surprising and requires writing lame branches like this.
-        return rule_map, rules[0] if isinstance(rules, list) and rules else None
+        return rule_map, (rule_map[rules[0].name]
+                          if isinstance(rules, list) and rules else None)
 
 
 # Bootstrap to level 1...
