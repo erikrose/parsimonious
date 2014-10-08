@@ -372,12 +372,16 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
-    def _resolve_refs(self, rule_map, expr):
+    def _resolve_refs(self, rule_map, expr, done):
         """Return an expression with all its lazy references recursively
         resolved.
 
         Resolve any lazy references in the expression ``expr``, recursing into
         all subexpressions.
+
+        :arg done: The set of Expressions that have already been or are
+            currently being resolved, to ward off redundant work and prevent
+            infinite recursion for circular refs
 
         """
         if isinstance(expr, LazyReference):
@@ -386,17 +390,15 @@ class RuleVisitor(NodeVisitor):
                 reffed_expr = rule_map[label]
             except KeyError:
                 raise UndefinedLabel(expr)
-            return self._resolve_refs(rule_map, reffed_expr)
+            return self._resolve_refs(rule_map, reffed_expr, done)
         else:
-            original_members = getattr(expr, 'members', ())
-            if original_members:
+            if getattr(expr, 'members', ()) and expr not in done:
                 # Prevents infinite recursion for circular refs. At worst, one
                 # of `expr.members` can refer back to `expr`, but it can't go
                 # any farther.
-                expr.members = ()
-                resolved_members = [self._resolve_refs(rule_map, member)
-                                    for member in original_members]
-                expr.members = resolved_members
+                done.add(expr)
+                expr.members = [self._resolve_refs(rule_map, member, done)
+                                for member in expr.members]
             return expr
 
     def visit_rules(self, node, (_, rules)):
@@ -421,7 +423,8 @@ class RuleVisitor(NodeVisitor):
         rule_map.update(self.custom_rules)
 
         # Resolve references. This tolerates forward references.
-        rule_map = dict((expr.name, self._resolve_refs(rule_map, expr))
+        done = set()
+        rule_map = dict((expr.name, self._resolve_refs(rule_map, expr, done))
                         for expr in rule_map.itervalues())
 
         # isinstance() is a temporary hack around the fact that * rules don't

@@ -314,6 +314,10 @@ Niceties
 Version History
 ===============
 
+0.6.2
+    * Make grammar compilation 100x faster. Thanks to dmoisset for the initial
+      patch.
+
 0.6.1
     * Fix bug which made the default rule of a grammar invalid when it
       contained a forward reference.
