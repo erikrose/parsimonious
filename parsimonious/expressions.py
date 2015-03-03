@@ -6,6 +6,7 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
+from inspect import getargspec
 import re
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
@@ -13,8 +14,74 @@ from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 
-__all__ = ['Expression', 'Literal', 'Regex', 'Sequence', 'OneOf', 'Lookahead',
-           'Not', 'Optional', 'ZeroOrMore', 'OneOrMore']
+MARKER = object()
+
+
+def expression(callable, rule_name, grammar):
+    """Turn a plain callable into an Expression.
+
+    The callable can be of this simple form::
+
+        def foo(text, pos):
+            '''If this custom expression matches starting at text[pos], return
+            the index where it stops matching. Otherwise, return None.'''
+            if the expression matched:
+                return end_pos
+
+    If there child nodes to return, return a tuple::
+
+        return end_pos, children
+
+    If the expression doesn't match at the given ``pos`` at all... ::
+
+        return None
+
+    If your callable needs to make sub-calls to other rules in the grammar or
+    do error reporting, it can take this form, gaining additional arguments::
+
+        def foo(text, pos, cache, error, grammar):
+            # Call out to other rules:
+            node = grammar['another_rule'].match_core(text, pos, cache, error)
+            ...
+            # Return values as above.
+
+    The return value of the callable, if an int or a tuple, will be
+    automatically transmuted into a :class:`~parsimonious.Node`. If it returns
+    a Node-like class directly, it will be passed through unchanged.
+
+    :arg rule_name: The rule name to attach to the resulting
+        :class:`~parsimonious.Expression`
+    :arg grammar: The :class:`~parsimonious.Grammar` this expression will be a
+        part of, to make delegating to other rules possible
+
+    """
+    num_args = len(getargspec(callable).args)
+    if num_args == 2:
+        is_simple = True
+    elif num_args == 5:
+        is_simple = False
+    else:
+        raise RuntimeError("Custom rule functions must take either 2 or 5 "
+                           "arguments, not %s." % num_args)
+
+    class AdHocExpression(Expression):
+        def _uncached_match(self, text, pos, cache, error):
+            result = (callable(text, pos) if is_simple else
+                      callable(text, pos, cache, error, grammar))
+
+            if isinstance(result, (long, int)):
+                end, children = result, None
+            elif isinstance(result, tuple):
+                end, children = result
+            else:
+                # Node or None
+                return result
+            return Node(self.name, text, pos, end, children=children)
+
+        def _as_rhs(self):
+            return '{custom function "%s"}' % callable.__name__
+
+    return AdHocExpression(name=rule_name)
 
 
 class Token(StrAndRepr):
@@ -56,13 +123,16 @@ class Expression(StrAndRepr):
 
         """
         error = ParseError(text)
-        node = self._match(text, pos, {}, error)
+        node = self.match_core(text, pos, {}, error)
         if node is None:
             raise error
         return node
 
-    def _match(self, text, pos, cache, error):
-        """Internal-only guts of ``match()``
+    def match_core(self, text, pos, cache, error):
+        """Internal guts of ``match()``
+
+        This is appropriate to call only from custom rules or Expression
+        subclasses.
 
         :arg cache: The packrat cache::
 
@@ -74,6 +144,7 @@ class Expression(StrAndRepr):
             than allocating a new one for each expression that fails.) We
             return None rather than raising and catching ParseErrors because
             catching is slow.
+
         """
         # TODO: Optimize. Probably a hot spot.
         #
@@ -90,8 +161,8 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
-        node = cache.get((expr_id, pos), ())  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
-        if node is ():
+        node = cache.get((expr_id, pos), MARKER)  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        if node is MARKER:
             node = cache[(expr_id, pos)] = self.__uncached_match(text,
                                                                 pos,
                                                                 cache,
@@ -227,18 +298,18 @@ class Regex(Expression):
                             self._regex_flags_from_bits(self.re.flags))
 
 
-class _Compound(Expression):
+class Compound(Expression):
     """An abstract expression which contains other expressions"""
 
     __slots__ = ['members']
 
     def __init__(self, *members, **kwargs):
         """``members`` is a sequence of expressions."""
-        super(_Compound, self).__init__(kwargs.get('name', ''))
+        super(Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
 
 
-class Sequence(_Compound):
+class Sequence(Compound):
     """A series of expressions that must match contiguous, ordered pieces of
     the text
 
@@ -256,7 +327,7 @@ class Sequence(_Compound):
         length_of_sequence = 0
         children = []
         for m in self.members:
-            node = m._match(text, new_pos, cache, error)
+            node = m.match_core(text, new_pos, cache, error)
             if node is None:
                 return None
             children.append(node)
@@ -270,7 +341,7 @@ class Sequence(_Compound):
     def _as_rhs(self):
         return u' '.join(self._unicode_members())
 
-class OneOf(_Compound):
+class OneOf(Compound):
     """A series of expressions, one of which must match
 
     Expressions are tested in order from first to last. The first to succeed
@@ -284,7 +355,7 @@ class OneOf(_Compound):
 
     def _uncached_match(self, text, pos, cache, error):
         for m in self.members:
-            node = m._match(text, pos, cache, error)
+            node = m.match_core(text, pos, cache, error)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
                 return Node(self.name, text, pos, node.end, children=[node])
@@ -294,7 +365,7 @@ class OneOf(_Compound):
         return u' / '.join(self._unicode_members())
 
 
-class Lookahead(_Compound):
+class Lookahead(Compound):
     """An expression which consumes nothing, even if its contained expression
     succeeds"""
 
@@ -307,7 +378,7 @@ class Lookahead(_Compound):
         self._uncached_match_list = self._uncached_match
 
     def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         if node is not None:
             return Node(self.name, text, pos, pos)
 
@@ -315,7 +386,7 @@ class Lookahead(_Compound):
         return u'&%s' % self._unicode_members()[0]
 
 
-class Not(_Compound):
+class Not(Compound):
     """An expression that succeeds only if the expression within it doesn't
 
     In any case, it never consumes any characters; it's a negative lookahead.
@@ -328,7 +399,7 @@ class Not(_Compound):
     def _uncached_match(self, text, pos, cache, error):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         if node is None:
             return Node(self.name, text, pos, pos)
 
@@ -340,7 +411,7 @@ class Not(_Compound):
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
-class Optional(_Compound):
+class Optional(Compound):
     """An expression that succeeds whether or not the contained one does
 
     If the contained expression succeeds, it goes ahead and consumes what it
@@ -353,7 +424,7 @@ class Optional(_Compound):
         self._uncached_match_list = self._uncached_match
 
     def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0]._match(text, pos, cache, error)
+        node = self.members[0].match_core(text, pos, cache, error)
         return (Node(self.name, text, pos, pos) if node is None else
                 Node(self.name, text, pos, node.end, children=[node]))
 
@@ -362,7 +433,7 @@ class Optional(_Compound):
 
 
 # TODO: Merge with OneOrMore.
-class ZeroOrMore(_Compound):
+class ZeroOrMore(Compound):
     """An expression wrapper like the * quantifier in regexes."""
     def __init__(self, *members, **kwargs):
         super(ZeroOrMore, self).__init__(*members, **kwargs)
@@ -372,7 +443,7 @@ class ZeroOrMore(_Compound):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
                 return Node(self.name, text, pos, new_pos, children)
@@ -383,7 +454,7 @@ class ZeroOrMore(_Compound):
         return u'%s*' % self._unicode_members()[0]
 
 
-class OneOrMore(_Compound):
+class OneOrMore(Compound):
     """An expression wrapper like the + quantifier in regexes.
 
     You can also pass in an alternate minimum to make this behave like "2 or
@@ -404,7 +475,7 @@ class OneOrMore(_Compound):
         new_pos = pos
         children = []
         while True:
-            node = self.members[0]._match(text, new_pos, cache, error)
+            node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
                 break
             children.append(node)

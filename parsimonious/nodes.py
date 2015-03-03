@@ -6,9 +6,10 @@ are public.
 
 """
 # TODO: If this is slow, think about using cElementTree or something.
-import sys
+from inspect import isfunction
+from sys import version_info, exc_info
 
-from parsimonious.exceptions import VisitationError
+from parsimonious.exceptions import VisitationError, UndefinedLabel
 from parsimonious.utils import StrAndRepr
 
 
@@ -122,14 +123,43 @@ class RegexNode(Node):
     __slots__ = ['match']
 
 
+class RuleDecoratorMeta(type):
+    def __new__(metaclass, name, bases, namespace):
+        def unvisit(name):
+            """Remove any leading "visit_" from a method name."""
+            return name[6:] if name.startswith('visit_') else name
+
+        methods = [v for k, v in namespace.iteritems() if
+                   hasattr(v, '_rule') and isfunction(v)]
+        if methods:
+            from parsimonious.grammar import Grammar  # circular import dodge
+
+            methods.sort(key=(lambda x: x.func_code.co_firstlineno)
+                             if version_info[0] < 3 else
+                             (lambda x: x.__code__.co_firstlineno))
+            # Possible enhancement: once we get the Grammar extensibility story
+            # solidified, we can have @rules *add* to the default grammar
+            # rather than pave over it.
+            namespace['grammar'] = Grammar(
+                '\n'.join('{name} = {expr}'.format(name=unvisit(m.__name__),
+                                                   expr=m._rule)
+                          for m in methods))
+        return super(RuleDecoratorMeta,
+                     metaclass).__new__(metaclass, name, bases, namespace)
+
+
 class NodeVisitor(object):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
     each expr you care about, instantiate, and call
-    ``visit(top_node_of_parse_tree)``. It'll return the useful stuff.
+    ``visit(top_node_of_parse_tree)``. It'll return the useful stuff. This API
+    is very similar to that of ``ast.NodeVisitor``.
 
-    This API is very similar to that of ``ast.NodeVisitor``.
+    These could easily all be static methods, but that would add at least as
+    much weirdness at the call site as the ``()`` for instantiation. And this
+    way, we support subclasses that require state state: options, for example,
+    or a symbol table constructed from a programming language's AST.
 
     We never transform the parse tree in place, because...
 
@@ -141,29 +171,50 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-    # These could easily all be static methods, but that adds at least as much
-    # user-facing weirdness as the ``()`` chars for instantiation. And this
-    # way, we're forward compatible if we or the user ever wants to add any
-    # state: options, for instance, or a symbol table constructed from a
-    # programming language's AST.
+    __metaclass__ = RuleDecoratorMeta
+
+    #: The :term:`default grammar`: the one recommended for use with this
+    #: visitor. If you populate this, you will be able to call
+    #: :meth:`NodeVisitor.parse()` as a shortcut.
+    grammar = None
+
+    #: Classes of exceptions you actually intend to raise during visitation
+    #: and which should propogate out of the visitor. These will not be
+    #: wrapped in a VisitationError when they arise.
+    unwrapped_exceptions = ()
 
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
     # mark nodes as not descent-worthy in the grammar.
     def visit(self, node):
+        """Walk a parse tree, transforming it into another representation.
+
+        Recursively descend a parse tree, dispatching to the method named after
+        the rule in the :class:`~parsimonious.grammar.Grammar` that produced
+        each node. If, for example, a rule was... ::
+
+            bold = '<b>'
+
+        ...the ``visit_bold()`` method would be called. It is your
+        responsibility to subclass :class:`NodeVisitor` and implement those
+        methods.
+
+        """
         method = getattr(self, 'visit_' + node.expr_name, self.generic_visit)
 
         # Call that method, and show where in the tree it failed if it blows
         # up.
         try:
             return method(node, [self.visit(n) for n in node])
-        except VisitationError:
+        except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except Exception as e:
+        except self.unwrapped_exceptions:
+            raise
+        except Exception:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
-            exc_class, exc, tb = sys.exc_info()
+            exc_class, exc, tb = exc_info()
             raise VisitationError, (exc, exc_class, node), tb
 
     def generic_visit(self, node, visited_children):
@@ -181,8 +232,85 @@ class NodeVisitor(object):
         raise NotImplementedError("No visitor method was defined for %s." %
                                   node.expr_name)
 
-    # Convenience methods you can call from your own visitors:
+    # Convenience methods:
+
+    def parse(self, text, pos=0):
+        """Parse some text with this Visitor's default grammar.
+
+        ``SomeVisitor().parse('some_string')`` is a shortcut for
+        ``SomeVisitor().visit(some_grammar.parse('some_string'))``.
+
+        """
+        return self._parse_or_match(text, pos, 'parse')
+
+    def match(self, text, pos=0):
+        """Parse some text with this Visitor's default grammar, but don't
+        insist on parsing all the way to the end.
+
+        ``SomeVisitor().match('some_string')`` is a shortcut for
+        ``SomeVisitor().visit(some_grammar.match('some_string'))``.
+
+        """
+        return self._parse_or_match(text, pos, 'match')
+
+    # Internal convenience methods to help you write your own visitors:
 
     def lift_child(self, node, (first_child,)):
         """Lift the sole child of ``node`` up to replace the node."""
         return first_child
+
+    # Private methods:
+
+    def _parse_or_match(self, text, pos, method_name):
+        """Execute a parse or match on the default grammar, followed by a
+        visitation.
+
+        Raise RuntimeError if there is no default grammar specified.
+
+        """
+        if not self.grammar:
+            raise RuntimeError(
+                "The {cls}.{method}() shortcut won't work because {cls} was "
+                "never associated with a specific " "grammar. Fill out its "
+                "`grammar` attribute, and try again.".format(
+                    cls=self.__class__.__name__,
+                    method=method_name))
+        return self.visit(getattr(self.grammar, method_name)(text, pos=pos))
+
+
+def rule(rule_string):
+    """Decorate a NodeVisitor ``visit_*`` method to tie a grammar rule to it.
+
+    The following will arrange for the ``visit_digit`` method to receive the
+    results of the ``~"[0-9]"`` parse rule::
+
+        @rule('~"[0-9]"')
+        def visit_digit(self, node, visited_children):
+            ...
+
+    Notice that there is no "digit = " as part of the rule; that gets inferred
+    from the method name.
+
+    In cases where there is only one kind of visitor interested in a grammar,
+    using ``@rule`` saves you having to look back and forth between the visitor
+    and the grammar definition.
+
+    On an implementation level, all ``@rule`` rules get stitched together into
+    a :class:`~parsimonoius.Grammar` that becomes the NodeVisitor's
+    :term:`default grammar`.
+
+    Typically, the choice of a default rule for this grammar is simple: whatever
+    ``@rule`` comes first in the class is the default. But the choice may become
+    surprising if you divide the ``@rule`` calls among subclasses. At the
+    moment, which method "comes first" is decided simply by comparing line
+    numbers, so whatever method is on the smallest-numbered line will be the
+    default. In a future release, this will change to pick the
+    first ``@rule`` call on the basemost class that has one. That way, a
+    subclass which does not override the default rule's ``visit_*`` method
+    won't unintentionally change which rule is the default.
+
+    """
+    def decorator(method):
+        method._rule = rule_string  # XXX: Maybe register them on a class var instead so we can just override a @rule'd visitor method on a subclass without blowing away the rule string that comes with it.
+        return method
+    return decorator

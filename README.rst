@@ -114,10 +114,12 @@ Grammars are defined by a series of rules. The syntax should be familiar to
 anyone who uses regexes or reads programming language manuals. An example will
 serve best::
 
-    styled_text = bold_text / italic_text
-    bold_text   = "((" text "))"
-    italic_text = "''" text "''"
-    text        = ~"[A-Z 0-9]*"i
+    my_grammar = Grammar(r"""
+        styled_text = bold_text / italic_text
+        bold_text   = "((" text "))"
+        italic_text = "''" text "''"
+        text        = ~"[A-Z 0-9]*"i
+        """)
 
 You can wrap a rule across multiple lines if you like; the syntax is very
 forgiving.
@@ -127,8 +129,8 @@ Syntax Reference
 ----------------
 
 ====================    ========================================================
-``"some literal"``      Used to quote literals. Backslash escaping and Python 
-                        conventions for "raw" and Unicode strings help support 
+``"some literal"``      Used to quote literals. Backslash escaping and Python
+                        conventions for "raw" and Unicode strings help support
                         fiddly characters.
 
 [space]                 Sequences are made out of space- or tab-delimited
@@ -138,19 +140,19 @@ Syntax Reference
 ``a / b / c``           Alternatives. The first to succeed of ``a / b / c``
                         wins.
 
-``thing?``              An optional expression. This is greedy, always consuming 
+``thing?``              An optional expression. This is greedy, always consuming
                         ``thing`` if it exists.
 
-``&thing``              A lookahead assertion. Ensures ``thing`` matches at the 
+``&thing``              A lookahead assertion. Ensures ``thing`` matches at the
                         current position but does not consume it.
 
-``!thing``              A negative lookahead assertion. Matches if ``thing`` 
+``!thing``              A negative lookahead assertion. Matches if ``thing``
                         isn't found here. Doesn't consume any text.
 
 ``things*``             Zero or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``things+``             One or more things. This is greedy, always consuming as 
+``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
 ``~r"regex"ilmsux``     Regexes have ``~`` in front and are quoted like
@@ -171,10 +173,10 @@ Syntax Reference
 Optimizing Grammars
 ===================
 
-Don't Repeat Expressions 
+Don't Repeat Expressions
 ------------------------
 
-If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it 
+If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it
 twice. Make it a rule of its own, and reference it from wherever you need it. 
 You'll get the most out of the caching this way, since cache lookups are by 
 expression object identity (for speed). 
@@ -212,8 +214,12 @@ on it. For now, have a look at its docstrings for more detail. There's also a
 good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
 iterability by using tuple unpacks in the formal parameter lists::
 
-    def visit_or_term(self, or_term, (_, slash, term)):
+    def visit_or_term(self, or_term, (slash, _, term)):
         ...
+
+For reference, here is the production the above unpacks::
+
+    or_term = "/" _ term
 
 When something goes wrong in your visitor, you get a nice error like this::
 
@@ -308,8 +314,50 @@ Niceties
 Version History
 ===============
 
+0.6.2
+    * Make grammar compilation 100x faster. Thanks to dmoisset for the initial
+      patch.
+
+0.6.1
+    * Fix bug which made the default rule of a grammar invalid when it
+      contained a forward reference.
+
 0.6
+  .. warning::
+
+      This release makes backward-incompatible changes:
+
+      * The ``default_rule`` arg to Grammar's constructor has been replaced
+        with a method, ``some_grammar.default('rule_name')``, which returns a
+        new grammar just like the old except with its default rule changed.
+        This is to free up the constructor kwargs for custom rules.
+      * ``UndefinedLabel`` is no longer a subclass of ``VisitationError``. This
+        matters only in the unlikely case that you were catching
+        ``VisitationError`` exceptions and expecting to thus also catch
+        ``UndefinedLabel``.
+
+  * Add support for "custom rules" in Grammars. These provide a hook for simple
+    custom parsing hooks spelled as Python lambdas. For heavy-duty needs,
+    you can put in Compound Expressions with LazyReferences as subexpressions,
+    and the Grammar will hook them up for optimal efficiency--no calling
+    ``__getitem__`` on Grammar at parse time.
+  * Allow grammars without a default rule (in cases where there are no string
+    rules), which leads to also allowing empty grammars. Perhaps someone
+    building up grammars dynamically will find that useful.
+  * Add ``@rule`` decorator, allowing grammars to be constructed out of
+    notations on ``NodeVisitor`` methods. This saves looking back and forth
+    between the visitor and the grammar when there is only one visitor per
+    grammar.
+  * Add ``parse()`` and ``match()`` convenience methods to ``NodeVisitor``.
+    This makes the common case of parsing a string and applying exactly one
+    visitor to the AST shorter and simpler.
   * Improve exception message when you forget to declare a visitor method.
+  * Add ``unwrapped_exceptions`` attribute to ``NodeVisitor``, letting you
+    name certain exceptions which propagate out of visitors without being
+    wrapped by ``VisitationError`` exceptions.
+  * Expose much more of the library in ``__init__``, making your imports
+    shorter.
+  * Drastically simplify reference resolution machinery. (Vladimir Keleshev)
 
 0.5
   .. warning::

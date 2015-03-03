@@ -7,7 +7,7 @@ class ParseError(StrAndRepr, Exception):
     def __init__(self, text, pos=-1, expr=None):
         # It would be nice to use self.args, but I don't want to pay a penalty
         # to call descriptors or have the confusion of numerical indices in
-        # Expression._match().
+        # Expression.match_core().
         self.text = text
         self.pos = pos
         self.expr = expr
@@ -81,7 +81,7 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(StrAndRepr, VisitationError):
+class UndefinedLabel(StrAndRepr, Exception):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define
