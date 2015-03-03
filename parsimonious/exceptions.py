@@ -81,7 +81,16 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class UndefinedLabel(StrAndRepr, Exception):
+class BadGrammar(StrAndRepr, Exception):
+    """Something was wrong with the definition of a grammar.
+
+    Note that a ParseError might be raised instead if the error is in the
+    grammar definition syntax.
+
+    """
+
+
+class UndefinedLabel(BadGrammar):
     """A rule referenced in a grammar was never defined.
 
     Circular references and forward references are okay, but you have to define

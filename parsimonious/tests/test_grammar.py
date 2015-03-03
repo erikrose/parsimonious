@@ -7,7 +7,7 @@ from nose.tools import eq_, assert_raises, ok_
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Sequence, Token
 from parsimonious.nodes import Node
-from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, LazyReference
+from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 
 
 class BootstrappingGrammarTests(TestCase):
@@ -383,18 +383,21 @@ class GrammarTests(TestCase):
         eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))
 
 
-class TokenListTests(TestCase):
-    def test_token_list_grammar(self):
-        """Token literals should work."""
-        grammar = Grammar("""
-            foo = %TOKEN1% %TOKEN2%
-            """)
-        ok_(grammar.parse([Token("TOKEN1"), Token("TOKEN2")]) is not None)
+class TokenGrammarTests(TestCase):
+    """Tests for the TokenGrammar class and associated machinery"""
 
-    def test_token_list_grammar_false(self):
+    def test_parse_success(self):
         """Token literals should work."""
-        grammar = Grammar("""
-            foo = %TOKEN1% %TOKEN2%
+        grammar = TokenGrammar("""
+            foo = "TOKEN1" "TOKEN2"
             """)
-        assert_raises(ParseError, grammar.parse, [Token("TOKEN"), Token("TOKEN2")])
+        ok_(grammar.parse([Token('TOKEN1'), Token('TOKEN2')]) is not None)
 
+    def test_parse_failure(self):
+        """Parse failures should work normally with token literals."""
+        grammar = TokenGrammar("""
+            foo = "TOKEN1" "TOKEN2"
+            """)
+        assert_raises(ParseError,
+                      grammar.parse,
+                      [Token('TOKEN'), Token('TOKEN2')])

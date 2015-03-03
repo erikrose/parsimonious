@@ -5,14 +5,14 @@ optimizations that would be tedious to do when constructing an expression tree
 by hand.
 
 """
-import ast
 from inspect import isfunction, ismethod
 
-from parsimonious.exceptions import UndefinedLabel
+from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenExpression, expression)
+    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
+    expression)
 from parsimonious.nodes import NodeVisitor
-from parsimonious.utils import StrAndRepr
+from parsimonious.utils import StrAndRepr, evaluate_string
 
 
 class Grammar(StrAndRepr, dict):
@@ -141,6 +141,18 @@ class Grammar(StrAndRepr, dict):
         return "Grammar('%s')" % str(self).encode('string_escape')
 
 
+class TokenGrammar(Grammar):
+    """A Grammar which takes a list of pre-lexed tokens instead of text
+
+    This is useful if you want to do the lexing yourself, as a separate pass:
+    for example, to implement indentation-based languages.
+
+    """
+    def _expressions_from_rules(self, rules, custom_rules):
+        tree = rule_grammar.parse(rules)
+        return TokenRuleVisitor(custom_rules).visit(tree)
+
+
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
     grammars
@@ -213,11 +225,6 @@ rule_syntax = (r'''
     rule = label equals expression
     equals = "=" _
     literal = spaceless_literal _
-    token_literal = spaceless_token_literal _
-
-    # A token literal is denoted %TOKEN_TYPE%; the character % is not allowed as part of the token type
-    spaceless_token_literal = ~"%[^%]+%"is
-
 
     # So you can't spell a regex like `~"..." ilm`:
     spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
@@ -231,7 +238,7 @@ rule_syntax = (r'''
     lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = reference / literal / regex / parenthesized / token_literal
+    atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]" _
@@ -351,25 +358,9 @@ class RuleVisitor(NodeVisitor):
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
-        # Piggyback on Python's string support so we can have backslash
-        # escaping and niceties like \n, \t, etc.
-        # string.decode('string_escape') would have been a lower-level
-        # possibility.
-        return Literal(ast.literal_eval(spaceless_literal.text))
+        return Literal(evaluate_string(spaceless_literal.text))
 
     def visit_literal(self, literal, (spaceless_literal, _)):
-        """Pick just the literal out of a literal-and-junk combo."""
-        return spaceless_literal
-
-    def visit_spaceless_token_literal(self, expr, visited_children):
-        """Turn a string literal into a ``Literal`` that recognizes it."""
-        # Piggyback on Python's string support so we can have backslash
-        # escaping and niceties like \n, \t, etc.
-        # string.decode('string_escape') would have been a lower-level
-        # possibility.
-        return TokenExpression(expr.text[1:-1])
-
-    def visit_token_literal(self, literal, (spaceless_literal, _)):
         """Pick just the literal out of a literal-and-junk combo."""
         return spaceless_literal
 
@@ -449,6 +440,21 @@ class RuleVisitor(NodeVisitor):
         # it's surprising and requires writing lame branches like this.
         return rule_map, (rule_map[rules[0].name]
                           if isinstance(rules, list) and rules else None)
+
+
+class TokenRuleVisitor(RuleVisitor):
+    """A visitor which builds expression trees meant to work on sequences of
+    pre-lexed tokens rather than strings"""
+
+    def visit_spaceless_literal(self, spaceless_literal, visited_children):
+        """Turn a string literal into a ``TokenMatcher`` that matches
+        ``Token`` objects by their ``type`` attributes."""
+        return TokenMatcher(evaluate_string(spaceless_literal.text))
+
+    def visit_regex(self, regex, (tilde, literal, flags, _)):
+        raise BadGrammar('Regexes do not make sense in TokenGrammars, since '
+                         'they operate on pre-lexed tokens rather than '
+                         'characters.')
 
 
 # Bootstrap to level 1...
