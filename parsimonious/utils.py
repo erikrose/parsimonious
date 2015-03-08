@@ -37,6 +37,8 @@ class Token(StrAndRepr):
     must have a ``type`` attr.
 
     """
+    __slots__ = ['type']
+
     def __init__(self, type):
         self.type = type
 

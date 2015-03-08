@@ -233,8 +233,6 @@ class TokenMatcher(Literal):
     This is for use only with TokenGrammars.
 
     """
-    __slots__ = []  # so this doesn't grow a __dict__
-
     def _uncached_match(self, token_list, pos, cache, error):
         if token_list[pos].type == self.literal:
             return Node(self.name, token_list, pos, pos + 1)

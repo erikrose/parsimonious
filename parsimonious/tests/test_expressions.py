@@ -259,3 +259,30 @@ class RepresentationTests(TestCase):
 
         """
         unicode(rule_grammar)
+
+
+class SlotsTests(TestCase):
+    """Tests to do with __slots__"""
+
+    def test_subclassing(self):
+        """Make sure a subclass of a __slots__-less class can introduce new
+        slots itself.
+
+        This isn't supposed to work, according to the language docs:
+
+            When inheriting from a class without __slots__, the __dict__
+            attribute of that class will always be accessible, so a __slots__
+            definition in the subclass is meaningless.
+
+        But it does.
+
+        """
+        class Smoo(Optional):
+            __slots__ = ['smoo']
+
+            def __init__(self):
+                self.smoo = 'smoo'
+
+        smoo = Smoo()
+        eq_(smoo.__dict__, {})  # has a __dict__ but with no smoo in it
+        eq_(smoo.smoo, 'smoo')  # The smoo attr ended up in a slot.
