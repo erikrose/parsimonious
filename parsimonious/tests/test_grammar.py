@@ -5,9 +5,10 @@ from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
-from parsimonious.expressions import Sequence, Token
-from parsimonious.nodes import Node
+from parsimonious.expressions import Sequence
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
+from parsimonious.nodes import Node
+from parsimonious.utils import Token
 
 
 class BootstrappingGrammarTests(TestCase):
@@ -388,16 +389,21 @@ class TokenGrammarTests(TestCase):
 
     def test_parse_success(self):
         """Token literals should work."""
+        s = [Token('token1'), Token('token2')]
         grammar = TokenGrammar("""
-            foo = "TOKEN1" "TOKEN2"
+            foo = token1 "token2"
+            token1 = "token1"
             """)
-        ok_(grammar.parse([Token('TOKEN1'), Token('TOKEN2')]) is not None)
+        eq_(grammar.parse(s),
+            Node('foo', s, 0, 2, children=[
+                Node('token1', s, 0, 1),
+                Node('', s, 1, 2)]))
 
     def test_parse_failure(self):
         """Parse failures should work normally with token literals."""
         grammar = TokenGrammar("""
-            foo = "TOKEN1" "TOKEN2"
+            foo = "token1" "token2"
             """)
         assert_raises(ParseError,
                       grammar.parse,
-                      [Token('TOKEN'), Token('TOKEN2')])
+                      [Token('tokenBOO'), Token('token2')])

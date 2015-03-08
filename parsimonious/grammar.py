@@ -453,8 +453,8 @@ class TokenRuleVisitor(RuleVisitor):
 
     def visit_regex(self, regex, (tilde, literal, flags, _)):
         raise BadGrammar('Regexes do not make sense in TokenGrammars, since '
-                         'they operate on pre-lexed tokens rather than '
-                         'characters.')
+                         'TokenGrammars operate on pre-lexed tokens rather '
+                         'than characters.')
 
 
 # Bootstrap to level 1...

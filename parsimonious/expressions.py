@@ -228,13 +228,16 @@ class Literal(Expression):
 
 
 class TokenMatcher(Literal):
-    """An expression matching a single token of a given type"""
+    """An expression matching a single token of a given type
 
+    This is for use only with TokenGrammars.
+
+    """
     __slots__ = []  # so this doesn't grow a __dict__
 
     def _uncached_match(self, token_list, pos, cache, error):
         if token_list[pos].type == self.literal:
-            return Node(self.name, token_list[pos], pos, pos + 1)
+            return Node(self.name, token_list, pos, pos + 1)
 
 
 class Regex(Expression):
@@ -438,19 +441,3 @@ class OneOrMore(Compound):
 
     def _as_rhs(self):
         return u'%s+' % self._unicode_members()[0]
-
-
-class Token(StrAndRepr):
-    """A class to represent tokens, for those electing to do their own lexing
-
-    You will likely want to subclass this to hold additional information, like
-    the characters that you lexed to create this token. Alternately, feel free
-    to create your own class from scratch. The only contract is that tokens
-    must have a ``type`` attr.
-
-    """
-    def __init__(self, type):
-        self.type = type
-
-    def __unicode__(self):
-        return u'<Token "%s">' % (self.type,)

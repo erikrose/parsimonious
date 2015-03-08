@@ -26,3 +26,22 @@ def evaluate_string(string):
 
     """
     return ast.literal_eval(string)
+
+
+class Token(StrAndRepr):
+    """A class to represent tokens, for use with TokenGrammars
+
+    You will likely want to subclass this to hold additional information, like
+    the characters that you lexed to create this token. Alternately, feel free
+    to create your own class from scratch. The only contract is that tokens
+    must have a ``type`` attr.
+
+    """
+    def __init__(self, type):
+        self.type = type
+
+    def __unicode__(self):
+        return u'<Token "%s">' % (self.type,)
+
+    def __eq__(self, other):
+        return self.type == other.type
