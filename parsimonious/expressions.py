@@ -227,6 +227,19 @@ class Literal(Expression):
         return '"%s"' % self.literal
 
 
+class TokenMatcher(Literal):
+    """An expression matching a single token of a given type
+
+    This is for use only with TokenGrammars.
+
+    """
+    __slots__ = []  # so this doesn't grow a __dict__
+
+    def _uncached_match(self, token_list, pos, cache, error):
+        if token_list[pos].type == self.literal:
+            return Node(self.name, token_list, pos, pos + 1)
+
+
 class Regex(Expression):
     """An expression that matches what a regex does.
 
@@ -303,6 +316,7 @@ class Sequence(Compound):
     def _as_rhs(self):
         return u' '.join(self._unicode_members())
 
+
 class OneOf(Compound):
     """A series of expressions, one of which must match
 
@@ -378,6 +392,7 @@ class Optional(Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(Compound):
     """An expression wrapper like the * quantifier in regexes."""
+
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []

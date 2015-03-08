@@ -34,7 +34,7 @@ class Node(StrAndRepr):
     __slots__ = ['expr_name',  # The name of the expression that generated me
                  'full_text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
-                 'end',   # The position after start where the expr first didn't
+                 'end',   # The position after starft where the expr first didn't
                           # match. [start:end] follow Python slice conventions.
                  'children']  # List of child parse tree nodes
 
