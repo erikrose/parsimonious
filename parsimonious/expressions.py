@@ -91,10 +91,11 @@ class Expression(StrAndRepr):
     # http://stackoverflow.com/questions/1336791/dictionary-vs-object-which-is-more-efficient-and-why
 
     # Top-level expressions--rules--have names. Subexpressions are named ''.
-    __slots__ = ['name']
+    __slots__ = ['name', '_is_cacheable']
 
     def __init__(self, name=''):
         self.name = name
+        self._is_cacheable = False  # TODO: Change back. This is just for proving the concept before I figure out how to percolate uncacheability during compilation.
 
     def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
@@ -157,12 +158,14 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
+#         if self.name:
+#             print ('Trying %s @ %s "%s"...' % (self.name, pos, text[pos:pos + 5])),
         node = cache.get((expr_id, pos), MARKER)  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
         if node is MARKER:
-            node = cache[(expr_id, pos)] = self._uncached_match(text,
-                                                                pos,
-                                                                cache,
-                                                                error)
+            node = self._uncached_match(text, pos, cache, error)
+            if self._is_cacheable:
+                cache[(expr_id, pos)] = node
+#         print 'worked' if node else 'failed'
 
         # Record progress for error reporting:
         if node is None and pos >= error.pos and (
