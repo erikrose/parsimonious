@@ -260,6 +260,36 @@ class RepresentationTests(TestCase):
         """
         unicode(rule_grammar)
 
+    def test_unicode_keep_parens(self):
+        """Make sure converting an expression to unicode doesn't strip
+        parenthesis.
+
+        """
+        # ZeroOrMore
+        eq_(unicode(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
+            u'foo = "bar" ("baz" "eggs")* "spam"')
+
+        # OneOf
+        eq_(unicode(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
+            u'foo = "bar" ("baz" / "eggs") "spam"')
+
+        # Lookahead
+        eq_(unicode(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
+            u'foo = "bar" &("baz" "eggs") "spam"')
+
+        # Multiple sequences
+        eq_(unicode(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
+            u'foo = ("bar" "baz") / ("baff" "bam")')
+
+    def test_unicode_surrounding_parens(self):
+        """
+        Make sure there are no surrounding parens around the entire
+        right-hand side of an expression (as they're unnecessary).
+
+        """
+        eq_(unicode(Grammar('foo = ("foo" ("bar" "baz"))')),
+            u'foo = "foo" ("bar" "baz")')
+
 
 class SlotsTests(TestCase):
     """Tests to do with __slots__"""

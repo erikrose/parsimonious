@@ -188,8 +188,11 @@ class Expression(StrAndRepr):
         Return unicode. If I have no ``name``, omit the left-hand side.
 
         """
-        return ((u'%s = %s' % (self.name, self._as_rhs())) if self.name else
-                self._as_rhs())
+        rhs = self._as_rhs().strip()
+        if rhs.startswith('(') and rhs.endswith(')'):
+            rhs = rhs[1:-1]
+
+        return (u'%s = %s' % (self.name, rhs)) if self.name else rhs
 
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
@@ -312,7 +315,7 @@ class Sequence(Compound):
         return Node(self.name, text, pos, pos + length_of_sequence, children)
 
     def _as_rhs(self):
-        return u' '.join(self._unicode_members())
+        return u'({0})'.format(u' '.join(self._unicode_members()))
 
 
 class OneOf(Compound):
@@ -330,7 +333,7 @@ class OneOf(Compound):
                 return Node(self.name, text, pos, node.end, children=[node])
 
     def _as_rhs(self):
-        return u' / '.join(self._unicode_members())
+        return u'({0})'.format(u' / '.join(self._unicode_members()))
 
 
 class Lookahead(Compound):
