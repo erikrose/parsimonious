@@ -5,6 +5,7 @@ optimizations that would be tedious to do when constructing an expression tree
 by hand.
 
 """
+from collections import Mapping
 from inspect import isfunction, ismethod
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
@@ -15,7 +16,7 @@ from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr, evaluate_string
 
 
-class Grammar(StrAndRepr, dict):
+class Grammar(StrAndRepr, Mapping):
     """A collection of rules that describe a language
 
     You can start parsing from the default rule by calling ``parse()``
@@ -63,10 +64,17 @@ class Grammar(StrAndRepr, dict):
                                           ismethod(v) else
                 v) for k, v in more_rules.iteritems())
 
-        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
-
-        self.update(exprs)
+        self._expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
         self.default_rule = first  # may be None
+
+    def __getitem__(self, rule_name):
+        return self._expressions[rule_name]
+
+    def __iter__(self):
+        return self._expressions.iterkeys()
+
+    def __len__(self):
+        return len(self._expressions)
 
     def default(self, rule_name):
         """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
@@ -82,7 +90,7 @@ class Grammar(StrAndRepr, dict):
         no Expressions.
 
         """
-        new = Grammar(**self)
+        new = Grammar(**self._expressions)
         new.default_rule = self.default_rule
         return new
 

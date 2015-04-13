@@ -383,6 +383,23 @@ class GrammarTests(TestCase):
             """)
         eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))
 
+    def test_immutable_grammar(self):
+        """Make sure that a Grammar is immutable after being created."""
+        grammar = Grammar(r"""
+            foo = 'bar'
+        """)
+
+        def mod_grammar(grammar):
+            grammar['foo'] = 1
+        assert_raises(TypeError, mod_grammar, [grammar])
+
+        def mod_grammar(grammar):
+            new_grammar = Grammar(r"""
+                baz = 'biff'
+            """)
+            grammar.update(new_grammar)
+        assert_raises(AttributeError, mod_grammar, [grammar])
+
 
 class TokenGrammarTests(TestCase):
     """Tests for the TokenGrammar class and associated machinery"""
