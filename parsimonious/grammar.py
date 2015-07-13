@@ -196,11 +196,10 @@ class BootstrappingGrammar(Grammar):
         not_term = Sequence(Literal('!'), term, _, name='not_term')
         term.members = (not_term,) + term.members
 
-        sequence = Sequence(term, OneOrMore(term), name='sequence')
-        or_term = Sequence(Literal('/'), _, term, name='or_term')
-        ored = Sequence(term, OneOrMore(or_term), name='ored')
-        expression = OneOf(ored, sequence, term, name='expression')
-        rule = Sequence(label, equals, expression, name='rule')
+        sequence = Sequence(term, ZeroOrMore(term), name='sequence')
+        or_sequence = Sequence(Literal('/'), _, sequence, name='or_sequence')
+        ored = Sequence(sequence, ZeroOrMore(or_sequence), name='ored')
+        rule = Sequence(label, equals, ored, name='rule')
         rules = Sequence(_, OneOrMore(rule), name='rules')
 
         # Use those hard-coded rules to parse the (more extensive) rule syntax.
@@ -211,7 +210,7 @@ class BootstrappingGrammar(Grammar):
         rule_tree = rules.parse(rule_syntax)
 
         # Turn the parse tree into a map of expressions:
-        return RuleVisitor().visit(rule_tree)
+        return BuggyRuleVisitor().visit(rule_tree)
 
 
 # The grammar for parsing PEG grammar definitions:
@@ -222,7 +221,7 @@ rule_syntax = (r'''
     # leafmost kinds of nodes. Literals like "/" count as leaves.
 
     rules = _ rule*
-    rule = label equals expression
+    rule = label equals ored
     equals = "=" _
     literal = spaceless_literal _
 
@@ -230,17 +229,16 @@ rule_syntax = (r'''
     spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
                         ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
-    expression = ored / sequence / term
-    or_term = "/" _ term
-    ored = term or_term+
-    sequence = term term+
+    ored = sequence or_sequence*
+    or_sequence = "/" _ sequence
+    sequence = term term*
     not_term = "!" term _
     lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
-    parenthesized = "(" _ expression ")" _
+    parenthesized = "(" _ ored ")" _
     quantifier = ~"[*+?]" _
     reference = label !equals
 
@@ -277,7 +275,7 @@ class RuleVisitor(NodeVisitor):
     """
     quantifier_classes = {'?': Optional, '*': ZeroOrMore, '+': OneOrMore}
 
-    visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
+    visit_term = visit_atom = NodeVisitor.lift_child
 
     def __init__(self, custom_rules=None):
         """Construct.
@@ -289,14 +287,14 @@ class RuleVisitor(NodeVisitor):
         self.custom_rules = custom_rules or {}
 
     def visit_parenthesized(self, parenthesized, (left_paren, _1,
-                                                  expression,
+                                                  ored,
                                                   right_paren, _2)):
         """Treat a parenthesized subexpression as just its contents.
 
         Its position in the tree suffices to maintain its grouping semantics.
 
         """
-        return expression
+        return ored
 
     def visit_quantifier(self, quantifier, (symbol, _)):
         """Turn a quantifier into just its symbol-matching node."""
@@ -311,29 +309,53 @@ class RuleVisitor(NodeVisitor):
     def visit_not_term(self, not_term, (exclamation, term, _)):
         return Not(term)
 
-    def visit_rule(self, rule, (label, equals, expression)):
-        """Assign a name to the Expression and return it."""
-        expression.name = label  # Assign a name to the expr.
-        return expression
+    def visit_rule(self, rule, (label, equals, ored)):
+        """Assign a name to the ored and return it."""
+        try:
+            ored.name = label  # Assign a name to the expr.
+        except Exception as exc:
+            #import pdb;pdb.set_trace()
+            raise
+
+        return ored
 
     def visit_sequence(self, sequence, (term, other_terms)):
-        """A parsed Sequence looks like [term node, OneOrMore node of
+        """A parsed Sequence looks like [term node, ZeroOrMore node of
         ``another_term``s]. Flatten it out."""
+        import pdb;pdb.set_trace()
+
         return Sequence(term, *other_terms)
+        if other_terms:
+            return Sequence(term, *other_terms)
+        else:
+            # Return just the term if there's only one. This makes for one less
+            # call while parsing with the resulting grammar.
+            return term
 
-    def visit_ored(self, ored, (first_term, other_terms)):
-        return OneOf(first_term, *other_terms)
+    def visit_ored(self, ored, (sequence, other_sequences)):
+        return OneOf(sequence, *other_sequences)
+        if other_sequences:
+            return OneOf(sequence, *other_sequences)
+        else:
+            # Return just the first sequence if there's only one.
+            return sequence
 
-    def visit_or_term(self, or_term, (slash, _, term)):
-        """Return just the term from an ``or_term``.
+    def visit_or_sequence(self, or_sequence, (slash, _, sequence)):
+        """Return just the sequence from an ``or_sequence``.
 
         We already know it's going to be ored, from the containing ``ored``.
 
         """
-        return term
+        return sequence
 
-    def visit_label(self, label, (name, _)):
+    def visit_label(self, label, things):
         """Turn a label into a unicode string."""
+        try:
+            name, _ = things
+        except Exception as exc:
+            import pdb;pdb.set_trace()
+            raise
+
         return name.text
 
     def visit_reference(self, reference, (label, not_equals)):
@@ -442,6 +464,35 @@ class RuleVisitor(NodeVisitor):
                           if isinstance(rules, list) and rules else None)
 
 
+class BuggyRuleVisitor(RuleVisitor):
+    def generic_visit(self, node, visited_children):
+        """Replace childbearing nodes with a list of their children; keep
+        others untouched.
+
+        For our case, if a node has children, only the children are important.
+        Otherwise, keep the node around for (for example) the flags of the
+        regex rule. Most of these kept-around nodes are subsequently thrown
+        away by the other visitor methods.
+
+        We can't simply hang the visited children off the original node; that
+        would be disastrous if the node occurred in more than one place in the
+        tree.
+
+        """
+        return visited_children or node  # should semantically be a tuple
+
+    def visit_sequence(self, sequence, (term, other_terms)):
+        """A parsed Sequence looks like [term node, ZeroOrMore node of
+        ``another_term``s]. Flatten it out."""
+        return Sequence(term, *other_terms)
+        if other_terms:
+            return Sequence(term, *other_terms)
+        else:
+            # Return just the term if there's only one. This makes for one less
+            # call while parsing with the resulting grammar.
+            return term
+
+
 class TokenRuleVisitor(RuleVisitor):
     """A visitor which builds expression trees meant to work on sequences of
     pre-lexed tokens rather than strings"""
@@ -463,7 +514,9 @@ rule_grammar = BootstrappingGrammar(rule_syntax)
 # syntax is built by the same machinery that will build trees of our users'
 # grammars. And the correctness of that tree is tested, indirectly, in
 # test_grammar.
-rule_grammar = Grammar(rule_syntax)
+#import pdb;pdb.set_trace()
+
+#rule_grammar = Grammar(rule_syntax)
 
 
 # TODO: Teach Expression trees how to spit out Python representations of

@@ -15,6 +15,22 @@ class BootstrappingGrammarTests(TestCase):
     """Tests for the expressions in the grammar that parses the grammar
     definition syntax"""
 
+    def test_something(self):
+        """Trigger the bug that ends up wrapping visitor output in way too many
+        [[[]]]s, foiling my attempt to rejigger the grammar to lower the
+        precedence of OR."""
+        tree = rule_grammar['label'].parse('smoo')
+        tree = rule_grammar['atom'].parse('"woot"')
+        tree = rule_grammar['sequence'].parse('"woot" hey')
+        tree = rule_grammar['rule'].parse('greeting = hello "jude"')
+
+        tree = rule_grammar['rules'].parse('''greeting = "j"''')
+        print "YOYOYOYOYOYOYOYOYOYOYO"
+        print tree
+        print
+        grammar = RuleVisitor().visit(tree)
+
+
     def test_quantifier(self):
         text = '*'
         eq_(rule_grammar['quantifier'].parse(text),
@@ -382,6 +398,13 @@ class GrammarTests(TestCase):
             text        = "hi"
             """)
         eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))
+
+    def test_or_precedence(self):
+        """Make sure the "or" operator is lower precedence than sequence."""
+        grammar = Grammar('foo = ("x" "y") ("z")')
+        grammar = Grammar('foo = "x" "y" "z" / "a" "b"')
+        eq_(grammar.parse('xyz'))
+        eq_(grammar.parse('ab'))
 
 
 class TokenGrammarTests(TestCase):

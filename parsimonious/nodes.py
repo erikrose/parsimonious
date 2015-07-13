@@ -96,21 +96,25 @@ class Node(StrAndRepr):
     def __ne__(self, other):
         return not self == other
 
-    def __repr__(self, top_level=True):
-        """Return a bit of code (though not an expression) that will recreate
-        me."""
+    def __repr__(self, level=0):
+        """Return an expression that will recreate me.
+
+        Strings may be truncated for readability, however.
+
+        """
         # repr() of unicode flattens everything out to ASCII, so we don't need
         # to explicitly encode things afterward.
-        ret = ["s = %r" % self.full_text] if top_level else []
-        ret.append("%s(%r, s, %s, %s%s)" % (
+        return "%s%s(%r, '%s', %s, %s%s)" % (
+            '    ' * level,
             self.__class__.__name__,
             self.expr_name,
+            self.full_text if len(self.full_text) < 30
+                           else (self.full_text[:30] + '...'),
             self.start,
             self.end,
-            (', children=[%s]' %
-             ', '.join([c.__repr__(top_level=False) for c in self.children]))
-            if self.children else ''))
-        return '\n'.join(ret)
+            (', children=[\n%s]' %
+             ',\n'.join([c.__repr__(level=level + 1) for c in self.children]))
+            if self.children else '')
 
 
 class RegexNode(Node):
@@ -205,17 +209,22 @@ class NodeVisitor(object):
         # Call that method, and show where in the tree it failed if it blows
         # up.
         try:
-            return method(node, [self.visit(n) for n in node])
-        except (VisitationError, UndefinedLabel):
-            # Don't catch and re-wrap already-wrapped exceptions.
+            result = method(node, [self.visit(n) for n in node])
+            print method, "-->", result
+            return result
+        except Exception as exc:
             raise
-        except self.unwrapped_exceptions:
-            raise
-        except Exception:
-            # Catch any exception, and tack on a parse tree so it's easier to
-            # see where it went wrong.
-            exc_class, exc, tb = exc_info()
-            raise VisitationError, (exc, exc_class, node), tb
+            import pdb;pdb.set_trace()
+#         except (VisitationError, UndefinedLabel):
+#             # Don't catch and re-wrap already-wrapped exceptions.
+#             raise
+#         except self.unwrapped_exceptions:
+#             raise
+#         except Exception:
+#             # Catch any exception, and tack on a parse tree so it's easier to
+#             # see where it went wrong.
+#             exc_class, exc, tb = exc_info()
+#             raise VisitationError, (exc, exc_class, node), tb
 
     def generic_visit(self, node, visited_children):
         """Default visitor method
@@ -229,6 +238,8 @@ class NodeVisitor(object):
         for now.
 
         """
+        import pdb;pdb.set_trace()
+
         raise NotImplementedError("No visitor method was defined for %s." %
                                   node.expr_name)
 
