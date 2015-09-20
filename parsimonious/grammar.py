@@ -14,8 +14,10 @@ from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     expression)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr, evaluate_string
+from six import text_type, iterkeys, itervalues, iteritems,
+    python_2_unicode_compatible
 
-
+@python_2_unicode_compatible
 class Grammar(StrAndRepr, Mapping):
     """A collection of rules that describe a language
 
@@ -62,7 +64,7 @@ class Grammar(StrAndRepr, Mapping):
         decorated_custom_rules = dict(
             (k, expression(v, k, self) if isfunction(v) or
                                           ismethod(v) else
-                v) for k, v in more_rules.iteritems())
+                v) for k, v in iteritems(more_rules))
 
         self._expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
         self.default_rule = first  # may be None
@@ -71,7 +73,7 @@ class Grammar(StrAndRepr, Mapping):
         return self._expressions[rule_name]
 
     def __iter__(self):
-        return self._expressions.iterkeys()
+        return iterkeys(self._expressions)
 
     def __len__(self):
         return len(self._expressions)
@@ -136,11 +138,11 @@ class Grammar(StrAndRepr, Mapping):
                                "default rule. Choose a specific rule instead, "
                                "like some_grammar['some_rule'].parse(...).")
 
-    def __unicode__(self):
+    def __str__(self):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
         exprs = [self.default_rule] if self.default_rule else []
-        exprs.extend(expr for expr in self.itervalues() if
+        exprs.extend(expr for expr in itervalues(self) if
                      expr is not self.default_rule)
         return '\n'.join(expr.as_rule() for expr in exprs)
 
@@ -264,7 +266,7 @@ rule_syntax = (r'''
     ''')
 
 
-class LazyReference(unicode):
+class LazyReference(text_type):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
@@ -296,64 +298,74 @@ class RuleVisitor(NodeVisitor):
         """
         self.custom_rules = custom_rules or {}
 
-    def visit_parenthesized(self, parenthesized, (left_paren, _1,
-                                                  expression,
-                                                  right_paren, _2)):
+    def visit_parenthesized(self, parenthesized, _a):
         """Treat a parenthesized subexpression as just its contents.
 
         Its position in the tree suffices to maintain its grouping semantics.
 
         """
+        (left_paren, _1, expression, right_paren, _2) = _a
         return expression
 
-    def visit_quantifier(self, quantifier, (symbol, _)):
+    def visit_quantifier(self, quantifier, _a):
         """Turn a quantifier into just its symbol-matching node."""
+        (symbol, _1) = _a
         return symbol
 
-    def visit_quantified(self, quantified, (atom, quantifier)):
+    def visit_quantified(self, quantified, _a):
+        (atom, quantifier) = _a
         return self.quantifier_classes[quantifier.text](atom)
 
-    def visit_lookahead_term(self, lookahead_term, (ampersand, term, _)):
+    def visit_lookahead_term(self, lookahead_term, _a):
+        (ampersand, term, _) = _a
         return Lookahead(term)
 
-    def visit_not_term(self, not_term, (exclamation, term, _)):
+    def visit_not_term(self, not_term, _a):
+        (exclamation, term, _) = _a
         return Not(term)
 
-    def visit_rule(self, rule, (label, equals, expression)):
+    def visit_rule(self, rule, _a):
         """Assign a name to the Expression and return it."""
+        (label, equals, expression) = _a
         expression.name = label  # Assign a name to the expr.
         return expression
 
-    def visit_sequence(self, sequence, (term, other_terms)):
+    def visit_sequence(self, sequence, _a):
         """A parsed Sequence looks like [term node, OneOrMore node of
         ``another_term``s]. Flatten it out."""
+        (term, other_terms) = _a
         return Sequence(term, *other_terms)
 
-    def visit_ored(self, ored, (first_term, other_terms)):
+    def visit_ored(self, ored, _a):
+        (first_term, other_terms) = _a
         return OneOf(first_term, *other_terms)
 
-    def visit_or_term(self, or_term, (slash, _, term)):
+    def visit_or_term(self, or_term, _a):
         """Return just the term from an ``or_term``.
 
         We already know it's going to be ored, from the containing ``ored``.
 
         """
+        (slash, _, term) = _a
         return term
 
-    def visit_label(self, label, (name, _)):
+    def visit_label(self, label, _a):
         """Turn a label into a unicode string."""
+        (name, _) = _a
         return name.text
 
-    def visit_reference(self, reference, (label, not_equals)):
+    def visit_reference(self, reference, _a):
         """Stick a :class:`LazyReference` in the tree as a placeholder.
 
         We resolve them all later.
 
         """
+        (label, not_equals) = _a
         return LazyReference(label)
 
-    def visit_regex(self, regex, (tilde, literal, flags, _)):
+    def visit_regex(self, regex, _a):
         """Return a ``Regex`` expression."""
+        (tilde, literal, flags, _) = _a
         flags = flags.text.upper()
         pattern = literal.literal  # Pull the string back out of the Literal
                                    # object.
@@ -368,8 +380,9 @@ class RuleVisitor(NodeVisitor):
         """Turn a string literal into a ``Literal`` that recognizes it."""
         return Literal(evaluate_string(spaceless_literal.text))
 
-    def visit_literal(self, literal, (spaceless_literal, _)):
+    def visit_literal(self, literal, _a):
         """Pick just the literal out of a literal-and-junk combo."""
+        (spaceless_literal, _) = _a
         return spaceless_literal
 
     def generic_visit(self, node, visited_children):
@@ -401,7 +414,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         if isinstance(expr, LazyReference):
-            label = unicode(expr)
+            label = text_type(expr)
             try:
                 reffed_expr = rule_map[label]
             except KeyError:
@@ -417,7 +430,7 @@ class RuleVisitor(NodeVisitor):
                                 for member in expr.members]
             return expr
 
-    def visit_rules(self, node, (_, rules)):
+    def visit_rules(self, node, _a):
         """Collate all the rules into a map. Return (map, default rule).
 
         The default rule is the first one. Or, if you have more than one rule
@@ -427,6 +440,8 @@ class RuleVisitor(NodeVisitor):
         due to being kwarg-based, are unordered.
 
         """
+        (_, rules) = _a
+
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
         # have the last declaration win, so you can extend grammars by
@@ -441,7 +456,7 @@ class RuleVisitor(NodeVisitor):
         # Resolve references. This tolerates forward references.
         done = set()
         rule_map = dict((expr.name, self._resolve_refs(rule_map, expr, done))
-                        for expr in rule_map.itervalues())
+                        for expr in itervalues(rule_map))
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;
@@ -459,7 +474,8 @@ class TokenRuleVisitor(RuleVisitor):
         ``Token`` objects by their ``type`` attributes."""
         return TokenMatcher(evaluate_string(spaceless_literal.text))
 
-    def visit_regex(self, regex, (tilde, literal, flags, _)):
+    def visit_regex(self, regex, _a):
+        (tilde, literal, flags, _) = _a
         raise BadGrammar('Regexes do not make sense in TokenGrammars, since '
                          'TokenGrammars operate on pre-lexed tokens rather '
                          'than characters.')
