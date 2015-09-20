@@ -11,8 +11,11 @@ from sys import version_info, exc_info
 
 from parsimonious.exceptions import VisitationError, UndefinedLabel
 from parsimonious.utils import StrAndRepr
+from six import reraise, python_2_unicode_compatible, with_metaclass,
+    iteritems
 
 
+@python_2_unicode_compatible
 class Node(StrAndRepr):
     """A parse tree node
 
@@ -80,7 +83,7 @@ class Node(StrAndRepr):
             ret.append(indent(n.prettily(error=error)))
         return '\n'.join(ret)
 
-    def __unicode__(self):
+    def __str__(self):
         """Return a compact, human-readable representation of me."""
         return self.prettily()
 
@@ -129,7 +132,7 @@ class RuleDecoratorMeta(type):
             """Remove any leading "visit_" from a method name."""
             return name[6:] if name.startswith('visit_') else name
 
-        methods = [v for k, v in namespace.iteritems() if
+        methods = [v for k, v in iteritems(namespace) if
                    hasattr(v, '_rule') and isfunction(v)]
         if methods:
             from parsimonious.grammar import Grammar  # circular import dodge
@@ -148,7 +151,7 @@ class RuleDecoratorMeta(type):
                      metaclass).__new__(metaclass, name, bases, namespace)
 
 
-class NodeVisitor(object):
+class NodeVisitor(with_metaclass(RuleDecoratorMeta,object)):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
@@ -171,7 +174,6 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-    __metaclass__ = RuleDecoratorMeta
 
     #: The :term:`default grammar`: the one recommended for use with this
     #: visitor. If you populate this, you will be able to call
@@ -215,7 +217,7 @@ class NodeVisitor(object):
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = exc_info()
-            raise VisitationError, (exc, exc_class, node), tb
+            reraise(VisitationError, VisitationError(exc, exc_class, node), tb)
 
     def generic_visit(self, node, visited_children):
         """Default visitor method
@@ -255,8 +257,9 @@ class NodeVisitor(object):
 
     # Internal convenience methods to help you write your own visitors:
 
-    def lift_child(self, node, (first_child,)):
+    def lift_child(self, node, _a):
         """Lift the sole child of ``node`` up to replace the node."""
+        (first_child,) = _a
         return first_child
 
     # Private methods:
