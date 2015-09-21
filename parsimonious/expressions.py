@@ -170,7 +170,7 @@ class Expression(StrAndRepr):
             # Don't bother reporting on unnamed expressions (unless that's all
             # we've seen so far), as they're hard to track down for a human.
             # Perhaps we could include the unnamed subexpressions later as
-            # auxilliary info.
+            # auxiliary info.
             error.expr = self
             error.pos = pos
 
