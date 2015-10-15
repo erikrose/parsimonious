@@ -29,7 +29,9 @@ Goals
 Example Usage
 =============
 
-Here's how to build a simple grammar::
+Here's how to build a simple grammar:
+
+.. code:: python
 
     >>> from parsimonious.grammar import Grammar
     >>> grammar = Grammar(
@@ -44,7 +46,9 @@ You can have forward references and even right recursion; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
 symbol, but you can override that.
 
-Next, let's parse something and get an abstract syntax tree::
+Next, let's parse something and get an abstract syntax tree:
+
+.. code:: python
 
     >>> print grammar.parse('((bold stuff))')
     <Node called "bold_text" matching "((bold stuff))">
@@ -112,7 +116,9 @@ Writing Grammars
 
 Grammars are defined by a series of rules. The syntax should be familiar to
 anyone who uses regexes or reads programming language manuals. An example will
-serve best::
+serve best:
+
+.. code:: python
 
     my_grammar = Grammar(r"""
         styled_text = bold_text / italic_text
@@ -212,7 +218,9 @@ The ``NodeVisitor`` class provides an inversion-of-control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
 on it. For now, have a look at its docstrings for more detail. There's also a
 good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
-iterability by using tuple unpacks in the formal parameter lists::
+iterability by using tuple unpacks in the formal parameter lists:
+
+.. code:: python
 
     def visit_or_term(self, or_term, (slash, _, term)):
         ...
