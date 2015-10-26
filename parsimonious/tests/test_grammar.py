@@ -9,6 +9,7 @@ from parsimonious.expressions import Sequence
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
+from six import text_type
 
 
 class BootstrappingGrammarTests(TestCase):
@@ -158,7 +159,7 @@ class GrammarTests(TestCase):
                           bold_open  = "(("
                           bold_close = "))"
                           """)
-        lines = unicode(grammar).splitlines()
+        lines = text_type(grammar).splitlines()
         eq_(lines[0], 'bold_text = bold_open text bold_close')
         ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
             in lines)
