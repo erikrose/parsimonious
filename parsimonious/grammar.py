@@ -146,7 +146,7 @@ class Grammar(StrAndRepr, Mapping):
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
-        return "Grammar('%s')" % str(self).encode('string_escape')
+        return "Grammar('%s')" % str(self).encode('unicode_escape')
 
 
 class TokenGrammar(Grammar):
