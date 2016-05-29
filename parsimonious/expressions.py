@@ -272,8 +272,8 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'tilmsux'
-        return ''.join(flags[i] if (1 << i) & bits else '' for i in range(6))
+        flags = 'ilmsux'
+        return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
