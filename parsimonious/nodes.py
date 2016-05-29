@@ -11,7 +11,7 @@ from sys import version_info, exc_info
 
 from parsimonious.exceptions import VisitationError, UndefinedLabel
 from parsimonious.utils import StrAndRepr
-from six import reraise, python_2_unicode_compatible, with_metaclass,
+from six import reraise, python_2_unicode_compatible, with_metaclass, \
     iteritems
 
 
