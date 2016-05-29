@@ -15,7 +15,7 @@ from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr, evaluate_string
 from six import text_type, iterkeys, itervalues, iteritems, \
-    python_2_unicode_compatible
+    python_2_unicode_compatible, PY2
 
 @python_2_unicode_compatible
 class Grammar(StrAndRepr, Mapping):
@@ -148,7 +148,8 @@ class Grammar(StrAndRepr, Mapping):
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
-        return "Grammar('%s')" % str(self).encode('string_escape')
+        codec = 'string_escape' if PY2 else 'unicode_escape'
+        return "Grammar('%s')" % str(self).encode(codec)
 
 
 class TokenGrammar(Grammar):
