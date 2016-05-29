@@ -401,6 +401,9 @@ class GrammarTests(TestCase):
             grammar.update(new_grammar)
         assert_raises(AttributeError, mod_grammar, [grammar])
 
+    def test_repr(self):
+        self.assertTrue(repr(Grammar(r'foo = "a"')))
+
 
 class TokenGrammarTests(TestCase):
     """Tests for the TokenGrammar class and associated machinery"""
