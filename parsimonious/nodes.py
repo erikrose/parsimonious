@@ -151,7 +151,7 @@ class RuleDecoratorMeta(type):
                      metaclass).__new__(metaclass, name, bases, namespace)
 
 
-class NodeVisitor(with_metaclass(RuleDecoratorMeta,object)):
+class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for

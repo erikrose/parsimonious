@@ -14,8 +14,8 @@ from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     expression)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import StrAndRepr, evaluate_string
-from six import text_type, iterkeys, itervalues, iteritems, \
-    python_2_unicode_compatible, PY2
+from six import (text_type, iterkeys, itervalues, iteritems,
+    python_2_unicode_compatible, PY2)
 
 @python_2_unicode_compatible
 class Grammar(StrAndRepr, Mapping):
