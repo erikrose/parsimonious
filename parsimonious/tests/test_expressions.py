@@ -2,13 +2,13 @@
 from unittest import TestCase
 
 from nose.tools import eq_, ok_, assert_raises
+from six import text_type
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
     Optional, ZeroOrMore, OneOrMore, Expression)
 from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
-from six import text_type
 
 
 def len_eq(node, length):

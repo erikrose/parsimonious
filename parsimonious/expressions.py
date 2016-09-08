@@ -9,11 +9,12 @@ These do the parsing.
 from inspect import getargspec
 import re
 
+from six import integer_types, python_2_unicode_compatible
+from six.moves import range
+
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
-from six import integer_types, python_2_unicode_compatible
-from six.moves import range
 
 MARKER = object()
 

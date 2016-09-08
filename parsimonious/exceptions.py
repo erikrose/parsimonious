@@ -1,5 +1,7 @@
-from parsimonious.utils import StrAndRepr
 from six import text_type, python_2_unicode_compatible
+
+from parsimonious.utils import StrAndRepr
+
 
 @python_2_unicode_compatible
 class ParseError(StrAndRepr, Exception):

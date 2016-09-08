@@ -2,7 +2,9 @@
 
 import ast
 from sys import version_info
+
 from six import python_2_unicode_compatible
+
 
 class StrAndRepr(object):
     """Mix-in to add a ``__str__`` and ``__repr__`` which return the

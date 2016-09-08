@@ -3,13 +3,13 @@ from unittest import TestCase
 
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
+from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Sequence
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
-from six import text_type
 
 
 class BootstrappingGrammarTests(TestCase):
