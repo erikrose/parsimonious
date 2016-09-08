@@ -259,7 +259,7 @@ class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
 
     def lift_child(self, node, _a):
         """Lift the sole child of ``node`` up to replace the node."""
-        (first_child,) = _a
+        first_child, = _a
         return first_child
 
     # Private methods:

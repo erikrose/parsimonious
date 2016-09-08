@@ -305,40 +305,40 @@ class RuleVisitor(NodeVisitor):
         Its position in the tree suffices to maintain its grouping semantics.
 
         """
-        (left_paren, _1, expression, right_paren, _2) = _a
+        left_paren, _1, expression, right_paren, _2 = _a
         return expression
 
     def visit_quantifier(self, quantifier, _a):
         """Turn a quantifier into just its symbol-matching node."""
-        (symbol, _1) = _a
+        symbol, _1 = _a
         return symbol
 
     def visit_quantified(self, quantified, _a):
-        (atom, quantifier) = _a
+        atom, quantifier = _a
         return self.quantifier_classes[quantifier.text](atom)
 
     def visit_lookahead_term(self, lookahead_term, _a):
-        (ampersand, term, _) = _a
+        ampersand, term, _ = _a
         return Lookahead(term)
 
     def visit_not_term(self, not_term, _a):
-        (exclamation, term, _) = _a
+        exclamation, term, _ = _a
         return Not(term)
 
     def visit_rule(self, rule, _a):
         """Assign a name to the Expression and return it."""
-        (label, equals, expression) = _a
+        label, equals, expression = _a
         expression.name = label  # Assign a name to the expr.
         return expression
 
     def visit_sequence(self, sequence, _a):
         """A parsed Sequence looks like [term node, OneOrMore node of
         ``another_term``s]. Flatten it out."""
-        (term, other_terms) = _a
+        term, other_terms = _a
         return Sequence(term, *other_terms)
 
     def visit_ored(self, ored, _a):
-        (first_term, other_terms) = _a
+        first_term, other_terms = _a
         return OneOf(first_term, *other_terms)
 
     def visit_or_term(self, or_term, _a):
@@ -347,12 +347,12 @@ class RuleVisitor(NodeVisitor):
         We already know it's going to be ored, from the containing ``ored``.
 
         """
-        (slash, _, term) = _a
+        slash, _, term = _a
         return term
 
     def visit_label(self, label, _a):
         """Turn a label into a unicode string."""
-        (name, _) = _a
+        name, _ = _a
         return name.text
 
     def visit_reference(self, reference, _a):
@@ -361,12 +361,12 @@ class RuleVisitor(NodeVisitor):
         We resolve them all later.
 
         """
-        (label, not_equals) = _a
+        label, not_equals = _a
         return LazyReference(label)
 
     def visit_regex(self, regex, _a):
         """Return a ``Regex`` expression."""
-        (tilde, literal, flags, _) = _a
+        tilde, literal, flags, _ = _a
         flags = flags.text.upper()
         pattern = literal.literal  # Pull the string back out of the Literal
                                    # object.
@@ -383,7 +383,7 @@ class RuleVisitor(NodeVisitor):
 
     def visit_literal(self, literal, _a):
         """Pick just the literal out of a literal-and-junk combo."""
-        (spaceless_literal, _) = _a
+        spaceless_literal, _ = _a
         return spaceless_literal
 
     def generic_visit(self, node, visited_children):
@@ -441,7 +441,7 @@ class RuleVisitor(NodeVisitor):
         due to being kwarg-based, are unordered.
 
         """
-        (_, rules) = _a
+        _, rules = _a
 
         # Map each rule's name to its Expression. Later rules of the same name
         # override earlier ones. This lets us define rules multiple times and
@@ -476,7 +476,7 @@ class TokenRuleVisitor(RuleVisitor):
         return TokenMatcher(evaluate_string(spaceless_literal.text))
 
     def visit_regex(self, regex, _a):
-        (tilde, literal, flags, _) = _a
+        tilde, literal, flags, _ = _a
         raise BadGrammar('Regexes do not make sense in TokenGrammars, since '
                          'TokenGrammars operate on pre-lexed tokens rather '
                          'than characters.')
