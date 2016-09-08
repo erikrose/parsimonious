@@ -306,12 +306,12 @@ class RuleVisitor(NodeVisitor):
         Its position in the tree suffices to maintain its grouping semantics.
 
         """
-        left_paren, _1, expression, right_paren, _2 = parenthesized
+        left_paren, _, expression, right_paren, _ = parenthesized
         return expression
 
     def visit_quantifier(self, node, quantifier):
         """Turn a quantifier into just its symbol-matching node."""
-        symbol, _1 = quantifier
+        symbol, _ = quantifier
         return symbol
 
     def visit_quantified(self, node, quantified):
