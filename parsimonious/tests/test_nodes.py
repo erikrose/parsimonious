@@ -67,7 +67,6 @@ def test_str():
     n = Node('text', 'o hai', 0, 5)
     good = '<Node called "text" matching "o hai">'
     eq_(str(n), good)
-    eq_(unicode(n), good)
 
 
 def test_repr():

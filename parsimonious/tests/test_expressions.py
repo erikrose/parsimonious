@@ -2,6 +2,7 @@
 from unittest import TestCase
 
 from nose.tools import eq_, ok_, assert_raises
+from six import text_type
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
@@ -170,7 +171,7 @@ class ErrorReportingTests(TestCase):
             eq_(error.pos, 6)
             eq_(error.expr, grammar['close_parens'])
             eq_(error.text, text)
-            eq_(unicode(error), u"Rule 'close_parens' didn't match at '!!' (line 1, column 7).")
+            eq_(text_type(error), "Rule 'close_parens' didn't match at '!!' (line 1, column 7).")
 
     def test_rewinding(self):
         """Make sure rewinding the stack and trying an alternative (which
@@ -216,7 +217,7 @@ class ErrorReportingTests(TestCase):
         try:
             grammar.parse('chitty bangbang')
         except IncompleteParseError as error:
-            eq_(unicode(error), u"Rule 'sequence' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with 'bang' (line 1, column 12).")
+            eq_(text_type(error), u"Rule 'sequence' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with 'bang' (line 1, column 12).")
 
     def test_favoring_named_rules(self):
         """Named rules should be used in error messages in favor of anonymous
@@ -226,7 +227,7 @@ class ErrorReportingTests(TestCase):
         try:
             grammar.parse('burp')
         except ParseError as error:
-            eq_(unicode(error), u"Rule 'starts_with_a' didn't match at 'burp' (line 1, column 1).")
+            eq_(text_type(error), u"Rule 'starts_with_a' didn't match at 'burp' (line 1, column 1).")
 
     def test_line_and_column(self):
         """Make sure we got the line and column computation right."""
@@ -240,7 +241,7 @@ class ErrorReportingTests(TestCase):
         except ParseError as error:
             # TODO: Right now, this says "Rule <Literal "\n" at 0x4368250432>
             # didn't match". That's not the greatest. Fix that, then fix this.
-            ok_(unicode(error).endswith(ur"""didn't match at 'GOO' (line 2, column 4)."""))
+            ok_(text_type(error).endswith(r"""didn't match at 'GOO' (line 2, column 4)."""))
 
 
 class RepresentationTests(TestCase):
@@ -258,7 +259,7 @@ class RepresentationTests(TestCase):
         ``GrammarTests.test_unicode``.
 
         """
-        unicode(rule_grammar)
+        text_type(rule_grammar)
 
     def test_unicode_keep_parens(self):
         """Make sure converting an expression to unicode doesn't strip
@@ -266,19 +267,19 @@ class RepresentationTests(TestCase):
 
         """
         # ZeroOrMore
-        eq_(unicode(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
             u'foo = "bar" ("baz" "eggs")* "spam"')
 
         # OneOf
-        eq_(unicode(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
+        eq_(text_type(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
             u'foo = "bar" ("baz" / "eggs") "spam"')
 
         # Lookahead
-        eq_(unicode(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
+        eq_(text_type(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
             u'foo = "bar" &("baz" "eggs") "spam"')
 
         # Multiple sequences
-        eq_(unicode(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
+        eq_(text_type(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
             u'foo = ("bar" "baz") / ("baff" "bam")')
 
     def test_unicode_surrounding_parens(self):
@@ -287,7 +288,7 @@ class RepresentationTests(TestCase):
         right-hand side of an expression (as they're unnecessary).
 
         """
-        eq_(unicode(Grammar('foo = ("foo" ("bar" "baz"))')),
+        eq_(text_type(Grammar('foo = ("foo" ("bar" "baz"))')),
             u'foo = "foo" ("bar" "baz")')
 
 

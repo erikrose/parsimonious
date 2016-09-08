@@ -9,10 +9,12 @@ These do the parsing.
 from inspect import getargspec
 import re
 
+from six import integer_types, python_2_unicode_compatible
+from six.moves import range
+
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
-
 
 MARKER = object()
 
@@ -69,7 +71,7 @@ def expression(callable, rule_name, grammar):
             result = (callable(text, pos) if is_simple else
                       callable(text, pos, cache, error, grammar))
 
-            if isinstance(result, (long, int)):
+            if isinstance(result, integer_types):
                 end, children = result, None
             elif isinstance(result, tuple):
                 end, children = result
@@ -84,6 +86,7 @@ def expression(callable, rule_name, grammar):
     return AdHocExpression(name=rule_name)
 
 
+@python_2_unicode_compatible
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -176,7 +179,7 @@ class Expression(StrAndRepr):
 
         return node
 
-    def __unicode__(self):
+    def __str__(self):
         return u'<%s %s at 0x%s>' % (
             self.__class__.__name__,
             self.as_rule(),
@@ -271,8 +274,8 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'tilmsux'
-        return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
+        flags = 'ilmsux'
+        return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.

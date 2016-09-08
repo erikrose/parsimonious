@@ -3,6 +3,7 @@ from unittest import TestCase
 
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
+from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Sequence
@@ -158,7 +159,7 @@ class GrammarTests(TestCase):
                           bold_open  = "(("
                           bold_close = "))"
                           """)
-        lines = unicode(grammar).splitlines()
+        lines = text_type(grammar).splitlines()
         eq_(lines[0], 'bold_text = bold_open text bold_close')
         ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
             in lines)
@@ -399,6 +400,9 @@ class GrammarTests(TestCase):
             """)
             grammar.update(new_grammar)
         assert_raises(AttributeError, mod_grammar, [grammar])
+
+    def test_repr(self):
+        self.assertTrue(repr(Grammar(r'foo = "a"')))
 
 
 class TokenGrammarTests(TestCase):

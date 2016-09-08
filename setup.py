@@ -14,7 +14,7 @@ long_description=open('README.rst', 'r', encoding='utf8').read()
 
 setup(
     name='parsimonious',
-    version='0.6.2',
+    version='0.6.3',
     description='(Soon to be) the fastest pure-Python PEG parser I could muster',
     long_description=long_description,
     author='Erik Rose',
@@ -25,6 +25,7 @@ setup(
     test_suite='nose.collector',
     url='https://github.com/erikrose/parsimonious',
     include_package_data=True,
+    install_requires=['six'],
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
@@ -37,9 +38,10 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Software Development :: Libraries',
         'Topic :: Text Processing :: General'],
     keywords=['parse', 'parser', 'parsing', 'peg', 'packrat', 'grammar', 'language'],
-    use_2to3=version_info >= (3,)
 )
