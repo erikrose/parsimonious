@@ -322,13 +322,18 @@ Niceties
 Version History
 ===============
 
+0.6.3
+  * Common codebase for Python 2 and 3: no more 2to3 translation step
+  * Fix a bug in ``Grammar.__repr__`` which fails to work on Python 3 since the
+    string_escape codec is gone in Python 3.
+
 0.6.2
-    * Make grammar compilation 100x faster. Thanks to dmoisset for the initial
-      patch.
+  * Make grammar compilation 100x faster. Thanks to dmoisset for the initial
+    patch.
 
 0.6.1
-    * Fix bug which made the default rule of a grammar invalid when it
-      contained a forward reference.
+  * Fix bug which made the default rule of a grammar invalid when it
+    contained a forward reference.
 
 0.6
   .. warning::
