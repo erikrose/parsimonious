@@ -257,9 +257,9 @@ class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
 
     # Internal convenience methods to help you write your own visitors:
 
-    def lift_child(self, node, _a):
+    def lift_child(self, node, children):
         """Lift the sole child of ``node`` up to replace the node."""
-        first_child, = _a
+        first_child, = children
         return first_child
 
     # Private methods:
