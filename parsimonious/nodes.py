@@ -162,8 +162,8 @@ class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
 
     These could easily all be static methods, but that would add at least as
     much weirdness at the call site as the ``()`` for instantiation. And this
-    way, we support subclasses that require state state: options, for example,
-    or a symbol table constructed from a programming language's AST.
+    way, we support subclasses that require state: options, for example, or a
+    symbol table constructed from a programming language's AST.
 
     We never transform the parse tree in place, because...
 
