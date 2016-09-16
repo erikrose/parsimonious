@@ -142,3 +142,8 @@ def test_unwrapped_exceptions():
             raise PrimalScream('This should percolate up!')
 
     assert_raises(PrimalScream, Screamer().parse, 'howdy')
+
+
+def test_node_inequality():
+    node = Node('text', 'o hai', 0, 5)
+    assert node != 5
