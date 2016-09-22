@@ -93,8 +93,7 @@ class Node(StrAndRepr):
         if not isinstance(other, Node):
             return NotImplemented
 
-        return (other is not None and
-                self.expr_name == other.expr_name and
+        return (self.expr_name == other.expr_name and
                 self.full_text == other.full_text and
                 self.start == other.start and
                 self.end == other.end and
