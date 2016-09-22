@@ -90,8 +90,10 @@ class Node(StrAndRepr):
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
-        return (other is not None and
-                self.expr_name == other.expr_name and
+        if not isinstance(other, Node):
+            return NotImplemented
+
+        return (self.expr_name == other.expr_name and
                 self.full_text == other.full_text and
                 self.start == other.start and
                 self.end == other.end and
