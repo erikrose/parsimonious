@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from nose import SkipTest
-from nose.tools import eq_, assert_raises
+from nose.tools import eq_, ok_, assert_raises
 
 from parsimonious import Grammar, NodeVisitor, VisitationError, rule
 from parsimonious.nodes import Node
@@ -146,4 +146,5 @@ def test_unwrapped_exceptions():
 
 def test_node_inequality():
     node = Node('text', 'o hai', 0, 5)
-    assert node != 5
+    ok_(node != 5)
+    ok_(node != None)
