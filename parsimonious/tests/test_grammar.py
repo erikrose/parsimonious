@@ -3,11 +3,13 @@ from unittest import TestCase
 
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
+from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Sequence
+from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
-from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, LazyReference
+from parsimonious.utils import Token
 
 
 class BootstrappingGrammarTests(TestCase):
@@ -157,7 +159,7 @@ class GrammarTests(TestCase):
                           bold_open  = "(("
                           bold_close = "))"
                           """)
-        lines = unicode(grammar).splitlines()
+        lines = text_type(grammar).splitlines()
         eq_(lines[0], 'bold_text = bold_open text bold_close')
         ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
             in lines)
@@ -369,3 +371,60 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node('one_char', s, 0, 1))
+
+    def test_lazy_default_rule(self):
+        """Make sure we get an actual rule set as our default rule, even when
+        the first rule has forward references and is thus a LazyReference at
+        some point during grammar compilation.
+
+        """
+        grammar = Grammar(r"""
+            styled_text = text
+            text        = "hi"
+            """)
+        eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))
+
+    def test_immutable_grammar(self):
+        """Make sure that a Grammar is immutable after being created."""
+        grammar = Grammar(r"""
+            foo = 'bar'
+        """)
+
+        def mod_grammar(grammar):
+            grammar['foo'] = 1
+        assert_raises(TypeError, mod_grammar, [grammar])
+
+        def mod_grammar(grammar):
+            new_grammar = Grammar(r"""
+                baz = 'biff'
+            """)
+            grammar.update(new_grammar)
+        assert_raises(AttributeError, mod_grammar, [grammar])
+
+    def test_repr(self):
+        self.assertTrue(repr(Grammar(r'foo = "a"')))
+
+
+class TokenGrammarTests(TestCase):
+    """Tests for the TokenGrammar class and associated machinery"""
+
+    def test_parse_success(self):
+        """Token literals should work."""
+        s = [Token('token1'), Token('token2')]
+        grammar = TokenGrammar("""
+            foo = token1 "token2"
+            token1 = "token1"
+            """)
+        eq_(grammar.parse(s),
+            Node('foo', s, 0, 2, children=[
+                Node('token1', s, 0, 1),
+                Node('', s, 1, 2)]))
+
+    def test_parse_failure(self):
+        """Parse failures should work normally with token literals."""
+        grammar = TokenGrammar("""
+            foo = "token1" "token2"
+            """)
+        assert_raises(ParseError,
+                      grammar.parse,
+                      [Token('tokenBOO'), Token('token2')])

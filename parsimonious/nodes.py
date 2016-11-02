@@ -9,10 +9,14 @@ are public.
 from inspect import isfunction
 from sys import version_info, exc_info
 
+from six import reraise, python_2_unicode_compatible, with_metaclass, \
+    iteritems
+
 from parsimonious.exceptions import VisitationError, UndefinedLabel
 from parsimonious.utils import StrAndRepr
 
 
+@python_2_unicode_compatible
 class Node(StrAndRepr):
     """A parse tree node
 
@@ -80,14 +84,16 @@ class Node(StrAndRepr):
             ret.append(indent(n.prettily(error=error)))
         return '\n'.join(ret)
 
-    def __unicode__(self):
+    def __str__(self):
         """Return a compact, human-readable representation of me."""
         return self.prettily()
 
     def __eq__(self, other):
         """Support by-value deep comparison with other nodes for testing."""
-        return (other is not None and
-                self.expr_name == other.expr_name and
+        if not isinstance(other, Node):
+            return NotImplemented
+
+        return (self.expr_name == other.expr_name and
                 self.full_text == other.full_text and
                 self.start == other.start and
                 self.end == other.end and
@@ -129,7 +135,7 @@ class RuleDecoratorMeta(type):
             """Remove any leading "visit_" from a method name."""
             return name[6:] if name.startswith('visit_') else name
 
-        methods = [v for k, v in namespace.iteritems() if
+        methods = [v for k, v in iteritems(namespace) if
                    hasattr(v, '_rule') and isfunction(v)]
         if methods:
             from parsimonious.grammar import Grammar  # circular import dodge
@@ -148,7 +154,7 @@ class RuleDecoratorMeta(type):
                      metaclass).__new__(metaclass, name, bases, namespace)
 
 
-class NodeVisitor(object):
+class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
@@ -158,8 +164,8 @@ class NodeVisitor(object):
 
     These could easily all be static methods, but that would add at least as
     much weirdness at the call site as the ``()`` for instantiation. And this
-    way, we support subclasses that require state state: options, for example,
-    or a symbol table constructed from a programming language's AST.
+    way, we support subclasses that require state: options, for example, or a
+    symbol table constructed from a programming language's AST.
 
     We never transform the parse tree in place, because...
 
@@ -171,12 +177,16 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-    __metaclass__ = RuleDecoratorMeta
 
     #: The :term:`default grammar`: the one recommended for use with this
     #: visitor. If you populate this, you will be able to call
     #: :meth:`NodeVisitor.parse()` as a shortcut.
     grammar = None
+
+    #: Classes of exceptions you actually intend to raise during visitation
+    #: and which should propagate out of the visitor. These will not be
+    #: wrapped in a VisitationError when they arise.
+    unwrapped_exceptions = ()
 
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
@@ -204,11 +214,13 @@ class NodeVisitor(object):
         except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except Exception as e:
+        except self.unwrapped_exceptions:
+            raise
+        except Exception:
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class, exc, tb = exc_info()
-            raise VisitationError, (exc, exc_class, node), tb
+            reraise(VisitationError, VisitationError(exc, exc_class, node), tb)
 
     def generic_visit(self, node, visited_children):
         """Default visitor method
@@ -248,8 +260,9 @@ class NodeVisitor(object):
 
     # Internal convenience methods to help you write your own visitors:
 
-    def lift_child(self, node, (first_child,)):
+    def lift_child(self, node, children):
         """Lift the sole child of ``node`` up to replace the node."""
+        first_child, = children
         return first_child
 
     # Private methods:
@@ -289,7 +302,7 @@ def rule(rule_string):
     and the grammar definition.
 
     On an implementation level, all ``@rule`` rules get stitched together into
-    a :class:`~parsimonoius.Grammar` that becomes the NodeVisitor's
+    a :class:`~parsimonious.Grammar` that becomes the NodeVisitor's
     :term:`default grammar`.
 
     Typically, the choice of a default rule for this grammar is simple: whatever

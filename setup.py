@@ -7,14 +7,16 @@ try:
 except ImportError:
     pass
 
+from io import open
 from setuptools import setup, find_packages
 
+long_description=open('README.rst', 'r', encoding='utf8').read()
 
 setup(
     name='parsimonious',
-    version='0.5',
-    description='A friendly, Pythonic parsing library with unlimited lookahead',
-    long_description=open('README.rst').read(),
+    version='0.7.0',
+    description='(Soon to be) the fastest pure-Python PEG parser I could muster',
+    long_description=long_description,
     author='Erik Rose',
     author_email='erikrose@grinchcentral.com',
     license='MIT',
@@ -23,6 +25,7 @@ setup(
     test_suite='nose.collector',
     url='https://github.com/erikrose/parsimonious',
     include_package_data=True,
+    install_requires=['six'],
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
@@ -33,12 +36,11 @@ setup(
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.1',
-        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Software Development :: Libraries',
         'Topic :: Text Processing :: General'],
     keywords=['parse', 'parser', 'parsing', 'peg', 'packrat', 'grammar', 'language'],
-    use_2to3=version_info >= (3,)
 )

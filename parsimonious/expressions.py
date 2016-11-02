@@ -9,10 +9,12 @@ These do the parsing.
 from inspect import getargspec
 import re
 
+from six import integer_types, python_2_unicode_compatible
+from six.moves import range
+
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
-
 
 MARKER = object()
 
@@ -69,7 +71,7 @@ def expression(callable, rule_name, grammar):
             result = (callable(text, pos) if is_simple else
                       callable(text, pos, cache, error, grammar))
 
-            if isinstance(result, (long, int)):
+            if isinstance(result, integer_types):
                 end, children = result, None
             elif isinstance(result, tuple):
                 end, children = result
@@ -84,6 +86,7 @@ def expression(callable, rule_name, grammar):
     return AdHocExpression(name=rule_name)
 
 
+@python_2_unicode_compatible
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -170,13 +173,13 @@ class Expression(StrAndRepr):
             # Don't bother reporting on unnamed expressions (unless that's all
             # we've seen so far), as they're hard to track down for a human.
             # Perhaps we could include the unnamed subexpressions later as
-            # auxilliary info.
+            # auxiliary info.
             error.expr = self
             error.pos = pos
 
         return node
 
-    def __unicode__(self):
+    def __str__(self):
         return u'<%s %s at 0x%s>' % (
             self.__class__.__name__,
             self.as_rule(),
@@ -188,8 +191,11 @@ class Expression(StrAndRepr):
         Return unicode. If I have no ``name``, omit the left-hand side.
 
         """
-        return ((u'%s = %s' % (self.name, self._as_rhs())) if self.name else
-                self._as_rhs())
+        rhs = self._as_rhs().strip()
+        if rhs.startswith('(') and rhs.endswith(')'):
+            rhs = rhs[1:-1]
+
+        return (u'%s = %s' % (self.name, rhs)) if self.name else rhs
 
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
@@ -227,6 +233,17 @@ class Literal(Expression):
         return '"%s"' % self.literal
 
 
+class TokenMatcher(Literal):
+    """An expression matching a single token of a given type
+
+    This is for use only with TokenGrammars.
+
+    """
+    def _uncached_match(self, token_list, pos, cache, error):
+        if token_list[pos].type == self.literal:
+            return Node(self.name, token_list, pos, pos + 1)
+
+
 class Regex(Expression):
     """An expression that matches what a regex does.
 
@@ -257,8 +274,8 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'tilmsux'
-        return ''.join(flags[i] if (1 << i) & bits else '' for i in xrange(6))
+        flags = 'ilmsux'
+        return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
@@ -301,7 +318,8 @@ class Sequence(Compound):
         return Node(self.name, text, pos, pos + length_of_sequence, children)
 
     def _as_rhs(self):
-        return u' '.join(self._unicode_members())
+        return u'({0})'.format(u' '.join(self._unicode_members()))
+
 
 class OneOf(Compound):
     """A series of expressions, one of which must match
@@ -318,7 +336,7 @@ class OneOf(Compound):
                 return Node(self.name, text, pos, node.end, children=[node])
 
     def _as_rhs(self):
-        return u' / '.join(self._unicode_members())
+        return u'({0})'.format(u' / '.join(self._unicode_members()))
 
 
 class Lookahead(Compound):
@@ -378,6 +396,7 @@ class Optional(Compound):
 # TODO: Merge with OneOrMore.
 class ZeroOrMore(Compound):
     """An expression wrapper like the * quantifier in regexes."""
+
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []

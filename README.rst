@@ -3,7 +3,9 @@ Parsimonious
 ============
 
 If you've ever learned a programming langauge from formal notation or read the
-docs for a command-line tool, you already know how to use Parsimonious::
+docs for a command-line tool, you already know how to use Parsimonious:
+
+.. code:: python
 
     >>> from parsimonious.grammar import Grammar
     >>> grammar = Grammar(
@@ -17,7 +19,9 @@ docs for a command-line tool, you already know how to use Parsimonious::
 The above sets up a simple wiki-like language where pairs of matched
 parentheses signify boldface.
 
-Now let's feed our grammar some wiki text and pull out a syntax tree::
+Now let's feed our grammar some wiki text and pull out a syntax tree:
+
+.. code:: python
 
     >>> print grammar.parse('((hi))')
     <Node called "bold_text" matching "((hi))">
@@ -125,10 +129,35 @@ In more detail, our goals are these, in rough order of priority:
 Example Usage
 =============
 
-; it's all taken care
+Here's how to build a simple grammar:
+
+.. code:: python
+
+    >>> from parsimonious.grammar import Grammar
+    >>> grammar = Grammar(
+    ...     """
+    ...     bold_text  = bold_open text bold_close
+    ...     text       = ~"[A-Z 0-9]*"i
+    ...     bold_open  = "(("
+    ...     bold_close = "))"
+    ...     """)
+
+You can have forward references and even right recursion; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
 symbol, but you can override that.
 
+Next, let's parse something and get an abstract syntax tree:
+
+.. code:: python
+
+    >>> print grammar.parse('((bold stuff))')
+    <Node called "bold_text" matching "((bold stuff))">
+        <Node called "bold_open" matching "((">
+        <RegexNode called "text" matching "bold stuff">
+        <Node called "bold_close" matching "))">
+
+You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
+the tree and do something useful with it.
 
 Status
 ======
@@ -186,7 +215,9 @@ Writing Grammars
 
 Grammars are defined by a series of rules. The syntax should be familiar to
 anyone who uses regexes or reads programming language manuals. An example will
-serve best::
+serve best:
+
+.. code:: python
 
     my_grammar = Grammar(r"""
         styled_text = bold_text / italic_text
@@ -286,7 +317,9 @@ The ``NodeVisitor`` class provides an inversion-of-control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
 on it. For now, have a look at its docstrings for more detail. There's also a
 good example in ``grammar.RuleVisitor``. Notice how we take advantage of nodes'
-iterability by using tuple unpacks in the formal parameter lists::
+iterability by using tuple unpacks in the formal parameter lists:
+
+.. code:: python
 
     def visit_or_term(self, or_term, (slash, _, term)):
         ...
@@ -388,6 +421,29 @@ Niceties
 Version History
 ===============
 
+0.7.0
+  * Add experimental token-based parsing, via TokenGrammar class, for those
+    operating on pre-lexed streams of tokens. This can, for example, help parse
+    indentation-sensitive languages that use the "off-side rule", like Python.
+    (Erik Rose)
+  * Common codebase for Python 2 and 3: no more 2to3 translation step (Mattias
+    Urlichs, Lucas Wiman)
+  * Drop Python 3.1 and 3.2 support.
+  * Fix a bug in ``Grammar.__repr__`` which fails to work on Python 3 since the
+    string_escape codec is gone in Python 3. (Lucas Wiman)
+  * Don't lose parentheses when printing representations of expressions.
+    (Michael Kelly)
+  * Make Grammar an immutable mapping (until we add automatic recompilation).
+    (Michael Kelly)
+
+0.6.2
+  * Make grammar compilation 100x faster. Thanks to dmoisset for the initial
+    patch.
+
+0.6.1
+  * Fix bug which made the default rule of a grammar invalid when it
+    contained a forward reference.
+
 0.6
   .. warning::
 
@@ -418,6 +474,12 @@ Version History
     This makes the common case of parsing a string and applying exactly one
     visitor to the AST shorter and simpler.
   * Improve exception message when you forget to declare a visitor method.
+  * Add ``unwrapped_exceptions`` attribute to ``NodeVisitor``, letting you
+    name certain exceptions which propagate out of visitors without being
+    wrapped by ``VisitationError`` exceptions.
+  * Expose much more of the library in ``__init__``, making your imports
+    shorter.
+  * Drastically simplify reference resolution machinery. (Vladimir Keleshev)
 
 0.5
   .. warning::
