@@ -4,3 +4,4 @@
 *.pyc
 build
 dist
+docs/_build
