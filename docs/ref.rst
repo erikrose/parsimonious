@@ -9,6 +9,8 @@ Classes
 .. autoclass:: Grammar
    :members:
 
+   .. automethod:: __init__
+
 .. autoclass:: TokenGrammar
 
 .. autoclass:: NodeVisitor

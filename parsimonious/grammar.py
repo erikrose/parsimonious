@@ -52,10 +52,6 @@ class Grammar(StrAndRepr, Mapping):
         """Construct a grammar.
 
         :arg rules: A string of production rules, one per line.
-        :arg default_rule: The name of the rule invoked when you call
-            :meth:`parse()` or :meth:`match()` on the grammar. Defaults to the
-            first rule. Falls back to None if there are no string-based rules
-            in this grammar.
         :arg more_rules: Additional kwargs whose names are rule names and
             values are Expressions or custom-coded callables which accomplish
             things the built-in rule syntax cannot. These take precedence over
