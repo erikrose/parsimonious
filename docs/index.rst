@@ -1,5 +1,5 @@
 .. Parsimonious documentation master file, created by
-   sphinx-quickstart on Mon Aug 18 00:45:58 2014.
+   sphinx-quickstart on Wed Nov  2 20:34:39 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -11,7 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+   ref
 
 Indices and tables
 ==================
