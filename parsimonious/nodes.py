@@ -18,7 +18,7 @@ from parsimonious.utils import StrAndRepr
 
 @python_2_unicode_compatible
 class Node(StrAndRepr):
-    """A parse tree node
+    """A parse tree node.
 
     Consider these immutable once constructed. As a side effect of a
     memory-saving strategy in the cache, multiple references to a single
@@ -155,7 +155,7 @@ class RuleDecoratorMeta(type):
 
 
 class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
-    """A shell for writing things that turn parse trees into something useful
+    """A shell for writing things that turn parse trees into something useful.
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
     each expr you care about, instantiate, and call

@@ -20,7 +20,7 @@ from parsimonious.utils import StrAndRepr, evaluate_string
 
 @python_2_unicode_compatible
 class Grammar(StrAndRepr, Mapping):
-    """A collection of rules that describe a language
+    """A collection of rules that describe a language.
 
     You can start parsing from the default rule by calling ``parse()``
     directly on the ``Grammar`` object::
@@ -154,7 +154,7 @@ class Grammar(StrAndRepr, Mapping):
 
 
 class TokenGrammar(Grammar):
-    """A Grammar which takes a list of pre-lexed tokens instead of text
+    """A Grammar which takes a list of pre-lexed tokens instead of text.
 
     This is useful if you want to do the lexing yourself, as a separate pass:
     for example, to implement indentation-based languages.
@@ -167,7 +167,7 @@ class TokenGrammar(Grammar):
 
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
-    grammars
+    grammars.
 
     This grammar gets its start from some hard-coded Expressions and claws its
     way from there to an expression tree that describes how to parse the
@@ -469,7 +469,7 @@ class RuleVisitor(NodeVisitor):
 
 class TokenRuleVisitor(RuleVisitor):
     """A visitor which builds expression trees meant to work on sequences of
-    pre-lexed tokens rather than strings"""
+    pre-lexed tokens rather than strings."""
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``TokenMatcher`` that matches
