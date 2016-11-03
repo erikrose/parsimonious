@@ -7,10 +7,12 @@ Classes
 -------
 
 .. autoclass:: Grammar
+   :members:
 
 .. autoclass:: TokenGrammar
 
 .. autoclass:: NodeVisitor
+   :members:
 
 Decorators
 ----------
