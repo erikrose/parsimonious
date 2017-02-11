@@ -16,10 +16,10 @@ from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
     expression)
 from parsimonious.nodes import NodeVisitor
-from parsimonious.utils import StrAndRepr, evaluate_string
+from parsimonious.utils import evaluate_string
 
 @python_2_unicode_compatible
-class Grammar(StrAndRepr, Mapping):
+class Grammar(Mapping):
     """A collection of rules that describe a language
 
     You can start parsing from the default rule by calling ``parse()``
