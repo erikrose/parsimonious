@@ -20,7 +20,7 @@ from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
 @python_2_unicode_compatible
-class Grammar(Mapping):
+class Grammar(OrderedDict):
     """A collection of rules that describe a language
 
     You can start parsing from the default rule by calling ``parse()``
@@ -68,17 +68,9 @@ class Grammar(Mapping):
             k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
             for k, v in iteritems(more_rules)}
 
-        self._expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        super(Grammar, self).__init__(expressions.items())
         self.default_rule = first  # may be None
-
-    def __getitem__(self, rule_name):
-        return self._expressions[rule_name]
-
-    def __iter__(self):
-        return iterkeys(self._expressions)
-
-    def __len__(self):
-        return len(self._expressions)
 
     def default(self, rule_name):
         """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
@@ -95,8 +87,9 @@ class Grammar(Mapping):
 
         """
         new = Grammar.__new__(Grammar)
+        super(Grammar, new).__init__(self.items())
         new.default_rule = self.default_rule
-        new._expressions = self._expressions.copy()
+        new.update(self.items())
         return new
 
     def _expressions_from_rules(self, rules, custom_rules):
