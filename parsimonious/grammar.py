@@ -5,12 +5,10 @@ optimizations that would be tedious to do when constructing an expression tree
 by hand.
 
 """
-from collections import Mapping
 from collections import OrderedDict
 from inspect import isfunction, ismethod
 
-from six import (text_type, iterkeys, itervalues, iteritems,
-    python_2_unicode_compatible, PY2)
+from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
