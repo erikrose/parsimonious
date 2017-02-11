@@ -404,6 +404,12 @@ class GrammarTests(TestCase):
     def test_repr(self):
         self.assertTrue(repr(Grammar(r'foo = "a"')))
 
+    def test_rule_ordering_is_preserved(self):
+        grammar = Grammar('\n'.join('r%s = "something"' % i for i in range(100)))
+        self.assertEqual(
+            list(grammar.keys()),
+            ['r%s' % i for i in range(100)])
+
 
 class TokenGrammarTests(TestCase):
     """Tests for the TokenGrammar class and associated machinery"""
