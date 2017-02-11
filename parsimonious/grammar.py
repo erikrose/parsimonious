@@ -6,6 +6,7 @@ by hand.
 
 """
 from collections import Mapping
+from collections import OrderedDict
 from inspect import isfunction, ismethod
 
 from six import (text_type, iterkeys, itervalues, iteritems,
@@ -62,10 +63,10 @@ class Grammar(Mapping):
             ``rules`` in case of naming conflicts.
 
         """
-        decorated_custom_rules = dict(
-            (k, expression(v, k, self) if isfunction(v) or
-                                          ismethod(v) else
-                v) for k, v in iteritems(more_rules))
+
+        decorated_custom_rules = {
+            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
+            for k, v in iteritems(more_rules)}
 
         self._expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
         self.default_rule = first  # may be None
@@ -448,7 +449,7 @@ class RuleVisitor(NodeVisitor):
         # override earlier ones. This lets us define rules multiple times and
         # have the last declaration win, so you can extend grammars by
         # concatenation.
-        rule_map = dict((expr.name, expr) for expr in rules)
+        rule_map = OrderedDict((expr.name, expr) for expr in rules)
 
         # And custom rules override string-based rules. This is the least
         # surprising choice when you compare the dict constructor:
@@ -457,8 +458,8 @@ class RuleVisitor(NodeVisitor):
 
         # Resolve references. This tolerates forward references.
         done = set()
-        rule_map = dict((expr.name, self._resolve_refs(rule_map, expr, done))
-                        for expr in itervalues(rule_map))
+        rule_map = OrderedDict((expr.name, self._resolve_refs(rule_map, expr, done))
+                               for expr in itervalues(rule_map))
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;
