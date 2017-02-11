@@ -94,8 +94,9 @@ class Grammar(Mapping):
         no Expressions.
 
         """
-        new = Grammar(**self._expressions)
+        new = Grammar.__new__(Grammar)
         new.default_rule = self.default_rule
+        new._expressions = self._expressions.copy()
         return new
 
     def _expressions_from_rules(self, rules, custom_rules):
