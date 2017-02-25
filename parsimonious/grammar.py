@@ -20,7 +20,7 @@ from parsimonious.utils import StrAndRepr, evaluate_string
 
 @python_2_unicode_compatible
 class Grammar(StrAndRepr, Mapping):
-    """A collection of rules that describe a language
+    """A collection of rules that describe a language.
 
     You can start parsing from the default rule by calling ``parse()``
     directly on the ``Grammar`` object::
@@ -52,10 +52,6 @@ class Grammar(StrAndRepr, Mapping):
         """Construct a grammar.
 
         :arg rules: A string of production rules, one per line.
-        :arg default_rule: The name of the rule invoked when you call
-            :meth:`parse()` or :meth:`match()` on the grammar. Defaults to the
-            first rule. Falls back to None if there are no string-based rules
-            in this grammar.
         :arg more_rules: Additional kwargs whose names are rule names and
             values are Expressions or custom-coded callables which accomplish
             things the built-in rule syntax cannot. These take precedence over
@@ -154,7 +150,7 @@ class Grammar(StrAndRepr, Mapping):
 
 
 class TokenGrammar(Grammar):
-    """A Grammar which takes a list of pre-lexed tokens instead of text
+    """A Grammar which takes a list of pre-lexed tokens instead of text.
 
     This is useful if you want to do the lexing yourself, as a separate pass:
     for example, to implement indentation-based languages.
@@ -167,7 +163,7 @@ class TokenGrammar(Grammar):
 
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
-    grammars
+    grammars.
 
     This grammar gets its start from some hard-coded Expressions and claws its
     way from there to an expression tree that describes how to parse the
@@ -469,7 +465,7 @@ class RuleVisitor(NodeVisitor):
 
 class TokenRuleVisitor(RuleVisitor):
     """A visitor which builds expression trees meant to work on sequences of
-    pre-lexed tokens rather than strings"""
+    pre-lexed tokens rather than strings."""
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``TokenMatcher`` that matches
