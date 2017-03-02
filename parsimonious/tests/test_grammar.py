@@ -410,7 +410,7 @@ class GrammarTests(TestCase):
             list(grammar.keys()),
             ['r%s' % i for i in range(100)])
 
-    def test_rule_ordering_is_on_shallow_copies(self):
+    def test_rule_ordering_is_preserved_on_shallow_copies(self):
         grammar = Grammar('\n'.join('r%s = "something"' % i for i in range(100)))._copy()
         self.assertEqual(
             list(grammar.keys()),

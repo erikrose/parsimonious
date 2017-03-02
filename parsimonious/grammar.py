@@ -66,8 +66,8 @@ class Grammar(OrderedDict):
             k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
             for k, v in iteritems(more_rules)}
 
-        expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
-        super(Grammar, self).__init__(expressions.items())
+        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        super(Grammar, self).__init__(exprs.items())
         self.default_rule = first  # may be None
 
     def default(self, rule_name):
@@ -85,9 +85,8 @@ class Grammar(OrderedDict):
 
         """
         new = Grammar.__new__(Grammar)
-        super(Grammar, new).__init__(self.items())
+        super(Grammar, new).__init__(iteritems(self))
         new.default_rule = self.default_rule
-        new.update(self.items())
         return new
 
     def _expressions_from_rules(self, rules, custom_rules):

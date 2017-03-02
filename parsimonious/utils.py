@@ -6,7 +6,7 @@ from six import python_2_unicode_compatible
 
 
 class StrAndRepr(object):
-    """Mix-in to which gives the class the same __repr__ and __str__."""
+    """Mix-in which gives the class the same __repr__ and __str__."""
 
     def __repr__(self):
         return self.__str__()
