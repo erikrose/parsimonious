@@ -1,6 +1,9 @@
+# coding=utf-8
+
 from sys import version_info
 from unittest import TestCase
 
+import sys
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 from six import text_type
@@ -440,3 +443,11 @@ class TokenGrammarTests(TestCase):
         assert_raises(ParseError,
                       grammar.parse,
                       [Token('tokenBOO'), Token('token2')])
+
+    def test_token_repr(self):
+        t = Token(u'💣')
+        self.assertTrue(isinstance(t.__repr__(), str))
+        if sys.version_info < (3, 0):
+            self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
+        else:
+            self.assertEqual(u'<Token "💣">', t.__repr__())
