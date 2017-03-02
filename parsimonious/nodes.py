@@ -210,11 +210,11 @@ class NodeVisitor(object):
         # up.
         try:
             result = method(node, [self.visit(n) for n in node])
-            print method, "-->", result
+            #print method, "-->", result
             return result
         except Exception as exc:
             raise
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
 #         except (VisitationError, UndefinedLabel):
 #             # Don't catch and re-wrap already-wrapped exceptions.
 #             raise
@@ -238,7 +238,7 @@ class NodeVisitor(object):
         for now.
 
         """
-        import pdb;pdb.set_trace()
+        #import pdb;pdb.set_trace()
 
         raise NotImplementedError("No visitor method was defined for %s." %
                                   node.expr_name)

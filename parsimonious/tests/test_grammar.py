@@ -5,7 +5,7 @@ from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
-from parsimonious.expressions import Sequence
+from parsimonious.expressions import Sequence, Regex
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
@@ -18,16 +18,93 @@ class BootstrappingGrammarTests(TestCase):
     def test_something(self):
         """Trigger the bug that ends up wrapping visitor output in way too many
         [[[]]]s, foiling my attempt to rejigger the grammar to lower the
-        precedence of OR."""
+        precedence of OR.
+
+        Something's wrong with the tree. This branch builds this::
+
+            <Node called "rules" matching "greeting = "j"">
+                <Node matching "greeting = "j"">
+                    <Node called "_" matching "">
+                        <Node matching "">
+                            <Node matching "">
+                    <Node matching "greeting = "j"">
+                        <Node called "rule" matching "greeting = "j"">
+                            <Node matching "greeting = "j"">
+                                <Node called "label" matching "greeting ">
+                                    <Node matching "greeting ">
+                                        <RegexNode matching "greeting">
+                                        <Node called "_" matching " ">
+                                            <Node matching " ">
+                                                <Node matching " ">
+                                                    <Node called "meaninglessness" matching " ">
+                                                        <Node matching " ">
+                                                            <RegexNode matching " ">
+                                <Node called "equals" matching "= ">
+                                    <Node matching "= ">
+                                        <Node matching "=">
+                                        <Node called "_" matching " ">
+                                            <Node matching " ">
+                                                <Node matching " ">
+                                                    <Node called "meaninglessness" matching " ">
+                                                        <Node matching " ">
+                                                            <RegexNode matching " ">
+                                <Node called "ored" matching ""j"">
+                                    <Node matching ""j"">
+                                        <Node called "sequence" matching ""j"">
+                                            <Node matching ""j"">
+                                                <Node called "term" matching ""j"">
+                                                    <Node matching ""j"">
+                                                        <Node called "atom" matching ""j"">
+                                                            <Node matching ""j"">
+                                                                <Node called "literal" matching ""j"">
+                                                                    <Node matching ""j"">
+                                                                        <Node called "spaceless_literal" matching ""j"">
+                                                                            <Node matching ""j"">
+                                                                                <RegexNode matching ""j"">
+                                                                        <Node called "_" matching "">
+                                                                            <Node matching "">
+                                                                                <Node matching "">
+                                                <Node matching "">
+                                        <Node matching "">
+
+        But master builds this much shorter tree::
+
+            <Node called "rules" matching "greeting = "j"">
+                <Node called "_" matching "">
+                <Node matching "greeting = "j"">
+                    <Node called "rule" matching "greeting = "j"">
+                        <Node called "label" matching "greeting ">
+                            <RegexNode matching "greeting">
+                            <Node called "_" matching " ">
+                                <Node called "meaninglessness" matching " ">
+                                    <RegexNode matching " ">
+                        <Node called "equals" matching "= ">
+                            <Node matching "=">
+                            <Node called "_" matching " ">
+                                <Node called "meaninglessness" matching " ">
+                                    <RegexNode matching " ">
+                        <Node called "expression" matching ""j"">
+                            <Node called "term" matching ""j"">
+                                <Node called "atom" matching ""j"">
+                                    <Node called "literal" matching ""j"">
+                                        <Node called "spaceless_literal" matching ""j"">
+                                            <RegexNode matching ""j"">
+                                        <Node called "_" matching "">
+
+        """
+        tree = Regex(r'\s+').parse(' ')  # works
+        tree = rule_grammar['comment'].parse('# snork')  # NEXT: returns several nodes because of the surrounding OR and AND that all rules now have. We will need optimizers to eliminate those that have only 1 member.
+        print "YOYOYOYOYOYOYOYOYOYOYO"
+        print tree
+        print
+        tree = rule_grammar['meaninglessness'].parse(' ')
+        tree = rule_grammar['_'].parse('')
         tree = rule_grammar['label'].parse('smoo')
         tree = rule_grammar['atom'].parse('"woot"')
         tree = rule_grammar['sequence'].parse('"woot" hey')
         tree = rule_grammar['rule'].parse('greeting = hello "jude"')
 
         tree = rule_grammar['rules'].parse('''greeting = "j"''')
-        print "YOYOYOYOYOYOYOYOYOYOYO"
-        print tree
-        print
         grammar = RuleVisitor().visit(tree)
 
 

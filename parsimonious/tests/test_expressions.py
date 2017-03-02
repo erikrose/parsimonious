@@ -125,8 +125,13 @@ class TreeTests(TestCase):
         eq_(expr.match(text), Node('one', text, 0, 1, children=[
                                    Node('lit', text, 0, 1)]))
 
-    # Things added since Grammar got implemented are covered in integration
-    # tests in test_grammar.
+    def test_regex(self):
+        expr = Regex(r'th+', 'thplus')
+        text = 'thhh ursday'
+        eq_(expr.match(text), Node('thplus', text, 0, 4))
+
+    # Things added since Grammar got implemented, like Not and Lookahead, are
+    # covered in integration tests in test_grammar.
 
 
 class ParseTests(TestCase):

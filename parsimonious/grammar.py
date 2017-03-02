@@ -322,7 +322,7 @@ class RuleVisitor(NodeVisitor):
     def visit_sequence(self, sequence, (term, other_terms)):
         """A parsed Sequence looks like [term node, ZeroOrMore node of
         ``another_term``s]. Flatten it out."""
-        import pdb;pdb.set_trace()
+        #import pdb;pdb.set_trace()
 
         return Sequence(term, *other_terms)
         if other_terms:
@@ -353,7 +353,7 @@ class RuleVisitor(NodeVisitor):
         try:
             name, _ = things
         except Exception as exc:
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
             raise
 
         return name.text
