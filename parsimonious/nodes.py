@@ -13,11 +13,10 @@ from six import reraise, python_2_unicode_compatible, with_metaclass, \
     iteritems
 
 from parsimonious.exceptions import VisitationError, UndefinedLabel
-from parsimonious.utils import StrAndRepr
 
 
 @python_2_unicode_compatible
-class Node(StrAndRepr):
+class Node(object):
     """A parse tree node
 
     Consider these immutable once constructed. As a side effect of a

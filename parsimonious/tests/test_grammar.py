@@ -1,6 +1,9 @@
+# coding=utf-8
+
 from sys import version_info
 from unittest import TestCase
 
+import sys
 from nose import SkipTest
 from nose.tools import eq_, assert_raises, ok_
 from six import text_type
@@ -404,6 +407,18 @@ class GrammarTests(TestCase):
     def test_repr(self):
         self.assertTrue(repr(Grammar(r'foo = "a"')))
 
+    def test_rule_ordering_is_preserved(self):
+        grammar = Grammar('\n'.join('r%s = "something"' % i for i in range(100)))
+        self.assertEqual(
+            list(grammar.keys()),
+            ['r%s' % i for i in range(100)])
+
+    def test_rule_ordering_is_preserved_on_shallow_copies(self):
+        grammar = Grammar('\n'.join('r%s = "something"' % i for i in range(100)))._copy()
+        self.assertEqual(
+            list(grammar.keys()),
+            ['r%s' % i for i in range(100)])
+
 
 class TokenGrammarTests(TestCase):
     """Tests for the TokenGrammar class and associated machinery"""
@@ -428,3 +443,11 @@ class TokenGrammarTests(TestCase):
         assert_raises(ParseError,
                       grammar.parse,
                       [Token('tokenBOO'), Token('token2')])
+
+    def test_token_repr(self):
+        t = Token(u'💣')
+        self.assertTrue(isinstance(t.__repr__(), str))
+        if sys.version_info < (3, 0):
+            self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
+        else:
+            self.assertEqual(u'<Token "💣">', t.__repr__())

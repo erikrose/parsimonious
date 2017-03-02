@@ -1,22 +1,15 @@
 """General tools which don't depend on other parts of Parsimonious"""
 
 import ast
-from sys import version_info
 
 from six import python_2_unicode_compatible
 
 
 class StrAndRepr(object):
-    """Mix-in to add a ``__str__`` and ``__repr__`` which return the
-    UTF-8-encoded value of ``__unicode__``"""
+    """Mix-in which gives the class the same __repr__ and __str__."""
 
-    if version_info >= (3,):
-        # Don't return the "bytes" type from Python 3's __str__:
-        def __repr__(self):
-            return self.__str__()
-    else:
-        def __repr__(self):
-            return self.__str__().encode('utf-8')
+    def __repr__(self):
+        return self.__str__()
 
 
 def evaluate_string(string):

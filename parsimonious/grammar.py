@@ -5,21 +5,20 @@ optimizations that would be tedious to do when constructing an expression tree
 by hand.
 
 """
-from collections import Mapping
+from collections import OrderedDict
 from inspect import isfunction, ismethod
 
-from six import (text_type, iterkeys, itervalues, iteritems,
-    python_2_unicode_compatible, PY2)
+from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
     expression)
 from parsimonious.nodes import NodeVisitor
-from parsimonious.utils import StrAndRepr, evaluate_string
+from parsimonious.utils import evaluate_string
 
 @python_2_unicode_compatible
-class Grammar(StrAndRepr, Mapping):
+class Grammar(OrderedDict):
     """A collection of rules that describe a language
 
     You can start parsing from the default rule by calling ``parse()``
@@ -62,22 +61,14 @@ class Grammar(StrAndRepr, Mapping):
             ``rules`` in case of naming conflicts.
 
         """
-        decorated_custom_rules = dict(
-            (k, expression(v, k, self) if isfunction(v) or
-                                          ismethod(v) else
-                v) for k, v in iteritems(more_rules))
 
-        self._expressions, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        decorated_custom_rules = {
+            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
+            for k, v in iteritems(more_rules)}
+
+        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        super(Grammar, self).__init__(exprs.items())
         self.default_rule = first  # may be None
-
-    def __getitem__(self, rule_name):
-        return self._expressions[rule_name]
-
-    def __iter__(self):
-        return iterkeys(self._expressions)
-
-    def __len__(self):
-        return len(self._expressions)
 
     def default(self, rule_name):
         """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
@@ -93,7 +84,8 @@ class Grammar(StrAndRepr, Mapping):
         no Expressions.
 
         """
-        new = Grammar(**self._expressions)
+        new = Grammar.__new__(Grammar)
+        super(Grammar, new).__init__(iteritems(self))
         new.default_rule = self.default_rule
         return new
 
@@ -448,7 +440,7 @@ class RuleVisitor(NodeVisitor):
         # override earlier ones. This lets us define rules multiple times and
         # have the last declaration win, so you can extend grammars by
         # concatenation.
-        rule_map = dict((expr.name, expr) for expr in rules)
+        rule_map = OrderedDict((expr.name, expr) for expr in rules)
 
         # And custom rules override string-based rules. This is the least
         # surprising choice when you compare the dict constructor:
@@ -457,8 +449,8 @@ class RuleVisitor(NodeVisitor):
 
         # Resolve references. This tolerates forward references.
         done = set()
-        rule_map = dict((expr.name, self._resolve_refs(rule_map, expr, done))
-                        for expr in itervalues(rule_map))
+        rule_map = OrderedDict((expr.name, self._resolve_refs(rule_map, expr, done))
+                               for expr in itervalues(rule_map))
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;
