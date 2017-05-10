@@ -9,7 +9,7 @@ from nose.tools import eq_, assert_raises, ok_
 from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
-from parsimonious.expressions import Sequence
+from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
@@ -21,37 +21,40 @@ class BootstrappingGrammarTests(TestCase):
 
     def test_quantifier(self):
         text = '*'
-        eq_(rule_grammar['quantifier'].parse(text),
-            Node('quantifier', text, 0, 1, children=[
-                Node('', text, 0, 1), Node('_', text, 1, 1)]))
+        quantifier = rule_grammar['quantifier']
+        eq_(quantifier.parse(text),
+            Node(quantifier, text, 0, 1, children=[
+                Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
         text = '?'
-        eq_(rule_grammar['quantifier'].parse(text),
-            Node('quantifier', text, 0, 1, children=[
-                Node('', text, 0, 1), Node('_', text, 1, 1)]))
+        eq_(quantifier.parse(text),
+            Node(quantifier, text, 0, 1, children=[
+                Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
         text = '+'
-        eq_(rule_grammar['quantifier'].parse(text),
-            Node('quantifier', text, 0, 1, children=[
-                Node('', text, 0, 1), Node('_', text, 1, 1)]))
+        eq_(quantifier.parse(text),
+            Node(quantifier, text, 0, 1, children=[
+                Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
 
     def test_spaceless_literal(self):
         text = '"anything but quotes#$*&^"'
-        eq_(rule_grammar['spaceless_literal'].parse(text),
-            Node('spaceless_literal', text, 0, len(text), children=[
-                Node('', text, 0, len(text))]))
+        spaceless_literal = rule_grammar['spaceless_literal']
+        eq_(spaceless_literal.parse(text),
+            Node(spaceless_literal, text, 0, len(text), children=[
+                Node(spaceless_literal.members[0], text, 0, len(text))]))
         text = r'''r"\""'''
-        eq_(rule_grammar['spaceless_literal'].parse(text),
-            Node('spaceless_literal', text, 0, 5, children=[
-                Node('', text, 0, 5)]))
+        eq_(spaceless_literal.parse(text),
+            Node(spaceless_literal, text, 0, 5, children=[
+                Node(spaceless_literal.members[0], text, 0, 5)]))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
+        regex = rule_grammar['regex']
         eq_(rule_grammar['regex'].parse(text),
-            Node('regex', text, 0, len(text), children=[
-                 Node('', text, 0, 1),
-                 Node('spaceless_literal', text, 1, 25, children=[
-                     Node('', text, 1, 25)]),
-                 Node('', text, 25, 27),
-                 Node('_', text, 27, 27)]))
+            Node(regex, text, 0, len(text), children=[
+                 Node(Literal('~'), text, 0, 1),
+                 Node(rule_grammar['spaceless_literal'], text, 1, 25, children=[
+                     Node(rule_grammar['spaceless_literal'].members[0], text, 1, 25)]),
+                 Node(regex.members[2], text, 25, 27),
+                 Node(rule_grammar['_'], text, 27, 27)]))
 
     def test_successes(self):
         """Make sure the PEG recognition grammar succeeds on various inputs."""
@@ -117,7 +120,7 @@ class RuleVisitorTests(TestCase):
         rules, default_rule = RuleVisitor().visit(tree)
 
         text = '98'
-        eq_(default_rule.parse(text), Node('number', text, 0, 2))
+        eq_(default_rule.parse(text), Node(default_rule, text, 0, 2))
 
     def test_undefined_rule(self):
         """Make sure we throw the right exception on undefined rules."""
@@ -132,8 +135,8 @@ class RuleVisitorTests(TestCase):
 
         # It should turn into a Node from the Optional and another from the
         # Literal within.
-        eq_(default_rule.parse(howdy), Node('boy', howdy, 0, 5, children=[
-                                           Node('', howdy, 0, 5)]))
+        eq_(default_rule.parse(howdy), Node(default_rule, howdy, 0, 5, children=[
+                                           Node(Literal("howdy"), howdy, 0, 5)]))
 
 
 class GrammarTests(TestCase):
@@ -150,8 +153,8 @@ class GrammarTests(TestCase):
         """
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')
         tree = greeting_grammar.parse('hi')
-        eq_(tree, Node('greeting', 'hi', 0, 2, children=[
-                       Node('', 'hi', 0, 2)]))
+        eq_(tree, Node(greeting_grammar['greeting'], 'hi', 0, 2, children=[
+                       Node(Literal('hi'), 'hi', 0, 2)]))
 
     def test_unicode(self):
         """Assert that a ``Grammar`` can convert into a string-formatted series
@@ -179,10 +182,10 @@ class GrammarTests(TestCase):
                           bold_close = "))"
                           """)
         s = ' ((boo))yah'
-        eq_(grammar.match(s, pos=1), Node('bold_text', s, 1, 8, children=[
-                                         Node('bold_open', s, 1, 3),
-                                         Node('text', s, 3, 6),
-                                         Node('bold_close', s, 6, 8)]))
+        eq_(grammar.match(s, pos=1), Node(grammar['bold_text'], s, 1, 8, children=[
+                                         Node(grammar['bold_open'], s, 1, 3),
+                                         Node(grammar['text'], s, 3, 6),
+                                         Node(grammar['bold_close'], s, 6, 8)]))
 
     def test_bad_grammar(self):
         """Constructing a Grammar with bad rules should raise ParseError."""
@@ -232,9 +235,9 @@ class GrammarTests(TestCase):
         assert_raises(ParseError, grammar.parse, 'burp')
 
         s = 'arp'
-        eq_(grammar.parse('arp'), Node('starts_with_a', s, 0, 3, children=[
-                                      Node('', s, 0, 0),
-                                      Node('', s, 0, 3)]))
+        eq_(grammar.parse('arp'), Node(grammar['starts_with_a'], s, 0, 3, children=[
+                                      Node(Lookahead(Literal('a')), s, 0, 0),
+                                      Node(Regex(r'[a-z]+'), s, 0, 3)]))
 
     def test_parens(self):
         grammar = Grammar(r'''sequence = "chitty" (" " "bang")+''')
@@ -313,10 +316,10 @@ class GrammarTests(TestCase):
                     (pos + 1) if text[pos].isdigit() else None)
         s = '[6]'
         eq_(grammar.parse(s),
-            Node('bracketed_digit', s, 0, 3, children=[
-                Node('start', s, 0, 1),
-                Node('digit', s, 1, 2),
-                Node('end', s, 2, 3)]))
+            Node(grammar['bracketed_digit'], s, 0, 3, children=[
+                Node(grammar['start'], s, 0, 1),
+                Node(grammar['digit'], s, 1, 2),
+                Node(grammar['end'], s, 2, 3)]))
 
     def test_complex_custom_rules(self):
         """Run 5-arg custom rules through their paces.
@@ -337,10 +340,10 @@ class GrammarTests(TestCase):
                     grammar['real_digit'].match_core(text, pos, cache, error))
         s = '[6]'
         eq_(grammar.parse(s),
-            Node('bracketed_digit', s, 0, 3, children=[
-                Node('start', s, 0, 1),
-                Node('real_digit', s, 1, 2),
-                Node('end', s, 2, 3)]))
+            Node(grammar['bracketed_digit'], s, 0, 3, children=[
+                Node(grammar['start'], s, 0, 1),
+                Node(grammar['real_digit'], s, 1, 2),
+                Node(grammar['end'], s, 2, 3)]))
 
     def test_lazy_custom_rules(self):
         """Make sure LazyReferences manually shoved into custom rules are
@@ -358,9 +361,9 @@ class GrammarTests(TestCase):
                                 name='forty_five')).default('forty_five')
         s = '45'
         eq_(grammar.parse(s),
-            Node('forty_five', s, 0, 2, children=[
-                Node('four', s, 0, 1),
-                Node('five', s, 1, 2)]))
+            Node(grammar['forty_five'], s, 0, 2, children=[
+                Node(grammar['four'], s, 0, 1),
+                Node(grammar['five'], s, 1, 2)]))
 
     def test_unconnected_custom_rules(self):
         """Make sure custom rules that aren't hooked to any other rules still
@@ -373,7 +376,7 @@ class GrammarTests(TestCase):
         grammar = Grammar(one_char=lambda text, pos: pos + 1).default('one_char')
         s = '4'
         eq_(grammar.parse(s),
-            Node('one_char', s, 0, 1))
+            Node(grammar['one_char'], s, 0, 1))
 
     def test_lazy_default_rule(self):
         """Make sure we get an actual rule set as our default rule, even when
@@ -385,7 +388,7 @@ class GrammarTests(TestCase):
             styled_text = text
             text        = "hi"
             """)
-        eq_(grammar.parse('hi'), Node('text', 'hi', 0, 2))
+        eq_(grammar.parse('hi'), Node(grammar['text'], 'hi', 0, 2))
 
     def test_immutable_grammar(self):
         """Make sure that a Grammar is immutable after being created."""
@@ -431,9 +434,9 @@ class TokenGrammarTests(TestCase):
             token1 = "token1"
             """)
         eq_(grammar.parse(s),
-            Node('foo', s, 0, 2, children=[
-                Node('token1', s, 0, 1),
-                Node('', s, 1, 2)]))
+            Node(grammar['foo'], s, 0, 2, children=[
+                Node(grammar['token1'], s, 0, 1),
+                Node(TokenMatcher('token2'), s, 1, 2)]))
 
     def test_parse_failure(self):
         """Parse failures should work normally with token literals."""

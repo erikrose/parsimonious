@@ -82,49 +82,49 @@ class TreeTests(TestCase):
     def test_simple_node(self):
         """Test that leaf expressions like ``Literal`` make the right nodes."""
         h = Literal('hello', name='greeting')
-        eq_(h.match('hello'), Node('greeting', 'hello', 0, 5))
+        eq_(h.match('hello'), Node(h, 'hello', 0, 5))
 
     def test_sequence_nodes(self):
         """Assert that ``Sequence`` produces nodes with the right children."""
         s = Sequence(Literal('heigh', name='greeting1'),
                      Literal('ho',    name='greeting2'), name='dwarf')
         text = 'heighho'
-        eq_(s.match(text), Node('dwarf', text, 0, 7, children=
-                                [Node('greeting1', text, 0, 5),
-                                 Node('greeting2', text, 5, 7)]))
+        eq_(s.match(text), Node(s, text, 0, 7, children=
+                                [Node(s.members[0], text, 0, 5),
+                                 Node(s.members[1], text, 5, 7)]))
 
     def test_one_of(self):
         """``OneOf`` should return its own node, wrapping the child that succeeds."""
         o = OneOf(Literal('a', name='lit'), name='one_of')
         text = 'aa'
-        eq_(o.match(text), Node('one_of', text, 0, 1, children=[
-                                Node('lit', text, 0, 1)]))
+        eq_(o.match(text), Node(o, text, 0, 1, children=[
+                                Node(o.members[0], text, 0, 1)]))
 
     def test_optional(self):
         """``Optional`` should return its own node wrapping the succeeded child."""
         expr = Optional(Literal('a', name='lit'), name='opt')
 
         text = 'a'
-        eq_(expr.match(text), Node('opt', text, 0, 1, children=[
-                                   Node('lit', text, 0, 1)]))
+        eq_(expr.match(text), Node(expr, text, 0, 1, children=[
+                                   Node(expr.members[0], text, 0, 1)]))
 
         # Test failure of the Literal inside the Optional; the
         # LengthTests.test_optional is ambiguous for that.
         text = ''
-        eq_(expr.match(text), Node('opt', text, 0, 0))
+        eq_(expr.match(text), Node(expr, text, 0, 0))
 
     def test_zero_or_more_zero(self):
         """Test the 0 case of ``ZeroOrMore``; it should still return a node."""
         expr = ZeroOrMore(Literal('a'), name='zero')
         text = ''
-        eq_(expr.match(text), Node('zero', text, 0, 0))
+        eq_(expr.match(text), Node(expr, text, 0, 0))
 
     def test_one_or_more_one(self):
         """Test the 1 case of ``OneOrMore``; it should return a node with a child."""
         expr = OneOrMore(Literal('a', name='lit'), name='one')
         text = 'a'
-        eq_(expr.match(text), Node('one', text, 0, 1, children=[
-                                   Node('lit', text, 0, 1)]))
+        eq_(expr.match(text), Node(expr, text, 0, 1, children=[
+                                   Node(expr.members[0], text, 0, 1)]))
 
     # Things added since Grammar got implemented are covered in integration
     # tests in test_grammar.
@@ -142,9 +142,9 @@ class ParseTests(TestCase):
         """
         expr = OneOrMore(Literal('a', name='lit'), name='more')
         text = 'aa'
-        eq_(expr.parse(text), Node('more', text, 0, 2, children=[
-                                   Node('lit', text, 0, 1),
-                                   Node('lit', text, 1, 2)]))
+        eq_(expr.parse(text), Node(expr, text, 0, 2, children=[
+                                   Node(expr.members[0], text, 0, 1),
+                                   Node(expr.members[0], text, 1, 2)]))
 
 
 class ErrorReportingTests(TestCase):
