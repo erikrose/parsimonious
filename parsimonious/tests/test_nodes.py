@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from nose import SkipTest
-from nose.tools import eq_, ok_, assert_raises
+from nose.tools import eq_, ok_, assert_raises, assert_in
 
 from parsimonious import Grammar, NodeVisitor, VisitationError, rule
 from parsimonious.expressions import Literal
@@ -161,3 +161,28 @@ def test_node_inequality():
     ok_(node != None)
     ok_(node != Node(Literal('23456'), 'o hai', 0, 5))
     ok_(not (node != Node(Literal('12345'), 'o hai', 0, 5)))
+
+
+def test_generic_visit_NotImplementedError_unnamed_node():
+    class MyVisitor(NodeVisitor):
+        grammar = Grammar(r'''
+            bar = "b" "a" "r"
+        ''')
+        unwrapped_exceptions = (NotImplementedError, )
+
+    with assert_raises(NotImplementedError) as e:
+        MyVisitor().parse('bar')
+    assert_in('No visitor method was defined for "b"', str(e.exception))
+
+
+def test_generic_visit_NotImplementedError_named_node():
+    class MyVisitor(NodeVisitor):
+        grammar = Grammar(r'''
+            bar = myrule myrule myrule
+            myrule = ~"[bar]"
+        ''')
+        unwrapped_exceptions = (NotImplementedError, )
+
+    with assert_raises(NotImplementedError) as e:
+        MyVisitor().parse('bar')
+    assert_in('No visitor method was defined for myrule = ~"[bar]"', str(e.exception))
