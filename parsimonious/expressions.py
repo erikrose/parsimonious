@@ -78,7 +78,7 @@ def expression(callable, rule_name, grammar):
             else:
                 # Node or None
                 return result
-            return Node(self.name, text, pos, end, children=children)
+            return Node(self, text, pos, end, children=children)
 
         def _as_rhs(self):
             return '{custom function "%s"}' % callable.__name__
@@ -180,10 +180,9 @@ class Expression(StrAndRepr):
         return node
 
     def __str__(self):
-        return u'<%s %s at 0x%s>' % (
+        return u'<%s %s>' % (
             self.__class__.__name__,
-            self.as_rule(),
-            id(self))
+            self.as_rule())
 
     def as_rule(self):
         """Return the left- and right-hand sides of a rule that represents me.
@@ -224,9 +223,18 @@ class Literal(Expression):
         super(Literal, self).__init__(name)
         self.literal = literal
 
+    def __hash__(self):
+        return hash((self.literal, self.name))
+
+    def __eq__(self, other):
+        return isinstance(other, Literal) and self.literal == other.literal
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def _uncached_match(self, text, pos, cache, error):
         if text.startswith(self.literal, pos):
-            return Node(self.name, text, pos, pos + len(self.literal))
+            return Node(self, text, pos, pos + len(self.literal))
 
     def _as_rhs(self):
         # TODO: Get backslash escaping right.
@@ -241,7 +249,7 @@ class TokenMatcher(Literal):
     """
     def _uncached_match(self, token_list, pos, cache, error):
         if token_list[pos].type == self.literal:
-            return Node(self.name, token_list, pos, pos + 1)
+            return Node(self, token_list, pos, pos + 1)
 
 
 class Regex(Expression):
@@ -263,12 +271,21 @@ class Regex(Expression):
                                       (unicode and re.U) |
                                       (verbose and re.X))
 
+    def __hash__(self):
+        return hash((self.name, self.re))
+
+    def __eq__(self, other):
+        return isinstance(other, Regex) and (self.name, self.re) == (other.name, other.re)
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def _uncached_match(self, text, pos, cache, error):
         """Return length of match, ``None`` if no match."""
         m = self.re.match(text, pos)
         if m is not None:
             span = m.span()
-            node = RegexNode(self.name, text, pos, pos + span[1] - span[0])
+            node = RegexNode(self, text, pos, pos + span[1] - span[0])
             node.match = m  # TODO: A terrible idea for cache size?
             return node
 
@@ -291,7 +308,22 @@ class Compound(Expression):
     def __init__(self, *members, **kwargs):
         """``members`` is a sequence of expressions."""
         super(Compound, self).__init__(kwargs.get('name', ''))
-        self.members = members
+        self.members = tuple(members)
+
+    def __hash__(self):
+        # Note we leave members out of the hash computation, since compounds can get added to
+        # sets, then have their members mutated. See RuleVisitor._resolve_refs.
+        # Equality should still work, but we want the rules to go into the correct hash bucket.
+        return hash((self.__class__, self.name))
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__) and
+            self.name == other.name and
+            self.members == other.members)
+
+    def __ne__(self, other):
+        return not (self == other)
 
 
 class Sequence(Compound):
@@ -315,7 +347,7 @@ class Sequence(Compound):
             new_pos += length
             length_of_sequence += length
         # Hooray! We got through all the members!
-        return Node(self.name, text, pos, pos + length_of_sequence, children)
+        return Node(self, text, pos, pos + length_of_sequence, children)
 
     def _as_rhs(self):
         return u'({0})'.format(u' '.join(self._unicode_members()))
@@ -333,7 +365,7 @@ class OneOf(Compound):
             node = m.match_core(text, pos, cache, error)
             if node is not None:
                 # Wrap the succeeding child in a node representing the OneOf:
-                return Node(self.name, text, pos, node.end, children=[node])
+                return Node(self, text, pos, node.end, children=[node])
 
     def _as_rhs(self):
         return u'({0})'.format(u' / '.join(self._unicode_members()))
@@ -350,7 +382,7 @@ class Lookahead(Compound):
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
         if node is not None:
-            return Node(self.name, text, pos, pos)
+            return Node(self, text, pos, pos)
 
     def _as_rhs(self):
         return u'&%s' % self._unicode_members()[0]
@@ -367,7 +399,7 @@ class Not(Compound):
         # not bother to cache NOTs directly.
         node = self.members[0].match_core(text, pos, cache, error)
         if node is None:
-            return Node(self.name, text, pos, pos)
+            return Node(self, text, pos, pos)
 
     def _as_rhs(self):
         # TODO: Make sure this parenthesizes the member properly if it's an OR
@@ -386,8 +418,8 @@ class Optional(Compound):
     """
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
-        return (Node(self.name, text, pos, pos) if node is None else
-                Node(self.name, text, pos, node.end, children=[node]))
+        return (Node(self, text, pos, pos) if node is None else
+                Node(self, text, pos, node.end, children=[node]))
 
     def _as_rhs(self):
         return u'%s?' % self._unicode_members()[0]
@@ -404,7 +436,7 @@ class ZeroOrMore(Compound):
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None or not (node.end - node.start):
                 # Node was None or 0 length. 0 would otherwise loop infinitely.
-                return Node(self.name, text, pos, new_pos, children)
+                return Node(self, text, pos, new_pos, children)
             children.append(node)
             new_pos += node.end - node.start
 
@@ -441,7 +473,7 @@ class OneOrMore(Compound):
                 break
             new_pos += length
         if len(children) >= self.min:
-            return Node(self.name, text, pos, new_pos, children)
+            return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
         return u'%s+' % self._unicode_members()[0]

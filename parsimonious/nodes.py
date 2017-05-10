@@ -34,19 +34,24 @@ class Node(object):
     """
     # I tried making this subclass list, but it got ugly. I had to construct
     # invalid ones and patch them up later, and there were other problems.
-    __slots__ = ['expr_name',  # The name of the expression that generated me
+    __slots__ = ['expr',  # The expression that generated me
                  'full_text',  # The full text fed to the parser
                  'start', # The position in the text where that expr started matching
                  'end',   # The position after start where the expr first didn't
                           # match. [start:end] follow Python slice conventions.
                  'children']  # List of child parse tree nodes
 
-    def __init__(self, expr_name, full_text, start, end, children=None):
-        self.expr_name = expr_name
+    def __init__(self, expr, full_text, start, end, children=None):
+        self.expr = expr
         self.full_text = full_text
         self.start = start
         self.end = end
         self.children = children or []
+
+    @property
+    def expr_name(self):
+        # backwards compatibility
+        return self.expr.name
 
     def __iter__(self):
         """Support looping over my children and doing tuple unpacks on me.
@@ -92,7 +97,7 @@ class Node(object):
         if not isinstance(other, Node):
             return NotImplemented
 
-        return (self.expr_name == other.expr_name and
+        return (self.expr == other.expr and
                 self.full_text == other.full_text and
                 self.start == other.start and
                 self.end == other.end and
@@ -109,7 +114,7 @@ class Node(object):
         ret = ["s = %r" % self.full_text] if top_level else []
         ret.append("%s(%r, s, %s, %s%s)" % (
             self.__class__.__name__,
-            self.expr_name,
+            self.expr,
             self.start,
             self.end,
             (', children=[%s]' %
