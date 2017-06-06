@@ -99,7 +99,7 @@ class Expression(StrAndRepr):
     def __init__(self, name=''):
         self.name = name
 
-    def parse(self, text, pos=0):
+    def parse(self, text, pos=0, parseAll=True):
         """Return a parse tree of ``text``.
 
         Raise ``ParseError`` if the expression wasn't satisfied. Raise
@@ -108,7 +108,7 @@ class Expression(StrAndRepr):
 
         """
         node = self.match(text, pos=pos)
-        if node.end < len(text):
+        if parseAll and node.end < len(text):
             raise IncompleteParseError(text, node.end, self)
         return node
 
