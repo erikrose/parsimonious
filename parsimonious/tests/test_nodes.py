@@ -172,7 +172,7 @@ def test_generic_visit_NotImplementedError_unnamed_node():
 
     with assert_raises(NotImplementedError) as e:
         MyVisitor().parse('bar')
-    assert_in('No visitor method was defined for "b"', str(e.exception))
+    assert_in('No visitor method was defined for this expression: "b"', str(e.exception))
 
 
 def test_generic_visit_NotImplementedError_named_node():
@@ -185,4 +185,4 @@ def test_generic_visit_NotImplementedError_named_node():
 
     with assert_raises(NotImplementedError) as e:
         MyVisitor().parse('bar')
-    assert_in('No visitor method was defined for myrule = ~"[bar]"', str(e.exception))
+    assert_in('No visitor method was defined for this expression: myrule = ~"[bar]"', str(e.exception))
