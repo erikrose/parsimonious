@@ -164,6 +164,12 @@ def test_node_inequality():
 
 
 def test_generic_visit_NotImplementedError_unnamed_node():
+    """
+    Test that generic_visit provides informative error messages
+    when visitors are not defined.
+
+    Regression test for https://github.com/erikrose/parsimonious/issues/110
+    """
     class MyVisitor(NodeVisitor):
         grammar = Grammar(r'''
             bar = "b" "a" "r"
@@ -176,6 +182,10 @@ def test_generic_visit_NotImplementedError_unnamed_node():
 
 
 def test_generic_visit_NotImplementedError_named_node():
+    """
+    Test that generic_visit provides informative error messages
+    when visitors are not defined.
+    """
     class MyVisitor(NodeVisitor):
         grammar = Grammar(r'''
             bar = myrule myrule myrule
