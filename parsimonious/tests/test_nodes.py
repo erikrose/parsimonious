@@ -80,11 +80,11 @@ def test_repr():
     n = Node(Literal(boogie), s, 0, 3, children=[
             Node(Literal(' '), s, 3, 4), Node(Literal(u'ö'), s, 4, 5)])
     eq_(repr(n),
-        """s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node({space}, s, 3, 4), Node({o}, s, 4, 5)])""".format(
+        str("""s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node({space}, s, 3, 4), Node({o}, s, 4, 5)])""").format(
             hai_o=repr(s),
             boogie=repr(Literal(boogie)),
             space=repr(Literal(" ")),
-            o=repr(Literal("ö")),
+            o=repr(Literal(u"ö")),
         )
     )
 
