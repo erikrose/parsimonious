@@ -34,16 +34,7 @@ class ExplosiveFormatter(NodeVisitor):
 
 
 def test_visitor():
-    """Assert a tree gets visited correctly.
-
-    We start with a tree from applying this grammar... ::
-
-
-    ...to this text::
-
-        ((o hai))
-
-    """
+    """Assert a tree gets visited correctly."""
     grammar = Grammar(r'''
         bold_text  = bold_open text bold_close
         text       = ~'[a-zA-Z 0-9]*'
