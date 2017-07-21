@@ -94,10 +94,20 @@ class Expression(StrAndRepr):
     # http://stackoverflow.com/questions/1336791/dictionary-vs-object-which-is-more-efficient-and-why
 
     # Top-level expressions--rules--have names. Subexpressions are named ''.
-    __slots__ = ['name']
+    __slots__ = ['name', 'identity_tuple']
 
     def __init__(self, name=''):
         self.name = name
+        self.identity_tuple = (self.name, )
+
+    def __hash__(self):
+        return hash(self.identity_tuple)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.identity_tuple == other.identity_tuple
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
@@ -217,21 +227,12 @@ class Literal(Expression):
     Use these if you can; they're the fastest.
 
     """
-    __slots__ = ['literal', 'identity_tuple']
+    __slots__ = ['literal']
 
     def __init__(self, literal, name=''):
         super(Literal, self).__init__(name)
         self.literal = literal
         self.identity_tuple = (name, literal)
-
-    def __hash__(self):
-        return hash(self.identity_tuple)
-
-    def __eq__(self, other):
-        return isinstance(other, Literal) and self.identity_tuple == other.identity_tuple
-
-    def __ne__(self, other):
-        return not (self == other)
 
     def _uncached_match(self, text, pos, cache, error):
         if text.startswith(self.literal, pos):
@@ -260,7 +261,7 @@ class Regex(Expression):
     they're fast.
 
     """
-    __slots__ = ['re', 'identity_tuple']
+    __slots__ = ['re']
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
                  multiline=False, dot_all=False, unicode=False, verbose=False):
@@ -272,15 +273,6 @@ class Regex(Expression):
                                       (unicode and re.U) |
                                       (verbose and re.X))
         self.identity_tuple = (self.name, self.re)
-
-    def __hash__(self):
-        return hash(self.identity_tuple)
-
-    def __eq__(self, other):
-        return isinstance(other, Regex) and self.identity_tuple == other.identity_tuple
-
-    def __ne__(self, other):
-        return not (self == other)
 
     def _uncached_match(self, text, pos, cache, error):
         """Return length of match, ``None`` if no match."""
@@ -323,9 +315,6 @@ class Compound(Expression):
             isinstance(other, self.__class__) and
             self.name == other.name and
             self.members == other.members)
-
-    def __ne__(self, other):
-        return not (self == other)
 
 
 class Sequence(Compound):
