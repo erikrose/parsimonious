@@ -420,8 +420,8 @@ class RuleVisitor(NodeVisitor):
                 # of `expr.members` can refer back to `expr`, but it can't go
                 # any farther.
                 done.add(expr)
-                expr.members = [self._resolve_refs(rule_map, member, done)
-                                for member in expr.members]
+                expr.members = tuple(self._resolve_refs(rule_map, member, done)
+                                     for member in expr.members)
             return expr
 
     def visit_rules(self, node, rules_list):

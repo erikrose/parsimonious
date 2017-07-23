@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from nose import SkipTest
-from nose.tools import eq_, ok_, assert_raises
+from nose.tools import eq_, ok_, assert_raises, assert_in
 
 from parsimonious import Grammar, NodeVisitor, VisitationError, rule
+from parsimonious.expressions import Literal
 from parsimonious.nodes import Node
 
 
@@ -33,25 +34,19 @@ class ExplosiveFormatter(NodeVisitor):
 
 
 def test_visitor():
-    """Assert a tree gets visited correctly.
-
-    We start with a tree from applying this grammar... ::
-
+    """Assert a tree gets visited correctly."""
+    grammar = Grammar(r'''
         bold_text  = bold_open text bold_close
         text       = ~'[a-zA-Z 0-9]*'
         bold_open  = '(('
         bold_close = '))'
-
-    ...to this text::
-
-        ((o hai))
-
-    """
+    ''')
     text = '((o hai))'
-    tree = Node('bold_text', text, 0, 9,
-                [Node('bold_open', text, 0, 2),
-                 Node('text', text, 2, 7),
-                 Node('bold_close', text, 7, 9)])
+    tree = Node(grammar['bold_text'], text, 0, 9,
+                [Node(grammar['bold_open'], text, 0, 2),
+                 Node(grammar['text'], text, 2, 7),
+                 Node(grammar['bold_close'], text, 7, 9)])
+    eq_(grammar.parse(text), tree)
     result = HtmlFormatter().visit(tree)
     eq_(result, '<b>o hai</b>')
 
@@ -59,12 +54,12 @@ def test_visitor():
 def test_visitation_exception():
     assert_raises(VisitationError,
                   ExplosiveFormatter().visit,
-                  Node('boom', '', 0, 0))
+                  Node(Literal(''), '', 0, 0))
 
 
 def test_str():
     """Test str and unicode of ``Node``."""
-    n = Node('text', 'o hai', 0, 5)
+    n = Node(Literal('something', name='text'), 'o hai', 0, 5)
     good = '<Node called "text" matching "o hai">'
     eq_(str(n), good)
 
@@ -73,9 +68,16 @@ def test_repr():
     """Test repr of ``Node``."""
     s = u'hai ö'
     boogie = u'böogie'
-    n = Node(boogie, s, 0, 3, children=[
-            Node('', s, 3, 4), Node('', s, 4, 5)])
-    eq_(repr(n), """s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node('', s, 3, 4), Node('', s, 4, 5)])""".format(hai_o=repr(s), boogie=repr(boogie)))
+    n = Node(Literal(boogie), s, 0, 3, children=[
+            Node(Literal(' '), s, 3, 4), Node(Literal(u'ö'), s, 4, 5)])
+    eq_(repr(n),
+        str("""s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node({space}, s, 3, 4), Node({o}, s, 4, 5)])""").format(
+            hai_o=repr(s),
+            boogie=repr(Literal(boogie)),
+            space=repr(Literal(" ")),
+            o=repr(Literal(u"ö")),
+        )
+    )
 
 
 def test_parse_shortcut():
@@ -145,6 +147,43 @@ def test_unwrapped_exceptions():
 
 
 def test_node_inequality():
-    node = Node('text', 'o hai', 0, 5)
+    node = Node(Literal('12345'), 'o hai', 0, 5)
     ok_(node != 5)
     ok_(node != None)
+    ok_(node != Node(Literal('23456'), 'o hai', 0, 5))
+    ok_(not (node != Node(Literal('12345'), 'o hai', 0, 5)))
+
+
+def test_generic_visit_NotImplementedError_unnamed_node():
+    """
+    Test that generic_visit provides informative error messages
+    when visitors are not defined.
+
+    Regression test for https://github.com/erikrose/parsimonious/issues/110
+    """
+    class MyVisitor(NodeVisitor):
+        grammar = Grammar(r'''
+            bar = "b" "a" "r"
+        ''')
+        unwrapped_exceptions = (NotImplementedError, )
+
+    with assert_raises(NotImplementedError) as e:
+        MyVisitor().parse('bar')
+    assert_in('No visitor method was defined for this expression: "b"', str(e.exception))
+
+
+def test_generic_visit_NotImplementedError_named_node():
+    """
+    Test that generic_visit provides informative error messages
+    when visitors are not defined.
+    """
+    class MyVisitor(NodeVisitor):
+        grammar = Grammar(r'''
+            bar = myrule myrule myrule
+            myrule = ~"[bar]"
+        ''')
+        unwrapped_exceptions = (NotImplementedError, )
+
+    with assert_raises(NotImplementedError) as e:
+        MyVisitor().parse('bar')
+    assert_in('No visitor method was defined for this expression: myrule = ~"[bar]"', str(e.exception))
