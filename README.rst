@@ -322,6 +322,18 @@ Niceties
 Version History
 ===============
 
+0.8.0
+  * Make Grammar iteration ordered, making the ``__repr__`` more like the
+    original input. (Lucas Wiman)
+  * Improve text representation and error messages for anonymous
+    subexpressions. (Lucas Wiman)
+  * Expose BadGrammar and VisitationError as top-level imports.
+  * No longer crash when you try to compare a Node to an instance of a
+    different class. (Esben Sonne)
+  * Pin ``six`` at 1.9.0 to ensure we have ``python_2_unicode_compatible``.
+    (Sam Raker)
+  * Drop Python 2.6 support.
+
 0.7.0
   * Add experimental token-based parsing, via TokenGrammar class, for those
     operating on pre-lexed streams of tokens. This can, for example, help parse
