@@ -13,6 +13,7 @@ implementation alternatives remain valid.
 # These aren't really tests, as they don't assert anything, but I found myself
 # rewriting nose's discovery and selection bits, so why not just use nose?
 
+from __future__ import print_function
 import gc
 from timeit import repeat
 
@@ -88,6 +89,6 @@ def test_not_really_json_parsing():
     seconds_each = total_seconds / NUMBER
 
     kb = len(json) / 1024.0
-    print 'Took %.3fs to parse %.1fKB: %.0fKB/s.' % (seconds_each,
+    print('Took %.3fs to parse %.1fKB: %.0fKB/s.' % (seconds_each,
                                                      kb,
-                                                     kb / seconds_each)
+                                                     kb / seconds_each))
