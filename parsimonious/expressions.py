@@ -6,6 +6,7 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
+from collections import defaultdict
 from inspect import getargspec
 import re
 
@@ -15,8 +16,6 @@ from six.moves import range
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
-
-MARKER = object()
 
 
 def expression(callable, rule_name, grammar):
@@ -132,7 +131,7 @@ class Expression(StrAndRepr):
 
         """
         error = ParseError(text)
-        node = self.match_core(text, pos, {}, error)
+        node = self.match_core(text, pos, defaultdict(dict), error)
         if node is None:
             raise error
         return node
@@ -157,8 +156,7 @@ class Expression(StrAndRepr):
         """
         # TODO: Optimize. Probably a hot spot.
         #
-        # Is there a way of looking up cached stuff that's faster than hashing
-        # this id-pos pair?
+        # Is there a faster way of looking up cached stuff?
         #
         # If this is slow, think about the array module. It might (or might
         # not!) use more RAM, but it'll likely be faster than hashing things
@@ -169,13 +167,15 @@ class Expression(StrAndRepr):
         # only the results of entire rules, not subexpressions (probably a
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
-        expr_id = id(self)
-        node = cache.get((expr_id, pos), MARKER)  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
-        if node is MARKER:
-            node = cache[(expr_id, pos)] = self._uncached_match(text,
-                                                                pos,
-                                                                cache,
-                                                                error)
+        expr_cache = cache[id(self)]
+        if pos in expr_cache:
+            node = expr_cache[pos]
+        else:
+            # TODO: Set default value to prevent infinite recursion in left-recursive rules.
+            node = expr_cache[pos] = self._uncached_match(text,
+                                                          pos,
+                                                          cache,
+                                                          error)
 
         # Record progress for error reporting:
         if node is None and pos >= error.pos and (
