@@ -266,6 +266,31 @@ class GrammarTests(TestCase):
             """)
         grammar.parse('(34)')
 
+    def test_resolve_refs_completeness(self):
+        """Smoke-test another circumstance where lazy references don't get resolved."""
+        grammar = Grammar(r"""
+            block = "{" _ item* "}" _
+
+            # An item is an element of a block.
+            item = number / word / block / paren
+
+            # Parens are for delimiting subexpressions.
+            paren = "(" _ item* ")" _
+
+            # Words are barewords, unquoted things, other than literals, that can live
+            # in lists. We may renege on some of these chars later, especially ".". We
+            # may add Unicode.
+            word = spaceless_word _
+            spaceless_word = ~r"[-a-z`~!@#$%^&*_+=|\\;<>,.?][-a-z0-9`~!@#$%^&*_+=|\\;<>,.?]*"i
+
+            number = ~r"[0-9]+" _ # There are decimals and strings and other stuff back on the "parsing" branch, once you get this working.
+
+            _ = meaninglessness*
+            meaninglessness = whitespace
+            whitespace = ~r"\s+"
+            """)
+        grammar.parse('{log (add 3 to 5)}')
+
     def test_infinite_loop(self):
         """Smoke-test a grammar that was causing infinite loops while building.
 
