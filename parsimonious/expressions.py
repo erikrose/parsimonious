@@ -239,8 +239,7 @@ class Literal(Expression):
             return Node(self, text, pos, pos + len(self.literal))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+        return repr(self.literal)
 
 
 class TokenMatcher(Literal):
@@ -289,9 +288,8 @@ class Regex(Expression):
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
-                            self._regex_flags_from_bits(self.re.flags))
+        return '~{!r}{}'.format(self.re.pattern,
+                                self._regex_flags_from_bits(self.re.flags))
 
 
 class Compound(Expression):

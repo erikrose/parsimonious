@@ -268,19 +268,19 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         eq_(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
-            u'foo = "bar" ("baz" "eggs")* "spam"')
+            u"foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # OneOf
         eq_(text_type(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
-            u'foo = "bar" ("baz" / "eggs") "spam"')
+            u"foo = 'bar' ('baz' / 'eggs') 'spam'")
 
         # Lookahead
         eq_(text_type(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
-            u'foo = "bar" &("baz" "eggs") "spam"')
+            u"foo = 'bar' &('baz' 'eggs') 'spam'")
 
         # Multiple sequences
         eq_(text_type(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
-            u'foo = ("bar" "baz") / ("baff" "bam")')
+            u"foo = ('bar' 'baz') / ('baff' 'bam')")
 
     def test_unicode_surrounding_parens(self):
         """
@@ -289,7 +289,7 @@ class RepresentationTests(TestCase):
 
         """
         eq_(text_type(Grammar('foo = ("foo" ("bar" "baz"))')),
-            u'foo = "foo" ("bar" "baz")')
+            u"foo = 'foo' ('bar' 'baz')")
 
 
 class SlotsTests(TestCase):
