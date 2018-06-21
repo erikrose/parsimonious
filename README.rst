@@ -322,6 +322,10 @@ Niceties
 Version History
 ===============
 
+0.8.1
+  * Switch to a function-style ``print`` in the benchmark tests so we work
+    cleanly as a dependency on Python 3. (Edward Betts)
+
 0.8.0
   * Make Grammar iteration ordered, making the ``__repr__`` more like the
     original input. (Lucas Wiman)
