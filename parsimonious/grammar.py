@@ -436,9 +436,7 @@ class RuleVisitor(NodeVisitor):
                 if expr in seen:
                     continue
                 seen.add(expr)
-                if expr in to_resolve:
-                    continue # LazyReference seen before
-                elif isinstance(expr, LazyReference):
+                if isinstance(expr, LazyReference):
                     to_resolve.add(expr)
                 elif getattr(expr, 'members', None):
                     _find_referenced_rules(expr.members)
