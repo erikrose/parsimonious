@@ -396,7 +396,7 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
-    def _resolve_refs(self, rule_map, expr, done):
+    def _resolve_refs(self, rule_map, expr, resolved):
         """Return an expression with all its lazy references recursively
         resolved.
 
@@ -406,24 +406,44 @@ class RuleVisitor(NodeVisitor):
         :arg done: The set of Expressions that have already been or are
             currently being resolved, to ward off redundant work and prevent
             infinite recursion for circular refs
-
         """
-        if isinstance(expr, LazyReference):
+        if expr in resolved:
+            newref = resolved[expr]
+        elif isinstance(expr, LazyReference):
             label = text_type(expr)
             try:
                 reffed_expr = rule_map[label]
             except KeyError:
                 raise UndefinedLabel(expr)
-            return self._resolve_refs(rule_map, reffed_expr, done)
+            newref = resolved[expr] = self._resolve_refs(rule_map, reffed_expr, resolved)
         else:
-            if getattr(expr, 'members', ()) and expr not in done:
+            if getattr(expr, 'members', ()) and expr not in resolved:
                 # Prevents infinite recursion for circular refs. At worst, one
                 # of `expr.members` can refer back to `expr`, but it can't go
                 # any farther.
-                done.add(expr)
-                expr.members = tuple(self._resolve_refs(rule_map, member, done)
+                resolved[expr] = expr
+                expr.members = tuple(self._resolve_refs(rule_map, member, resolved)
                                      for member in expr.members)
-            return expr
+            newref = expr
+        return newref
+
+    def _find_unresolved(self, rules):
+        """Recursively find all LazyReference objects and return them as a set"""
+        seen = set()
+        to_resolve = set()
+        def _find_referenced_rules(rulelist):
+            for expr in rulelist:
+                if expr in seen:
+                    continue
+                seen.add(expr)
+                if expr in to_resolve:
+                    continue # LazyReference seen before
+                elif isinstance(expr, LazyReference):
+                    to_resolve.add(expr)
+                elif getattr(expr, 'members', None):
+                    _find_referenced_rules(expr.members)
+        _find_referenced_rules(rules)
+        return to_resolve
 
     def visit_rules(self, node, rules_list):
         """Collate all the rules into a map. Return (map, default rule).
@@ -449,9 +469,18 @@ class RuleVisitor(NodeVisitor):
         rule_map.update(self.custom_rules)
 
         # Resolve references. This tolerates forward references.
-        done = set()
-        rule_map = OrderedDict((expr.name, self._resolve_refs(rule_map, expr, done))
-                               for expr in itervalues(rule_map))
+        # We use a job pool `to_resolve` to remember all rules to resolve. It is
+        # initialized with all existing rules in `rule_map` and all
+        # LazyReference rules found later will be added as well.
+        to_resolve = set(itervalues(rule_map))
+        resolved = {}
+        while to_resolve:
+            expr = to_resolve.pop()
+            newexpr = self._resolve_refs(rule_map, expr, resolved)
+            if getattr(expr, 'name', None):
+                rule_map[expr.name] = newexpr
+            if getattr(newexpr, 'members', ()):
+                to_resolve.update(self._find_unresolved(newexpr.members))
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;
