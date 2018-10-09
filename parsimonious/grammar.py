@@ -470,7 +470,7 @@ class RuleVisitor(NodeVisitor):
         # We use a job pool `to_resolve` to remember all rules to resolve. It is
         # initialized with all existing rules in `rule_map` and all
         # LazyReference rules found later will be added as well.
-        to_resolve = set(itervalues(rule_map))
+        to_resolve = set(rule_map.values())
         resolved = {}
         while to_resolve:
             expr = to_resolve.pop()
