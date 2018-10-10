@@ -9,6 +9,10 @@ from collections import OrderedDict
 from inspect import isfunction, ismethod
 
 from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
+try:
+    import regex
+except ImportError:
+    regex = None
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -47,7 +51,7 @@ class Grammar(OrderedDict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
-    def __init__(self, rules='', **more_rules):
+    def __init__(self, rules='', use_regex_library=False, **more_rules):
         """Construct a grammar.
 
         :arg rules: A string of production rules, one per line.
@@ -62,6 +66,7 @@ class Grammar(OrderedDict):
 
         """
 
+        self._use_regex_library = use_regex_library
         decorated_custom_rules = {
             k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
             for k, v in iteritems(more_rules)}
@@ -103,7 +108,7 @@ class Grammar(OrderedDict):
 
         """
         tree = rule_grammar.parse(rules)
-        return RuleVisitor(custom_rules).visit(tree)
+        return RuleVisitor(custom_rules, use_regex_library=self._use_regex_library).visit(tree)
 
     def parse(self, text, pos=0):
         """Parse some text with the :term:`default rule`.
@@ -283,13 +288,14 @@ class RuleVisitor(NodeVisitor):
 
     visit_expression = visit_term = visit_atom = NodeVisitor.lift_child
 
-    def __init__(self, custom_rules=None):
+    def __init__(self, custom_rules=None, use_regex_library=False):
         """Construct.
 
         :arg custom_rules: A dict of {rule name: expression} holding custom
             rules which will take precedence over the others
 
         """
+        super(RuleVisitor, self).__init__(use_regex_library=use_regex_library)
         self.custom_rules = custom_rules or {}
 
     def visit_parenthesized(self, node, parenthesized):
@@ -369,7 +375,8 @@ class RuleVisitor(NodeVisitor):
                               dot_all='S' in flags,
                               unicode='U' in flags,
                               verbose='X' in flags,
-                              ascii='A' in flags)
+                              ascii='A' in flags,
+                     use_regex_library=self._use_regex_library)
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""

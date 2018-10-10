@@ -11,6 +11,10 @@ import re
 
 from six import integer_types, python_2_unicode_compatible
 from six.moves import range
+try:
+    import regex
+except ImportError:
+    regex = None
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
@@ -264,15 +268,21 @@ class Regex(Expression):
     __slots__ = ['re']
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
-                 multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False):
+                 multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False, use_regex_library=False):
+        if use_regex_library and regex is None:
+            raise ValueError("regex library cannot be imported")
         super(Regex, self).__init__(name)
-        self.re = re.compile(pattern, (ignore_case and re.I) |
-                                      (locale and re.L) |
-                                      (multiline and re.M) |
-                                      (dot_all and re.S) |
-                                      (unicode and re.U) |
-                                      (verbose and re.X) |
-                                      (ascii and re.A))
+        flags = ((ignore_case and re.I) |
+                 (locale and re.L) |
+                 (multiline and re.M) |
+                 (dot_all and re.S) |
+                 (unicode and re.U) |
+                 (verbose and re.X) |
+                 (ascii and re.A))
+        if use_regex_library:
+            self.re = regex.compile(pattern=pattern, flags=flags)
+        else:
+            self.re = re.compile(pattern=pattern, flags=flags)
         self.identity_tuple = (self.name, self.re)
 
     def _uncached_match(self, text, pos, cache, error):

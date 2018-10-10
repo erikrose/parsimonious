@@ -5,6 +5,6 @@ python:
   - "3.5"
   - "3.6"
 install:
-  - pip install tox tox-travis
+  - pip install regex tox tox-travis
 script:
   - tox
