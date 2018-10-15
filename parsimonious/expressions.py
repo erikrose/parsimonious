@@ -366,90 +366,34 @@ class Lookahead(Compound):
     """An expression which consumes nothing, even if its contained expression
     succeeds"""
 
-    # TODO: Merge this and Not for better cache hit ratios and less code.
-    # Downside: pretty-printed grammars might be spelled differently than what
-    # went in. That doesn't bother me.
+    __slots__ = ['negativity']
+
+    def __init__(self, *members, **kwargs):
+        super(Lookahead, self).__init__(*members, **kwargs)
+        self.negativity = bool(kwargs.get('negative'))
 
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
-        if node is not None:
+        if (node is None) == self.negativity: # negative lookahead == match only if not found
             return Node(self, text, pos, pos)
 
     def _as_rhs(self):
-        return u'&%s' % self._unicode_members()[0]
+        return u'%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
 
-
-class Not(Compound):
-    """An expression that succeeds only if the expression within it doesn't
-
-    In any case, it never consumes any characters; it's a negative lookahead.
-
-    """
-    def _uncached_match(self, text, pos, cache, error):
-        # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
-        # not bother to cache NOTs directly.
-        node = self.members[0].match_core(text, pos, cache, error)
-        if node is None:
-            return Node(self, text, pos, pos)
-
-    def _as_rhs(self):
-        # TODO: Make sure this parenthesizes the member properly if it's an OR
-        # or AND.
-        return u'!%s' % self._unicode_members()[0]
-
+def Not(term):
+    return Lookahead(term, negative=True)
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
-class Optional(Compound):
-    """An expression that succeeds whether or not the contained one does
+class Quantifier(Compound):
+    """An expression wrapper like the */+/?/{n,m} quantifier in regexes."""
 
-    If the contained expression succeeds, it goes ahead and consumes what it
-    consumes. Otherwise, it consumes nothing.
+    __slots__ = ['min', 'max']
 
-    """
-    def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0].match_core(text, pos, cache, error)
-        return (Node(self, text, pos, pos) if node is None else
-                Node(self, text, pos, node.end, children=[node]))
-
-    def _as_rhs(self):
-        return u'%s?' % self._unicode_members()[0]
-
-
-# TODO: Merge with OneOrMore.
-class ZeroOrMore(Compound):
-    """An expression wrapper like the * quantifier in regexes."""
-
-    def _uncached_match(self, text, pos, cache, error):
-        new_pos = pos
-        children = []
-        while True:
-            node = self.members[0].match_core(text, new_pos, cache, error)
-            if node is None or not (node.end - node.start):
-                # Node was None or 0 length. 0 would otherwise loop infinitely.
-                return Node(self, text, pos, new_pos, children)
-            children.append(node)
-            new_pos += node.end - node.start
-
-    def _as_rhs(self):
-        return u'%s*' % self._unicode_members()[0]
-
-
-class OneOrMore(Compound):
-    """An expression wrapper like the + quantifier in regexes.
-
-    You can also pass in an alternate minimum to make this behave like "2 or
-    more", "3 or more", etc.
-
-    """
-    __slots__ = ['min']
-
-    # TODO: Add max. It should probably succeed if there are more than the max
-    # --just not consume them.
-
-    def __init__(self, member, name='', min=1):
-        super(OneOrMore, self).__init__(member, name=name)
-        self.min = min
+    def __init__(self, *members, **kwargs):
+        super(Quantifier, self).__init__(*members, **kwargs)
+        self.min = kwargs.get('min', 0)
+        self.max = kwargs.get('max', float('inf'))
 
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
@@ -457,14 +401,37 @@ class OneOrMore(Compound):
         while True:
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
-                break
+                break # no more matches
             children.append(node)
             length = node.end - node.start
-            if length == 0:  # Don't loop infinitely.
+            if len(children) >= self.min and length == 0:  # Don't loop infinitely
                 break
             new_pos += length
+            if len(children) == self.max:
+                break # reached max repetition
         if len(children) >= self.min:
             return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
-        return u'%s+' % self._unicode_members()[0]
+        if self.min == 0 and self.max == 1:
+            qualifier = u'?'
+        elif self.min == 0 and self.max == float('inf'):
+            qualifier = u'*'
+        elif self.min == 1 and self.max == float('inf'):
+            qualifier = u'+'
+        elif self.max == float('inf'):
+            qualifier = u'{%d,}' % self.min
+        elif self.min == 0:
+            qualifier = u'{,%d}' % self.max
+        else:
+            qualifier = u'{%d,%d}' % (self.min, self.max)
+        return u'%s%s' % (self._unicode_members()[0], qualifier)
+
+def ZeroOrMore(*args, **kwargs):
+    return Quantifier(*args, **kwargs)
+
+def OneOrMore(member, name='', min=1):
+    return Quantifier(member, name=name, min=min)
+
+def Optional(*args, **kwargs):
+    return Quantifier(*args, **kwargs)
