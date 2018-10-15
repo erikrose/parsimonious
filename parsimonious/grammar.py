@@ -12,7 +12,7 @@ from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, 
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
+    Lookahead, Quantifier, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
     expression)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
@@ -245,7 +245,7 @@ rule_syntax = (r'''
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsux]*"i _
     parenthesized = "(" _ expression ")" _
-    quantifier = ~"[*+?]" _
+    quantifier = ~"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
 
     # A subsequent equal sign is the only thing that distinguishes a label
@@ -308,7 +308,17 @@ class RuleVisitor(NodeVisitor):
 
     def visit_quantified(self, node, quantified):
         atom, quantifier = quantified
-        return self.quantifier_classes[quantifier.text](atom)
+        try:
+            return self.quantifier_classes[quantifier.text](atom)
+        except KeyError:
+            # This should pass: assert re.full_match("\{(\d*)(,(\d*))?\}", quantifier)
+            quantifier = quantifier.text[1:-1].split(",")
+            if len(quantifier) == 1:
+                min_match = max_match = int(quantifier[0])
+            else:
+                min_match = int(quantifier[0]) if quantifier[0] else 0
+                max_match = int(quantifier[1]) if quantifier[1] else float('inf')
+            return Quantifier(atom, min=min_match, max=max_match)
 
     def visit_lookahead_term(self, node, lookahead_term):
         ampersand, term, _ = lookahead_term

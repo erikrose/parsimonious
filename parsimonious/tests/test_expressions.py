@@ -68,7 +68,10 @@ class LengthTests(TestCase):
         len_eq(OneOrMore(Literal('b')).match('b'), 1)  # one
         len_eq(OneOrMore(Literal('b')).match('bbb'), 3)  # more
         len_eq(OneOrMore(Literal('b'), min=3).match('bbb'), 3)  # with custom min; success
+        len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbb'), 4)  # with custom min and max; success
+        len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbbbb'), 5)  # with custom min and max; success
         assert_raises(ParseError, OneOrMore(Literal('b'), min=3).match, 'bb')  # with custom min; failure
+        assert_raises(ParseError, Quantifier(Literal('b'), min=3, max=5).match, 'bb')  # with custom min and max; failure
         len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
 
 
@@ -268,6 +271,20 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         eq_(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
+            u'foo = "bar" ("baz" "eggs")* "spam"')
+
+        # Quantiifers
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){2,4} "spam"')),
+            u'foo = "bar" ("baz" "eggs"){2,4} "spam"')
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){2,} "spam"')),
+            u'foo = "bar" ("baz" "eggs"){2,} "spam"')
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){1,} "spam"')),
+            u'foo = "bar" ("baz" "eggs")+ "spam"')
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){,4} "spam"')),
+            u'foo = "bar" ("baz" "eggs"){,4} "spam"')
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){0,1} "spam"')),
+            u'foo = "bar" ("baz" "eggs")? "spam"')
+        eq_(text_type(Grammar('foo = "bar" ("baz" "eggs"){0,} "spam"')),
             u'foo = "bar" ("baz" "eggs")* "spam"')
 
         # OneOf
