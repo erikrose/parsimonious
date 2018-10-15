@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
-                                      Optional, ZeroOrMore, OneOrMore, Expression)
+                                      Quantifier, Optional, ZeroOrMore, OneOrMore, Expression)
 from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
 
@@ -305,7 +305,7 @@ class SlotsTests(TestCase):
         But it does.
 
         """
-        class Smoo(Optional):
+        class Smoo(Quantifier):
             __slots__ = ['smoo']
 
             def __init__(self):
