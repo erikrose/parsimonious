@@ -64,7 +64,10 @@ class LengthTests(TestCase):
         self.len_eq(OneOrMore(Literal('b')).match('b'), 1)  # one
         self.len_eq(OneOrMore(Literal('b')).match('bbb'), 3)  # more
         self.len_eq(OneOrMore(Literal('b'), min=3).match('bbb'), 3)  # with custom min; success
+        self.len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbb'), 4)  # with custom min and max; success
+        self.len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbbbb'), 5)  # with custom min and max; success
         self.assertRaises(ParseError, OneOrMore(Literal('b'), min=3).match, 'bb')  # with custom min; failure
+        self.assertRaises(ParseError, Quantifier(Literal('b'), min=3, max=5).match, 'bb')  # with custom min and max; failure
         self.len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
 
 
@@ -266,6 +269,20 @@ class RepresentationTests(TestCase):
         # ZeroOrMore
         self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
                          u"foo = 'bar' ('baz' 'eggs')* 'spam'")
+
+        # Quantifiers
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){2,4} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){2,4} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){2,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){2,} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){1,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')+ 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){,4} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){,4} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){0,1} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')? 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){0,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # OneOf
         self.assertEqual(str(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
