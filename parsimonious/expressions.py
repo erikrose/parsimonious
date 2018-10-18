@@ -264,14 +264,15 @@ class Regex(Expression):
     __slots__ = ['re']
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
-                 multiline=False, dot_all=False, unicode=False, verbose=False):
+                 multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False):
         super(Regex, self).__init__(name)
         self.re = re.compile(pattern, (ignore_case and re.I) |
                                       (locale and re.L) |
                                       (multiline and re.M) |
                                       (dot_all and re.S) |
                                       (unicode and re.U) |
-                                      (verbose and re.X))
+                                      (verbose and re.X) |
+                                      (ascii and re.A))
         self.identity_tuple = (self.name, self.re)
 
     def _uncached_match(self, text, pos, cache, error):
@@ -285,7 +286,7 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'ilmsux'
+        flags = 'ilmsuxa'
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
