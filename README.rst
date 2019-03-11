@@ -59,6 +59,77 @@ Next, let's parse something and get an abstract syntax tree:
 You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
 the tree and do something useful with it.
 
+Another example would be to implement a parser for `.ini`-files. Consider the following:
+
+.. code:: python
+
+    grammar = Grammar(
+        r"""
+        expr        = (entry / emptyline)*
+        entry       = section (ws pair)*
+        section     = lpar word rpar
+        key         = word+
+        value       = (word / quoted)+
+        pair        = key equal value
+        word        = ~r"[-\w]+"
+        quoted      = ~'"[^\"]+"'
+        equal       = ws? "=" ws?
+        lpar        = "["
+        rpar        = "]"
+        ws          = ~"\s*"
+        emptyline   = ws+
+        """
+    )
+
+We could now implement a subclass of `NodeVisitor` like so:
+
+.. code:: python
+
+    class IniVisitor(NodeVisitor):
+        output = {}
+        current_section = None
+        current_key = None
+
+        def generic_visit(self, node, visited_children):
+            return node.text or visited_children
+
+        def visit_section(self, node, visited_children):
+            self.current_section = node.text[1:-1]
+            self.output[self.current_section] = {}
+
+        def visit_key(self, node, visited_children):
+            self.current_key = node.text
+
+        def visit_value(self, node, visited_children):
+            self.output[self.current_section][self.current_key] = node.text
+            
+And call it like that:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+    from parsimonious.nodes import NodeVisitor
+
+    data = """[section]
+    somekey = somevalue
+    someotherkey=someothervalue
+
+    [anothersection]
+    key123 = "what the heck?"
+    key456="yet another one here"
+
+    """
+
+    tree = grammar.parse(data)
+    iv = IniVisitor()
+    iv.visit(tree)
+    print(iv.output)
+    
+This would yield
+
+.. code:: python
+
+    {'section': {'somekey': 'somevalue', 'someotherkey': 'someothervalue'}, 'anothersection': {'key123': '"what the heck?"', 'key456': '"yet another one here"'}}
 
 Status
 ======
