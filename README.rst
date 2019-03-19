@@ -59,18 +59,20 @@ Next, let's parse something and get an abstract syntax tree:
 You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
 the tree and do something useful with it.
 
-Another example would be to implement a parser for `.ini`-files. Consider the following:
+Another example would be to implement a parser for ``.ini``-files. Consider the following:
 
 .. code:: python
 
     grammar = Grammar(
         r"""
         expr        = (entry / emptyline)*
-        entry       = section (ws pair)*
-        section     = lpar word rpar
+        entry       = section pair*
+
+        section     = lpar word rpar ws
+        pair        = key equal value ws?
+
         key         = word+
         value       = (word / quoted)+
-        pair        = key equal value
         word        = ~r"[-\w]+"
         quoted      = ~'"[^\"]+"'
         equal       = ws? "=" ws?
@@ -81,28 +83,37 @@ Another example would be to implement a parser for `.ini`-files. Consider the fo
         """
     )
 
+
 We could now implement a subclass of `NodeVisitor` like so:
 
 .. code:: python
 
     class IniVisitor(NodeVisitor):
-        output = {}
-        current_section = None
-        current_key = None
+        def visit_expr(self, node, visited_children):
+            """ Returns the overall output. """
+            output = {}
+            for child in visited_children:
+                output.update(child[0])
+            return output
 
-        def generic_visit(self, node, visited_children):
-            return node.text or visited_children
+        def visit_entry(self, node, visited_children):
+            """ Makes a dict of the section (as key) and the key/value pairs. """
+            return {visited_children[0]: dict(visited_children[1])}
 
         def visit_section(self, node, visited_children):
-            self.current_section = node.text[1:-1]
-            self.output[self.current_section] = {}
+            """ Gets the section name. """
+            _, section, *_ = visited_children
+            return section.text
 
-        def visit_key(self, node, visited_children):
-            self.current_key = node.text
+        def visit_pair(self, node, visited_children):
+            """ Gets each key/value pair, returns a tuple. """
+            key, _, value, *_ = node.children
+            return key.text, value.text
 
-        def visit_value(self, node, visited_children):
-            self.output[self.current_section][self.current_key] = node.text
-            
+        def generic_visit(self, node, visited_children):
+            """ The generic visit method. """
+            return visited_children or node
+
 And call it like that:
 
 .. code:: python
@@ -121,9 +132,10 @@ And call it like that:
     """
 
     tree = grammar.parse(data)
+
     iv = IniVisitor()
-    iv.visit(tree)
-    print(iv.output)
+    output = iv.visit(tree)
+    print(output)
     
 This would yield
 
