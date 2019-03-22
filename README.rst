@@ -161,7 +161,7 @@ Syntax Reference
 ``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``~r"regex"ilmsux``     Regexes have ``~`` in front and are quoted like
+``~r"regex"ilmsuxa``    Regexes have ``~`` in front and are quoted like
                         literals. Any flags follow the end quotes as single
                         chars. Regexes are good for representing character
                         classes (``[a-z0-9]``) and optimizing for speed. The

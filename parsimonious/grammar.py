@@ -190,7 +190,7 @@ class BootstrappingGrammar(Grammar):
         literal = Sequence(spaceless_literal, _, name='literal')
         regex = Sequence(Literal('~'),
                          literal,
-                         Regex('[ilmsux]*', ignore_case=True),
+                         Regex('[ilmsuxa]*', ignore_case=True),
                          _,
                          name='regex')
         atom = OneOf(reference, literal, regex, name='atom')
@@ -243,7 +243,7 @@ rule_syntax = (r'''
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
-    regex = "~" spaceless_literal ~"[ilmsux]*"i _
+    regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
@@ -378,7 +378,8 @@ class RuleVisitor(NodeVisitor):
                               multiline='M' in flags,
                               dot_all='S' in flags,
                               unicode='U' in flags,
-                              verbose='X' in flags)
+                              verbose='X' in flags,
+                              ascii='A' in flags)
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
