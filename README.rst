@@ -84,7 +84,7 @@ Another example would be to implement a parser for ``.ini``-files. Consider the 
     )
 
 
-We could now implement a subclass of `NodeVisitor` like so:
+We could now implement a subclass of ``NodeVisitor`` like so:
 
 .. code:: python
 
@@ -98,7 +98,8 @@ We could now implement a subclass of `NodeVisitor` like so:
 
         def visit_entry(self, node, visited_children):
             """ Makes a dict of the section (as key) and the key/value pairs. """
-            return {visited_children[0]: dict(visited_children[1])}
+            key, values = visited_children
+            return {key: dict(values)}
 
         def visit_section(self, node, visited_children):
             """ Gets the section name. """
