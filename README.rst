@@ -44,7 +44,7 @@ Here's how to build a simple grammar:
 
 You can have forward references and even right recursion; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
-symbol, but you can override that.
+symbol, but you can start at any other rule as well.
 
 Next, let's parse something and get an abstract syntax tree:
 
@@ -55,6 +55,8 @@ Next, let's parse something and get an abstract syntax tree:
         <Node called "bold_open" matching "((">
         <RegexNode called "text" matching "bold stuff">
         <Node called "bold_close" matching "))">
+    >>> print grammar['text'].parse('other stuff')
+    <RegexNode called "text" matching "other stuff">
 
 You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
 the tree and do something useful with it.
