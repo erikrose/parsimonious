@@ -9,7 +9,7 @@ from nose.tools import eq_, assert_raises, ok_
 from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
-from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher
+from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
@@ -391,6 +391,11 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node(grammar['one_char'], s, 0, 1))
+
+    def test_callability_of_routines(self):
+        ok_(is_callable(function_rule))
+        ok_(is_callable(self.method_rule))
+        ok_(is_callable(self.descriptor_rule))
 
     def test_callability_custom_rules(self):
         """Confirms that functions, methods and method descriptors can all be

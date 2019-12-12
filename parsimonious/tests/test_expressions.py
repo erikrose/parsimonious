@@ -6,7 +6,7 @@ from six import text_type
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
-    Optional, ZeroOrMore, OneOrMore, Expression, is_callable)
+    Optional, ZeroOrMore, OneOrMore, Expression)
 from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
 
@@ -70,47 +70,6 @@ class LengthTests(TestCase):
         len_eq(OneOrMore(Literal('b'), min=3).match('bbb'), 3)  # with custom min; success
         assert_raises(ParseError, OneOrMore(Literal('b'), min=3).match, 'bb')  # with custom min; failure
         len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
-
-
-def function_rule(text, pos):
-    token = 'function'
-    return pos + len(token) if text[pos:].startswith(token) else None
-
-
-class CustomRuleTests(TestCase):
-    """Tests for parsing custom rule expressions"""
-
-    class CustomRuleClass():
-
-        def method_rule(text, pos):
-            token = 'method'
-            return pos + len(token) if text[pos:].startswith(token) else None
-
-        @staticmethod
-        def descriptor_rule(text, pos):
-            token = 'descriptor'
-            return pos + len(token) if text[pos:].startswith(token) else None
-
-        grammar = Grammar("""
-            default = (token space?)+
-            space = " "
-            token
-            = function
-            / method
-            / descriptor
-            """,
-            function=function_rule,
-            method=method_rule,
-            descriptor=descriptor_rule,
-        )
-
-    def test_parsing(self):
-        self.CustomRuleClass.grammar.parse("function method descriptor")
-
-    def test_is_callable(self):
-        ok_(is_callable(function_rule))
-        ok_(is_callable(self.CustomRuleClass.method_rule))
-        ok_(is_callable(self.CustomRuleClass.descriptor_rule))
 
 
 class TreeTests(TestCase):
