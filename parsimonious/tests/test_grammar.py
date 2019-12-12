@@ -139,8 +139,22 @@ class RuleVisitorTests(TestCase):
                                            Node(Literal("howdy"), howdy, 0, 5)]))
 
 
+def function_rule(text, pos):
+    token = 'function'
+    return pos + len(token) if text[pos:].startswith(token) else None
+
+
 class GrammarTests(TestCase):
     """Integration-test ``Grammar``: feed it a PEG and see if it works."""
+
+    def method_rule(self, text, pos):
+        token = 'method'
+        return pos + len(token) if text[pos:].startswith(token) else None
+
+    @staticmethod
+    def descriptor_rule(text, pos):
+        token = 'descriptor'
+        return pos + len(token) if text[pos:].startswith(token) else None
 
     def test_expressions_from_rules(self):
         """Test the ``Grammar`` base class's ability to compile an expression
@@ -377,6 +391,21 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node(grammar['one_char'], s, 0, 1))
+
+    def test_callability_custom_rules(self):
+        """Confirms that functions, methods and method descriptors can all be
+        used to supply custom grammar rules.
+        """
+        grammar = Grammar("""
+            default = function method descriptor
+            """,
+            function=function_rule,
+            method=self.method_rule,
+            descriptor=self.descriptor_rule,
+        )
+        result = grammar.parse('functionmethoddescriptor')
+        rule_names = [node.expr.name for node in result.children]
+        eq_(rule_names, ['function', 'method', 'descriptor'])
 
     def test_lazy_default_rule(self):
         """Make sure we get an actual rule set as our default rule, even when
