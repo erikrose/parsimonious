@@ -7,7 +7,11 @@ These do the parsing.
 # anything--for speed. And kill all the dots.
 
 from inspect import getargspec
-import re
+
+try:
+    import regex as re
+except ImportError:
+    import re
 
 from six import integer_types, python_2_unicode_compatible
 from six.moves import range
