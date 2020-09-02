@@ -156,6 +156,8 @@ class GrammarTests(TestCase):
         token = 'descriptor'
         return pos + len(token) if text[pos:].startswith(token) else None
 
+    rules = {"descriptor": descriptor_rule}
+
     def test_expressions_from_rules(self):
         """Test the ``Grammar`` base class's ability to compile an expression
         tree from rules.
@@ -406,7 +408,7 @@ class GrammarTests(TestCase):
             """,
             function=function_rule,
             method=self.method_rule,
-            descriptor=self.descriptor_rule,
+            descriptor=self.rules["descriptor"],
         )
         result = grammar.parse('functionmethoddescriptor')
         rule_names = [node.expr.name for node in result.children]
