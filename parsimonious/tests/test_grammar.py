@@ -397,7 +397,7 @@ class GrammarTests(TestCase):
     def test_callability_of_routines(self):
         ok_(is_callable(function_rule))
         ok_(is_callable(self.method_rule))
-        ok_(is_callable(self.descriptor_rule))
+        ok_(is_callable(self.rules["descriptor"]))
 
     def test_callability_custom_rules(self):
         """Confirms that functions, methods and method descriptors can all be
