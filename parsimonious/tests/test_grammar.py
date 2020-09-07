@@ -397,7 +397,7 @@ class GrammarTests(TestCase):
     def test_callability_of_routines(self):
         ok_(is_callable(function_rule))
         ok_(is_callable(self.method_rule))
-        ok_(is_callable(self.rules["descriptor_rule"]))
+        ok_(is_callable(self.rules['descriptor_rule']))
 
     def test_callability_custom_rules(self):
         """Confirms that functions, methods and method descriptors can all be
@@ -408,7 +408,7 @@ class GrammarTests(TestCase):
             """,
             function=function_rule,
             method=self.method_rule,
-            descriptor=self.rules["descriptor_rule"],
+            descriptor=self.rules['descriptor_rule'],
         )
         result = grammar.parse('functionmethoddescriptor')
         rule_names = [node.expr.name for node in result.children]
