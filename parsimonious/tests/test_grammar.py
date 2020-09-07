@@ -140,6 +140,8 @@ class RuleVisitorTests(TestCase):
 
 
 def function_rule(text, pos):
+    """This is an example of a grammar rule implemented as a function, and is
+    provided as a test fixture."""
     token = 'function'
     return pos + len(token) if text[pos:].startswith(token) else None
 
@@ -148,11 +150,15 @@ class GrammarTests(TestCase):
     """Integration-test ``Grammar``: feed it a PEG and see if it works."""
 
     def method_rule(self, text, pos):
+        """This is an example of a grammar rule implemented as a method, and is
+        provided as a test fixture."""
         token = 'method'
         return pos + len(token) if text[pos:].startswith(token) else None
 
     @staticmethod
     def descriptor_rule(text, pos):
+        """This is an example of a grammar rule implemented as a descriptor,
+        and is provided as a test fixture."""
         token = 'descriptor'
         return pos + len(token) if text[pos:].startswith(token) else None
 
