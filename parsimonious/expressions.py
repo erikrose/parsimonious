@@ -70,6 +70,7 @@ def expression(callable, rule_name, grammar):
 
     num_args = len(getargspec(callable).args)
     if ismethod(callable):
+        # do not count the first argument (typically 'self') for methods
         num_args -= 1
     if num_args == 2:
         is_simple = True
