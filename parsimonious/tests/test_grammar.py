@@ -9,7 +9,7 @@ from nose.tools import eq_, assert_raises, ok_
 from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
-from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher
+from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
@@ -139,8 +139,30 @@ class RuleVisitorTests(TestCase):
                                            Node(Literal("howdy"), howdy, 0, 5)]))
 
 
+def function_rule(text, pos):
+    """This is an example of a grammar rule implemented as a function, and is
+    provided as a test fixture."""
+    token = 'function'
+    return pos + len(token) if text[pos:].startswith(token) else None
+
+
 class GrammarTests(TestCase):
     """Integration-test ``Grammar``: feed it a PEG and see if it works."""
+
+    def method_rule(self, text, pos):
+        """This is an example of a grammar rule implemented as a method, and is
+        provided as a test fixture."""
+        token = 'method'
+        return pos + len(token) if text[pos:].startswith(token) else None
+
+    @staticmethod
+    def descriptor_rule(text, pos):
+        """This is an example of a grammar rule implemented as a descriptor,
+        and is provided as a test fixture."""
+        token = 'descriptor'
+        return pos + len(token) if text[pos:].startswith(token) else None
+
+    rules = {"descriptor_rule": descriptor_rule}
 
     def test_expressions_from_rules(self):
         """Test the ``Grammar`` base class's ability to compile an expression
@@ -377,6 +399,26 @@ class GrammarTests(TestCase):
         s = '4'
         eq_(grammar.parse(s),
             Node(grammar['one_char'], s, 0, 1))
+
+    def test_callability_of_routines(self):
+        ok_(is_callable(function_rule))
+        ok_(is_callable(self.method_rule))
+        ok_(is_callable(self.rules['descriptor_rule']))
+
+    def test_callability_custom_rules(self):
+        """Confirms that functions, methods and method descriptors can all be
+        used to supply custom grammar rules.
+        """
+        grammar = Grammar("""
+            default = function method descriptor
+            """,
+            function=function_rule,
+            method=self.method_rule,
+            descriptor=self.rules['descriptor_rule'],
+        )
+        result = grammar.parse('functionmethoddescriptor')
+        rule_names = [node.expr.name for node in result.children]
+        eq_(rule_names, ['function', 'method', 'descriptor'])
 
     def test_lazy_default_rule(self):
         """Make sure we get an actual rule set as our default rule, even when

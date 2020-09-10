@@ -6,14 +6,13 @@ by hand.
 
 """
 from collections import OrderedDict
-from inspect import isfunction, ismethod
 
 from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
-    expression)
+    expression, is_callable)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
@@ -63,7 +62,7 @@ class Grammar(OrderedDict):
         """
 
         decorated_custom_rules = {
-            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
+            k: (expression(v, k, self) if is_callable(v) else v)
             for k, v in iteritems(more_rules)}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
