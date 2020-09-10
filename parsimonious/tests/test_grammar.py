@@ -4,8 +4,6 @@ from sys import version_info
 from unittest import TestCase
 
 import sys
-from nose import SkipTest
-from nose.tools import eq_, assert_raises, ok_
 from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
@@ -22,33 +20,33 @@ class BootstrappingGrammarTests(TestCase):
     def test_quantifier(self):
         text = '*'
         quantifier = rule_grammar['quantifier']
-        eq_(quantifier.parse(text),
+        self.assertEqual(quantifier.parse(text),
             Node(quantifier, text, 0, 1, children=[
                 Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
         text = '?'
-        eq_(quantifier.parse(text),
+        self.assertEqual(quantifier.parse(text),
             Node(quantifier, text, 0, 1, children=[
                 Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
         text = '+'
-        eq_(quantifier.parse(text),
+        self.assertEqual(quantifier.parse(text),
             Node(quantifier, text, 0, 1, children=[
                 Node(quantifier.members[0], text, 0, 1), Node(rule_grammar['_'], text, 1, 1)]))
 
     def test_spaceless_literal(self):
         text = '"anything but quotes#$*&^"'
         spaceless_literal = rule_grammar['spaceless_literal']
-        eq_(spaceless_literal.parse(text),
+        self.assertEqual(spaceless_literal.parse(text),
             Node(spaceless_literal, text, 0, len(text), children=[
                 Node(spaceless_literal.members[0], text, 0, len(text))]))
         text = r'''r"\""'''
-        eq_(spaceless_literal.parse(text),
+        self.assertEqual(spaceless_literal.parse(text),
             Node(spaceless_literal, text, 0, 5, children=[
                 Node(spaceless_literal.members[0], text, 0, 5)]))
 
     def test_regex(self):
         text = '~"[a-zA-Z_][a-zA-Z_0-9]*"LI'
         regex = rule_grammar['regex']
-        eq_(rule_grammar['regex'].parse(text),
+        self.assertEqual(rule_grammar['regex'].parse(text),
             Node(regex, text, 0, len(text), children=[
                  Node(Literal('~'), text, 0, 1),
                  Node(rule_grammar['spaceless_literal'], text, 1, 25, children=[
@@ -58,40 +56,40 @@ class BootstrappingGrammarTests(TestCase):
 
     def test_successes(self):
         """Make sure the PEG recognition grammar succeeds on various inputs."""
-        ok_(rule_grammar['label'].parse('_'))
-        ok_(rule_grammar['label'].parse('jeff'))
-        ok_(rule_grammar['label'].parse('_THIS_THING'))
+        self.assertTrue(rule_grammar['label'].parse('_'))
+        self.assertTrue(rule_grammar['label'].parse('jeff'))
+        self.assertTrue(rule_grammar['label'].parse('_THIS_THING'))
 
-        ok_(rule_grammar['atom'].parse('some_label'))
-        ok_(rule_grammar['atom'].parse('"some literal"'))
-        ok_(rule_grammar['atom'].parse('~"some regex"i'))
+        self.assertTrue(rule_grammar['atom'].parse('some_label'))
+        self.assertTrue(rule_grammar['atom'].parse('"some literal"'))
+        self.assertTrue(rule_grammar['atom'].parse('~"some regex"i'))
 
-        ok_(rule_grammar['quantified'].parse('~"some regex"i*'))
-        ok_(rule_grammar['quantified'].parse('thing+'))
-        ok_(rule_grammar['quantified'].parse('"hi"?'))
+        self.assertTrue(rule_grammar['quantified'].parse('~"some regex"i*'))
+        self.assertTrue(rule_grammar['quantified'].parse('thing+'))
+        self.assertTrue(rule_grammar['quantified'].parse('"hi"?'))
 
-        ok_(rule_grammar['term'].parse('this'))
-        ok_(rule_grammar['term'].parse('that+'))
+        self.assertTrue(rule_grammar['term'].parse('this'))
+        self.assertTrue(rule_grammar['term'].parse('that+'))
 
-        ok_(rule_grammar['sequence'].parse('this that? other'))
+        self.assertTrue(rule_grammar['sequence'].parse('this that? other'))
 
-        ok_(rule_grammar['ored'].parse('this / that+ / "other"'))
+        self.assertTrue(rule_grammar['ored'].parse('this / that+ / "other"'))
 
         # + is higher precedence than &, so 'anded' should match the whole
         # thing:
-        ok_(rule_grammar['lookahead_term'].parse('&this+'))
+        self.assertTrue(rule_grammar['lookahead_term'].parse('&this+'))
 
-        ok_(rule_grammar['expression'].parse('this'))
-        ok_(rule_grammar['expression'].parse('this? that other*'))
-        ok_(rule_grammar['expression'].parse('&this / that+ / "other"'))
-        ok_(rule_grammar['expression'].parse('this / that? / "other"+'))
-        ok_(rule_grammar['expression'].parse('this? that other*'))
+        self.assertTrue(rule_grammar['expression'].parse('this'))
+        self.assertTrue(rule_grammar['expression'].parse('this? that other*'))
+        self.assertTrue(rule_grammar['expression'].parse('&this / that+ / "other"'))
+        self.assertTrue(rule_grammar['expression'].parse('this / that? / "other"+'))
+        self.assertTrue(rule_grammar['expression'].parse('this? that other*'))
 
-        ok_(rule_grammar['rule'].parse('this = that\r'))
-        ok_(rule_grammar['rule'].parse('this = the? that other* \t\r'))
-        ok_(rule_grammar['rule'].parse('the=~"hi*"\n'))
+        self.assertTrue(rule_grammar['rule'].parse('this = that\r'))
+        self.assertTrue(rule_grammar['rule'].parse('this = the? that other* \t\r'))
+        self.assertTrue(rule_grammar['rule'].parse('the=~"hi*"\n'))
 
-        ok_(rule_grammar.parse('''
+        self.assertTrue(rule_grammar.parse('''
             this = the? that other*
             that = "thing"
             the=~"hi*"
@@ -120,12 +118,12 @@ class RuleVisitorTests(TestCase):
         rules, default_rule = RuleVisitor().visit(tree)
 
         text = '98'
-        eq_(default_rule.parse(text), Node(default_rule, text, 0, 2))
+        self.assertEqual(default_rule.parse(text), Node(default_rule, text, 0, 2))
 
     def test_undefined_rule(self):
         """Make sure we throw the right exception on undefined rules."""
         tree = rule_grammar.parse('boy = howdy\n')
-        assert_raises(UndefinedLabel, RuleVisitor().visit, tree)
+        self.assertRaises(UndefinedLabel, RuleVisitor().visit, tree)
 
     def test_optional(self):
         tree = rule_grammar.parse('boy = "howdy"?\n')
@@ -135,7 +133,7 @@ class RuleVisitorTests(TestCase):
 
         # It should turn into a Node from the Optional and another from the
         # Literal within.
-        eq_(default_rule.parse(howdy), Node(default_rule, howdy, 0, 5, children=[
+        self.assertEqual(default_rule.parse(howdy), Node(default_rule, howdy, 0, 5, children=[
                                            Node(Literal("howdy"), howdy, 0, 5)]))
 
 
@@ -175,7 +173,7 @@ class GrammarTests(TestCase):
         """
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')
         tree = greeting_grammar.parse('hi')
-        eq_(tree, Node(greeting_grammar['greeting'], 'hi', 0, 2, children=[
+        self.assertEqual(tree, Node(greeting_grammar['greeting'], 'hi', 0, 2, children=[
                        Node(Literal('hi'), 'hi', 0, 2)]))
 
     def test_unicode(self):
@@ -188,12 +186,12 @@ class GrammarTests(TestCase):
                           bold_close = "))"
                           """)
         lines = text_type(grammar).splitlines()
-        eq_(lines[0], 'bold_text = bold_open text bold_close')
-        ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
+        self.assertEqual(lines[0], 'bold_text = bold_open text bold_close')
+        self.assertTrue('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
             in lines)
-        ok_('bold_open = "(("' in lines)
-        ok_('bold_close = "))"' in lines)
-        eq_(len(lines), 4)
+        self.assertTrue('bold_open = "(("' in lines)
+        self.assertTrue('bold_close = "))"' in lines)
+        self.assertEqual(len(lines), 4)
 
     def test_match(self):
         """Make sure partial-matching (with pos) works."""
@@ -204,14 +202,14 @@ class GrammarTests(TestCase):
                           bold_close = "))"
                           """)
         s = ' ((boo))yah'
-        eq_(grammar.match(s, pos=1), Node(grammar['bold_text'], s, 1, 8, children=[
+        self.assertEqual(grammar.match(s, pos=1), Node(grammar['bold_text'], s, 1, 8, children=[
                                          Node(grammar['bold_open'], s, 1, 3),
                                          Node(grammar['text'], s, 3, 6),
                                          Node(grammar['bold_close'], s, 6, 8)]))
 
     def test_bad_grammar(self):
         """Constructing a Grammar with bad rules should raise ParseError."""
-        assert_raises(ParseError, Grammar, 'just a bunch of junk')
+        self.assertRaises(ParseError, Grammar, 'just a bunch of junk')
 
     def test_comments(self):
         """Test tolerance of comments and blank lines in and around rules."""
@@ -226,7 +224,7 @@ class GrammarTests(TestCase):
                           # Pretty good
                           #Oh yeah.#""")  # Make sure a comment doesn't need a
                                           # \n or \r to end.
-        eq_(list(sorted(str(grammar).splitlines())),
+        self.assertEqual(list(sorted(str(grammar).splitlines())),
             ['''bold_text = stars text stars''',
              # TODO: Unicode flag is on by default in Python 3. I wonder if we
              # should turn it on all the time in Parsimonious.
@@ -244,30 +242,30 @@ class GrammarTests(TestCase):
             text       = ~"[A-Z 0-9]*"i
             bold_open  = "((" bold_close =  "))"
             """)
-        ok_(grammar.parse('((booyah))') is not None)
+        self.assertTrue(grammar.parse('((booyah))') is not None)
 
     def test_not(self):
         """Make sure "not" predicates get parsed and work properly."""
         grammar = Grammar(r'''not_arp = !"arp" ~"[a-z]+"''')
-        assert_raises(ParseError, grammar.parse, 'arp')
-        ok_(grammar.parse('argle') is not None)
+        self.assertRaises(ParseError, grammar.parse, 'arp')
+        self.assertTrue(grammar.parse('argle') is not None)
 
     def test_lookahead(self):
         grammar = Grammar(r'''starts_with_a = &"a" ~"[a-z]+"''')
-        assert_raises(ParseError, grammar.parse, 'burp')
+        self.assertRaises(ParseError, grammar.parse, 'burp')
 
         s = 'arp'
-        eq_(grammar.parse('arp'), Node(grammar['starts_with_a'], s, 0, 3, children=[
+        self.assertEqual(grammar.parse('arp'), Node(grammar['starts_with_a'], s, 0, 3, children=[
                                       Node(Lookahead(Literal('a')), s, 0, 0),
                                       Node(Regex(r'[a-z]+'), s, 0, 3)]))
 
     def test_parens(self):
         grammar = Grammar(r'''sequence = "chitty" (" " "bang")+''')
         # Make sure it's not as if the parens aren't there:
-        assert_raises(ParseError, grammar.parse, 'chitty bangbang')
+        self.assertRaises(ParseError, grammar.parse, 'chitty bangbang')
 
         s = 'chitty bang bang'
-        eq_(str(grammar.parse(s)),
+        self.assertEqual(str(grammar.parse(s)),
             """<Node called "sequence" matching "chitty bang bang">
     <Node matching "chitty">
     <Node matching " bang bang">
@@ -309,16 +307,16 @@ class GrammarTests(TestCase):
             digits = digit digits?
             digit = ~r"[0-9]"
             """)
-        ok_(grammar.parse('12') is not None)
+        self.assertTrue(grammar.parse('12') is not None)
 
     def test_badly_circular(self):
         """Uselessly circular references should be detected by the grammar
         compiler."""
-        raise SkipTest('We have yet to make the grammar compiler detect these.')
-        grammar = Grammar("""
-            foo = bar
-            bar = foo
-            """)
+        self.skipTest('We have yet to make the grammar compiler detect these.')
+        Grammar("""
+             foo = bar
+             bar = foo
+             """)
 
     def test_parens_with_leading_whitespace(self):
         """Make sure a parenthesized expression is allowed to have leading
@@ -337,7 +335,7 @@ class GrammarTests(TestCase):
             digit=lambda text, pos:
                     (pos + 1) if text[pos].isdigit() else None)
         s = '[6]'
-        eq_(grammar.parse(s),
+        self.assertEqual(grammar.parse(s),
             Node(grammar['bracketed_digit'], s, 0, 3, children=[
                 Node(grammar['start'], s, 0, 1),
                 Node(grammar['digit'], s, 1, 2),
@@ -361,7 +359,7 @@ class GrammarTests(TestCase):
             digit=lambda text, pos, cache, error, grammar:
                     grammar['real_digit'].match_core(text, pos, cache, error))
         s = '[6]'
-        eq_(grammar.parse(s),
+        self.assertEqual(grammar.parse(s),
             Node(grammar['bracketed_digit'], s, 0, 3, children=[
                 Node(grammar['start'], s, 0, 1),
                 Node(grammar['real_digit'], s, 1, 2),
@@ -382,7 +380,7 @@ class GrammarTests(TestCase):
                                 LazyReference('five'),
                                 name='forty_five')).default('forty_five')
         s = '45'
-        eq_(grammar.parse(s),
+        self.assertEqual(grammar.parse(s),
             Node(grammar['forty_five'], s, 0, 2, children=[
                 Node(grammar['four'], s, 0, 1),
                 Node(grammar['five'], s, 1, 2)]))
@@ -397,13 +395,13 @@ class GrammarTests(TestCase):
         """
         grammar = Grammar(one_char=lambda text, pos: pos + 1).default('one_char')
         s = '4'
-        eq_(grammar.parse(s),
+        self.assertEqual(grammar.parse(s),
             Node(grammar['one_char'], s, 0, 1))
 
     def test_callability_of_routines(self):
-        ok_(is_callable(function_rule))
-        ok_(is_callable(self.method_rule))
-        ok_(is_callable(self.rules['descriptor_rule']))
+        self.assertTrue(is_callable(function_rule))
+        self.assertTrue(is_callable(self.method_rule))
+        self.assertTrue(is_callable(self.rules['descriptor_rule']))
 
     def test_callability_custom_rules(self):
         """Confirms that functions, methods and method descriptors can all be
@@ -418,7 +416,7 @@ class GrammarTests(TestCase):
         )
         result = grammar.parse('functionmethoddescriptor')
         rule_names = [node.expr.name for node in result.children]
-        eq_(rule_names, ['function', 'method', 'descriptor'])
+        self.assertEqual(rule_names, ['function', 'method', 'descriptor'])
 
     def test_lazy_default_rule(self):
         """Make sure we get an actual rule set as our default rule, even when
@@ -430,7 +428,7 @@ class GrammarTests(TestCase):
             styled_text = text
             text        = "hi"
             """)
-        eq_(grammar.parse('hi'), Node(grammar['text'], 'hi', 0, 2))
+        self.assertEqual(grammar.parse('hi'), Node(grammar['text'], 'hi', 0, 2))
 
     def test_immutable_grammar(self):
         """Make sure that a Grammar is immutable after being created."""
@@ -440,14 +438,14 @@ class GrammarTests(TestCase):
 
         def mod_grammar(grammar):
             grammar['foo'] = 1
-        assert_raises(TypeError, mod_grammar, [grammar])
+        self.assertRaises(TypeError, mod_grammar, [grammar])
 
         def mod_grammar(grammar):
             new_grammar = Grammar(r"""
                 baz = 'biff'
             """)
             grammar.update(new_grammar)
-        assert_raises(AttributeError, mod_grammar, [grammar])
+        self.assertRaises(AttributeError, mod_grammar, [grammar])
 
     def test_repr(self):
         self.assertTrue(repr(Grammar(r'foo = "a"')))
@@ -475,7 +473,7 @@ class TokenGrammarTests(TestCase):
             foo = token1 "token2"
             token1 = "token1"
             """)
-        eq_(grammar.parse(s),
+        self.assertEqual(grammar.parse(s),
             Node(grammar['foo'], s, 0, 2, children=[
                 Node(grammar['token1'], s, 0, 1),
                 Node(TokenMatcher('token2'), s, 1, 2)]))
@@ -485,7 +483,7 @@ class TokenGrammarTests(TestCase):
         grammar = TokenGrammar("""
             foo = "token1" "token2"
             """)
-        assert_raises(ParseError,
+        self.assertRaises(ParseError,
                       grammar.parse,
                       [Token('tokenBOO'), Token('token2')])
 
