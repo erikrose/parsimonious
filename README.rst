@@ -44,7 +44,7 @@ Here's how to build a simple grammar:
 
 You can have forward references and even right recursion; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
-symbol, but you can start at any other rule as well.
+symbol, but you can use another rule as the start symbol by accessing it directly from the grammar (e.g. ``grammar['text'].parse(...)``).
 
 Next, let's parse something and get an abstract syntax tree:
 
