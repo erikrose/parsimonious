@@ -6,14 +6,13 @@ by hand.
 
 """
 from collections import OrderedDict
-from inspect import isfunction, ismethod
 
 from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
-    expression)
+    expression, is_callable)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
@@ -63,7 +62,7 @@ class Grammar(OrderedDict):
         """
 
         decorated_custom_rules = {
-            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
+            k: (expression(v, k, self) if is_callable(v) else v)
             for k, v in iteritems(more_rules)}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
@@ -189,7 +188,7 @@ class BootstrappingGrammar(Grammar):
         literal = Sequence(spaceless_literal, _, name='literal')
         regex = Sequence(Literal('~'),
                          literal,
-                         Regex('[ilmsux]*', ignore_case=True),
+                         Regex('[ilmsuxa]*', ignore_case=True),
                          _,
                          name='regex')
         atom = OneOf(reference, literal, regex, name='atom')
@@ -242,7 +241,7 @@ rule_syntax = (r'''
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
-    regex = "~" spaceless_literal ~"[ilmsux]*"i _
+    regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~"[*+?]" _
     reference = label !equals
@@ -367,7 +366,8 @@ class RuleVisitor(NodeVisitor):
                               multiline='M' in flags,
                               dot_all='S' in flags,
                               unicode='U' in flags,
-                              verbose='X' in flags)
+                              verbose='X' in flags,
+                              ascii='A' in flags)
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""

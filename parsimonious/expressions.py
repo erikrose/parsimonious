@@ -6,7 +6,7 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
-from inspect import getargspec
+from inspect import getargspec, isfunction, ismethod, ismethoddescriptor
 import re
 
 from six import integer_types, python_2_unicode_compatible
@@ -17,6 +17,11 @@ from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 MARKER = object()
+
+
+def is_callable(value):
+    criteria = [isfunction, ismethod, ismethoddescriptor]
+    return any([criterion(value) for criterion in criteria])
 
 
 def expression(callable, rule_name, grammar):
@@ -57,7 +62,16 @@ def expression(callable, rule_name, grammar):
         part of, to make delegating to other rules possible
 
     """
+
+    # Resolve unbound methods; allows grammars to use @staticmethod custom rules
+    # https://stackoverflow.com/questions/41921255/staticmethod-object-is-not-callable
+    if ismethoddescriptor(callable) and hasattr(callable, '__func__'):
+        callable = callable.__func__
+
     num_args = len(getargspec(callable).args)
+    if ismethod(callable):
+        # do not count the first argument (typically 'self') for methods
+        num_args -= 1
     if num_args == 2:
         is_simple = True
     elif num_args == 5:
@@ -263,14 +277,15 @@ class Regex(Expression):
     __slots__ = ['re']
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
-                 multiline=False, dot_all=False, unicode=False, verbose=False):
+                 multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False):
         super(Regex, self).__init__(name)
         self.re = re.compile(pattern, (ignore_case and re.I) |
                                       (locale and re.L) |
                                       (multiline and re.M) |
                                       (dot_all and re.S) |
                                       (unicode and re.U) |
-                                      (verbose and re.X))
+                                      (verbose and re.X) |
+                                      (ascii and re.A))
         self.identity_tuple = (self.name, self.re)
 
     def _uncached_match(self, text, pos, cache, error):
@@ -284,7 +299,7 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'ilmsux'
+        flags = 'ilmsuxa'
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):

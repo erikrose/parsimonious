@@ -14,7 +14,7 @@ long_description=open('README.rst', 'r', encoding='utf8').read()
 
 setup(
     name='parsimonious',
-    version='0.8.0',
+    version='0.8.1',
     description='(Soon to be) the fastest pure-Python PEG parser I could muster',
     long_description=long_description,
     author='Erik Rose',
@@ -35,10 +35,10 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Software Development :: Libraries',
         'Topic :: Text Processing :: General'],
