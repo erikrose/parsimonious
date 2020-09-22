@@ -268,19 +268,19 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         eq_(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
-            u'foo = "bar" ("baz" "eggs")* "spam"')
+            u"foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # OneOf
         eq_(text_type(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
-            u'foo = "bar" ("baz" / "eggs") "spam"')
+            u"foo = 'bar' ('baz' / 'eggs') 'spam'")
 
         # Lookahead
         eq_(text_type(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
-            u'foo = "bar" &("baz" "eggs") "spam"')
+            u"foo = 'bar' &('baz' 'eggs') 'spam'")
 
         # Multiple sequences
         eq_(text_type(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
-            u'foo = ("bar" "baz") / ("baff" "bam")')
+            u"foo = ('bar' 'baz') / ('baff' 'bam')")
 
     def test_unicode_surrounding_parens(self):
         """
@@ -289,7 +289,27 @@ class RepresentationTests(TestCase):
 
         """
         eq_(text_type(Grammar('foo = ("foo" ("bar" "baz"))')),
-            u'foo = "foo" ("bar" "baz")')
+            u"foo = 'foo' ('bar' 'baz')")
+
+    def test_repr_special_character_escaping(self):
+        """Make sure special characters are properly escaped in the repr.
+
+        """
+
+        # backslash
+        eq_(repr(Grammar(r'''foo = "\\" ''')), u'''Grammar("foo = '\\\\\\\\'")''')
+
+        # single quote
+        eq_(repr(Grammar(r'''foo = "'" ''')), u'''Grammar('foo = "\\'"')''')
+
+        # escaped single quote inside a single quoted string
+        eq_(repr(Grammar(r'''foo = '\'' ''')), u'''Grammar('foo = "\\'"')''')
+
+        # double quote
+        eq_(repr(Grammar(r'''foo = '"' ''')), u'''Grammar('foo = \\'"\\'')''')
+
+        # newline
+        eq_(repr(Grammar(r'''foo = "\n" ''')), u'''Grammar("foo = '\\\\n'")''')
 
 
 class SlotsTests(TestCase):

@@ -189,10 +189,10 @@ class GrammarTests(TestCase):
                           """)
         lines = text_type(grammar).splitlines()
         eq_(lines[0], 'bold_text = bold_open text bold_close')
-        ok_('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
+        ok_("text = ~'[A-Z 0-9]*'i%s" % ('u' if version_info >= (3,) else '')
             in lines)
-        ok_('bold_open = "(("' in lines)
-        ok_('bold_close = "))"' in lines)
+        ok_("bold_open = '(('" in lines)
+        ok_("bold_close = '))'" in lines)
         eq_(len(lines), 4)
 
     def test_match(self):
@@ -230,8 +230,8 @@ class GrammarTests(TestCase):
             ['''bold_text = stars text stars''',
              # TODO: Unicode flag is on by default in Python 3. I wonder if we
              # should turn it on all the time in Parsimonious.
-             '''stars = "**"''',
-             '''text = ~"[A-Z 0-9]*"i%s''' % ('u' if version_info >= (3,)
+             """stars = '**'""",
+             '''text = ~'[A-Z 0-9]*'i%s''' % ('u' if version_info >= (3,)
                                               else '')])
 
     def test_multi_line(self):
