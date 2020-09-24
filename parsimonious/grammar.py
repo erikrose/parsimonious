@@ -140,8 +140,7 @@ class Grammar(OrderedDict):
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
-        codec = 'string_escape' if PY2 else 'unicode_escape'
-        return "Grammar('%s')" % str(self).encode(codec)
+        return "Grammar({!r})".format(str(self))
 
 
 class TokenGrammar(Grammar):

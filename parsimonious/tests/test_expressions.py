@@ -267,19 +267,19 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         self.assertEqual(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
-                         u'foo = "bar" ("baz" "eggs")* "spam"')
+                         u"foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # OneOf
         self.assertEqual(text_type(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
-                         u'foo = "bar" ("baz" / "eggs") "spam"')
+                         u"foo = 'bar' ('baz' / 'eggs') 'spam'")
 
         # Lookahead
         self.assertEqual(text_type(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
-                         u'foo = "bar" &("baz" "eggs") "spam"')
+                         u"foo = 'bar' &('baz' 'eggs') 'spam'")
 
         # Multiple sequences
         self.assertEqual(text_type(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
-                         u'foo = ("bar" "baz") / ("baff" "bam")')
+                         u"foo = ('bar' 'baz') / ('baff' 'bam')")
 
     def test_unicode_surrounding_parens(self):
         """
@@ -288,7 +288,27 @@ class RepresentationTests(TestCase):
 
         """
         self.assertEqual(text_type(Grammar('foo = ("foo" ("bar" "baz"))')),
-                         u'foo = "foo" ("bar" "baz")')
+                         u"foo = 'foo' ('bar' 'baz')")
+
+    def test_repr_special_character_escaping(self):
+        """Make sure special characters are properly escaped in the repr.
+
+        """
+
+        # backslash
+        self.assertEqual(repr(Grammar(r'''foo = "\\" ''')), u'''Grammar("foo = '\\\\\\\\'")''')
+
+        # single quote
+        self.assertEqual(repr(Grammar(r'''foo = "'" ''')), u'''Grammar('foo = "\\'"')''')
+
+        # escaped single quote inside a single quoted string
+        self.assertEqual(repr(Grammar(r'''foo = '\'' ''')), u'''Grammar('foo = "\\'"')''')
+
+        # double quote
+        self.assertEqual(repr(Grammar(r'''foo = '"' ''')), u'''Grammar('foo = \\'"\\'')''')
+
+        # newline
+        self.assertEqual(repr(Grammar(r'''foo = "\n" ''')), u'''Grammar("foo = '\\\\n'")''')
 
 
 class SlotsTests(TestCase):

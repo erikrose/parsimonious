@@ -49,12 +49,10 @@ class SimpleTests(TestCase):
         result = HtmlFormatter().visit(tree)
         self.assertEqual(result, '<b>o hai</b>')
 
-
     def test_visitation_exception(self):
         self.assertRaises(VisitationError,
-                      ExplosiveFormatter().visit,
-                      Node(Literal(''), '', 0, 0))
-
+                          ExplosiveFormatter().visit,
+                          Node(Literal(''), '', 0, 0))
 
     def test_str(self):
         """Test str and unicode of ``Node``."""
@@ -62,26 +60,24 @@ class SimpleTests(TestCase):
         good = '<Node called "text" matching "o hai">'
         self.assertEqual(str(n), good)
 
-
     def test_repr(self):
         """Test repr of ``Node``."""
         s = u'hai ö'
         boogie = u'böogie'
         n = Node(Literal(boogie), s, 0, 3, children=[
-                Node(Literal(' '), s, 3, 4), Node(Literal(u'ö'), s, 4, 5)])
+            Node(Literal(' '), s, 3, 4), Node(Literal(u'ö'), s, 4, 5)])
         self.assertEqual(repr(n),
-            str("""s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node({space}, s, 3, 4), Node({o}, s, 4, 5)])""").format(
-                hai_o=repr(s),
-                boogie=repr(Literal(boogie)),
-                space=repr(Literal(" ")),
-                o=repr(Literal(u"ö")),
-            )
+                         str("""s = {hai_o}\nNode({boogie}, s, 0, 3, children=[Node({space}, s, 3, 4), Node({o}, s, 4, 5)])""").format(
+            hai_o=repr(s),
+            boogie=repr(Literal(boogie)),
+            space=repr(Literal(" ")),
+            o=repr(Literal(u"ö")),
+        )
         )
 
     def test_parse_shortcut(self):
         """Exercise the simple case in which the visitor takes care of parsing."""
         self.assertEqual(HtmlFormatter().parse('(('), '<b>')
-
 
     def test_match_shortcut(self):
         """Exercise the simple case in which the visitor takes care of matching."""
@@ -106,11 +102,11 @@ class CoupledFormatter(NodeVisitor):
         """Return the text verbatim."""
         return node.text
 
+
 class DecoratorTests(TestCase):
     def test_rule_decorator(self):
         """Make sure the @rule decorator works."""
         self.assertEqual(CoupledFormatter().parse('((hi))'), '<b>hi</b>')
-
 
     def test_rule_decorator_subclassing(self):
         """Make sure we can subclass and override visitor methods without blowing
@@ -144,14 +140,12 @@ class SpecialCasesTests(TestCase):
 
         self.assertRaises(PrimalScream, Screamer().parse, 'howdy')
 
-
     def test_node_inequality(self):
         node = Node(Literal('12345'), 'o hai', 0, 5)
         self.assertTrue(node != 5)
         self.assertTrue(node != None)
         self.assertTrue(node != Node(Literal('23456'), 'o hai', 0, 5))
         self.assertTrue(not (node != Node(Literal('12345'), 'o hai', 0, 5)))
-
 
     def test_generic_visit_NotImplementedError_unnamed_node(self):
         """
@@ -168,8 +162,7 @@ class SpecialCasesTests(TestCase):
 
         with self.assertRaises(NotImplementedError) as e:
             MyVisitor().parse('bar')
-        self.assertIn('No visitor method was defined for this expression: "b"', str(e.exception))
-
+        self.assertIn("No visitor method was defined for this expression: 'b'", str(e.exception))
 
     def test_generic_visit_NotImplementedError_named_node(self):
         """
@@ -185,4 +178,4 @@ class SpecialCasesTests(TestCase):
 
         with self.assertRaises(NotImplementedError) as e:
             MyVisitor().parse('bar')
-        self.assertIn('No visitor method was defined for this expression: myrule = ~"[bar]"', str(e.exception))
+        self.assertIn("No visitor method was defined for this expression: myrule = ~'[bar]'", str(e.exception))

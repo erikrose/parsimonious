@@ -184,7 +184,8 @@ class Expression(StrAndRepr):
         # horrible idea for rules that need to backtrack internally a lot). (2)
         # Age stuff out of the cache somehow. LRU? (3) Cuts.
         expr_id = id(self)
-        node = cache.get((expr_id, pos), MARKER)  # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        # TODO: Change to setdefault to prevent infinite recursion in left-recursive rules.
+        node = cache.get((expr_id, pos), MARKER)
         if node is MARKER:
             node = cache[(expr_id, pos)] = self._uncached_match(text,
                                                                 pos,
@@ -253,8 +254,7 @@ class Literal(Expression):
             return Node(self, text, pos, pos + len(self.literal))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+        return repr(self.literal)
 
 
 class TokenMatcher(Literal):
@@ -263,6 +263,7 @@ class TokenMatcher(Literal):
     This is for use only with TokenGrammars.
 
     """
+
     def _uncached_match(self, token_list, pos, cache, error):
         if token_list[pos].type == self.literal:
             return Node(self, token_list, pos, pos + 1)
@@ -304,9 +305,8 @@ class Regex(Expression):
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
-                            self._regex_flags_from_bits(self.re.flags))
+        return '~{!r}{}'.format(self.re.pattern,
+                                self._regex_flags_from_bits(self.re.flags))
 
 
 class Compound(Expression):
@@ -340,6 +340,7 @@ class Sequence(Compound):
     after another.
 
     """
+
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         length_of_sequence = 0
@@ -366,6 +367,7 @@ class OneOf(Compound):
     wins.
 
     """
+
     def _uncached_match(self, text, pos, cache, error):
         for m in self.members:
             node = m.match_core(text, pos, cache, error)
@@ -400,6 +402,7 @@ class Not(Compound):
     In any case, it never consumes any characters; it's a negative lookahead.
 
     """
+
     def _uncached_match(self, text, pos, cache, error):
         # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
         # not bother to cache NOTs directly.
@@ -422,6 +425,7 @@ class Optional(Compound):
     consumes. Otherwise, it consumes nothing.
 
     """
+
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
         return (Node(self, text, pos, pos) if node is None else
