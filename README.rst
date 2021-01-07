@@ -156,7 +156,7 @@ Status
   and nodes are clear and helpful as well. The ``Grammar`` ones are
   even round-trippable!
 * The grammar extensibility story is underdeveloped at the moment. You should
-  be able to extend a grammar by simply concatening more rules onto the
+  be able to extend a grammar by simply concatenating more rules onto the
   existing ones; later rules of the same name should override previous ones.
   However, this is untested and may not be the final story.
 * Sphinx docs are coming, but the docstrings are quite useful now.
