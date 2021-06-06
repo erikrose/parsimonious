@@ -7,7 +7,7 @@ These do the parsing.
 # anything--for speed. And kill all the dots.
 
 from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
-import re
+import regex as re
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
