@@ -7,7 +7,7 @@ These do the parsing.
 # anything--for speed. And kill all the dots.
 
 from inspect import getargspec, isfunction, ismethod, ismethoddescriptor
-import re
+import regex as re
 
 from six import integer_types, python_2_unicode_compatible
 from six.moves import range
