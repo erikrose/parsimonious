@@ -267,19 +267,19 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         self.assertEqual(text_type(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
-                         u'foo = "bar" ("baz" "eggs")* "spam"')
+                         u"foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # OneOf
         self.assertEqual(text_type(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
-                         u'foo = "bar" ("baz" / "eggs") "spam"')
+                         u"foo = 'bar' ('baz' / 'eggs') 'spam'")
 
         # Lookahead
         self.assertEqual(text_type(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
-                         u'foo = "bar" &("baz" "eggs") "spam"')
+                         u"foo = 'bar' &('baz' 'eggs') 'spam'")
 
         # Multiple sequences
         self.assertEqual(text_type(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
-                         u'foo = ("bar" "baz") / ("baff" "bam")')
+                         u"foo = ('bar' 'baz') / ('baff' 'bam')")
 
     def test_unicode_surrounding_parens(self):
         """
@@ -288,7 +288,7 @@ class RepresentationTests(TestCase):
 
         """
         self.assertEqual(text_type(Grammar('foo = ("foo" ("bar" "baz"))')),
-                         u'foo = "foo" ("bar" "baz")')
+                         u"foo = 'foo' ('bar' 'baz')")
 
 
 class SlotsTests(TestCase):

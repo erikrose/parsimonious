@@ -168,7 +168,7 @@ class SpecialCasesTests(TestCase):
 
         with self.assertRaises(NotImplementedError) as e:
             MyVisitor().parse('bar')
-        self.assertIn('No visitor method was defined for this expression: "b"', str(e.exception))
+        self.assertIn("No visitor method was defined for this expression: 'b'", str(e.exception))
 
 
     def test_generic_visit_NotImplementedError_named_node(self):
@@ -185,4 +185,4 @@ class SpecialCasesTests(TestCase):
 
         with self.assertRaises(NotImplementedError) as e:
             MyVisitor().parse('bar')
-        self.assertIn('No visitor method was defined for this expression: myrule = ~"[bar]"', str(e.exception))
+        self.assertIn("No visitor method was defined for this expression: myrule = ~'[bar]'", str(e.exception))

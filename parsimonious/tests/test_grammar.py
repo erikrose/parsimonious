@@ -187,10 +187,10 @@ class GrammarTests(TestCase):
                           """)
         lines = text_type(grammar).splitlines()
         self.assertEqual(lines[0], 'bold_text = bold_open text bold_close')
-        self.assertTrue('text = ~"[A-Z 0-9]*"i%s' % ('u' if version_info >= (3,) else '')
+        self.assertTrue("text = ~'[A-Z 0-9]*'i%s" % ('u' if version_info >= (3,) else '')
             in lines)
-        self.assertTrue('bold_open = "(("' in lines)
-        self.assertTrue('bold_close = "))"' in lines)
+        self.assertTrue("bold_open = '(('" in lines)
+        self.assertTrue("bold_close = '))'" in lines)
         self.assertEqual(len(lines), 4)
 
     def test_match(self):
