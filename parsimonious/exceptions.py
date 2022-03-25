@@ -1,9 +1,7 @@
-from six import text_type, python_2_unicode_compatible
 
 from parsimonious.utils import StrAndRepr
 
 
-@python_2_unicode_compatible
 class ParseError(StrAndRepr, Exception):
     """A call to ``Expression.parse()`` or ``match()`` didn't match."""
 
@@ -17,7 +15,7 @@ class ParseError(StrAndRepr, Exception):
 
     def __str__(self):
         rule_name = ((u"'%s'" % self.expr.name) if self.expr.name else
-                     text_type(self.expr))
+                     str(self.expr))
         return u"Rule %s didn't match at '%s' (line %s, column %s)." % (
                 rule_name,
                 self.text[self.pos:self.pos + 20],
@@ -43,7 +41,6 @@ class ParseError(StrAndRepr, Exception):
             return self.pos + 1
 
 
-@python_2_unicode_compatible
 class IncompleteParseError(ParseError):
     """A call to ``parse()`` matched a whole Expression but did not consume the
     entire text."""
@@ -94,7 +91,6 @@ class BadGrammar(StrAndRepr, Exception):
     """
 
 
-@python_2_unicode_compatible
 class UndefinedLabel(BadGrammar):
     """A rule referenced in a grammar was never defined.
 

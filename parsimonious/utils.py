@@ -2,8 +2,6 @@
 
 import ast
 
-from six import python_2_unicode_compatible
-
 
 class StrAndRepr(object):
     """Mix-in which gives the class the same __repr__ and __str__."""
@@ -21,7 +19,6 @@ def evaluate_string(string):
     return ast.literal_eval(string)
 
 
-@python_2_unicode_compatible
 class Token(StrAndRepr):
     """A class to represent tokens, for use with TokenGrammars
 

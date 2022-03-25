@@ -26,7 +26,6 @@ setup(
     test_suite='tests',
     url='https://github.com/erikrose/parsimonious',
     include_package_data=True,
-    install_requires=['six>=1.9.0'],
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',

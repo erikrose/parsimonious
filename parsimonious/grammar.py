@@ -7,8 +7,6 @@ by hand.
 """
 from collections import OrderedDict
 
-from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
-
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
@@ -16,7 +14,6 @@ from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
-@python_2_unicode_compatible
 class Grammar(OrderedDict):
     """A collection of rules that describe a language
 
@@ -63,7 +60,7 @@ class Grammar(OrderedDict):
 
         decorated_custom_rules = {
             k: (expression(v, k, self) if is_callable(v) else v)
-            for k, v in iteritems(more_rules)}
+            for k, v in more_rules.items()}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
         super(Grammar, self).__init__(exprs.items())
@@ -84,7 +81,7 @@ class Grammar(OrderedDict):
 
         """
         new = Grammar.__new__(Grammar)
-        super(Grammar, new).__init__(iteritems(self))
+        super(Grammar, new).__init__(self.items())
         new.default_rule = self.default_rule
         return new
 
@@ -134,7 +131,7 @@ class Grammar(OrderedDict):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
         exprs = [self.default_rule] if self.default_rule else []
-        exprs.extend(expr for expr in itervalues(self) if
+        exprs.extend(expr for expr in self.values() if
                      expr is not self.default_rule)
         return '\n'.join(expr.as_rule() for expr in exprs)
 
@@ -258,7 +255,7 @@ rule_syntax = (r'''
     ''')
 
 
-class LazyReference(text_type):
+class LazyReference(str):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
@@ -407,7 +404,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         if isinstance(expr, LazyReference):
-            label = text_type(expr)
+            label = str(expr)
             try:
                 reffed_expr = rule_map[label]
             except KeyError:
@@ -449,7 +446,7 @@ class RuleVisitor(NodeVisitor):
         # Resolve references. This tolerates forward references.
         done = set()
         rule_map = OrderedDict((expr.name, self._resolve_refs(rule_map, expr, done))
-                               for expr in itervalues(rule_map))
+                               for expr in rule_map.values())
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;

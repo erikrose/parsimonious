@@ -9,9 +9,6 @@ These do the parsing.
 from inspect import getargspec, isfunction, ismethod, ismethoddescriptor
 import re
 
-from six import integer_types, python_2_unicode_compatible
-from six.moves import range
-
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
@@ -85,7 +82,7 @@ def expression(callable, rule_name, grammar):
             result = (callable(text, pos) if is_simple else
                       callable(text, pos, cache, error, grammar))
 
-            if isinstance(result, integer_types):
+            if isinstance(result, int):
                 end, children = result, None
             elif isinstance(result, tuple):
                 end, children = result
@@ -100,7 +97,6 @@ def expression(callable, rule_name, grammar):
     return AdHocExpression(name=rule_name)
 
 
-@python_2_unicode_compatible
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 

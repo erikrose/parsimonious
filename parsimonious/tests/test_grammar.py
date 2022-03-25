@@ -4,7 +4,6 @@ from sys import version_info
 from unittest import TestCase
 
 import sys
-from six import text_type
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
@@ -185,7 +184,7 @@ class GrammarTests(TestCase):
                           bold_open  = "(("
                           bold_close = "))"
                           """)
-        lines = text_type(grammar).splitlines()
+        lines = str(grammar).splitlines()
         self.assertEqual(lines[0], 'bold_text = bold_open text bold_close')
         self.assertTrue("text = ~'[A-Z 0-9]*'i%s" % ('u' if version_info >= (3,) else '')
             in lines)
