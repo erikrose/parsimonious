@@ -154,7 +154,7 @@ class RuleDecoratorMeta(type):
                      metaclass).__new__(metaclass, name, bases, namespace)
 
 
-class NodeVisitor(object):
+class NodeVisitor(object, metaclass=RuleDecoratorMeta):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
@@ -177,8 +177,6 @@ class NodeVisitor(object):
       Heaven forbid you're making it into a string or something else.
 
     """
-
-    __metaclass__ = RuleDecoratorMeta
 
     #: The :term:`default grammar`: the one recommended for use with this
     #: visitor. If you populate this, you will be able to call
