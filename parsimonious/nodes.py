@@ -216,11 +216,11 @@ class NodeVisitor(object):
         except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except self.unwrapped_exceptions:
-            raise
         except Exception as e:
-            # Catch any exception, and tack on a parse tree so it's easier to
-            # see where it went wrong.
+            # implentors may define exception classes that should not be
+            # wrapped.
+            if isinstance(e, self.unwrapped_exceptions):
+                raise
             raise VisitationError from e
 
     def generic_visit(self, node, visited_children):
