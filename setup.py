@@ -1,12 +1,5 @@
 from sys import version_info
 
-# Prevent spurious errors during `python setup.py test` in 2.6, a la
-# http://www.eby-sarna.com/pipermail/peak/2010-May/003357.html:
-try:
-    import multiprocessing
-except ImportError:
-    pass
-
 from io import open
 from setuptools import setup, find_packages
 
@@ -21,8 +14,6 @@ setup(
     author_email='erikrose@grinchcentral.com',
     license='MIT',
     packages=find_packages(exclude=['ez_setup']),
-    setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
     test_suite='tests',
     url='https://github.com/erikrose/parsimonious',
     include_package_data=True,
