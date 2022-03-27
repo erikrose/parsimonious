@@ -6,7 +6,7 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
-from inspect import getargspec, isfunction, ismethod, ismethoddescriptor
+from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
 import re
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
@@ -65,7 +65,7 @@ def expression(callable, rule_name, grammar):
     if ismethoddescriptor(callable) and hasattr(callable, '__func__'):
         callable = callable.__func__
 
-    num_args = len(getargspec(callable).args)
+    num_args = len(getfullargspec(callable).args)
     if ismethod(callable):
         # do not count the first argument (typically 'self') for methods
         num_args -= 1
