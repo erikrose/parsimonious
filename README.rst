@@ -137,7 +137,7 @@ And call it like that:
     iv = IniVisitor()
     output = iv.visit(tree)
     print(output)
-    
+
 This would yield
 
 .. code:: python
@@ -245,15 +245,17 @@ Syntax Reference
 ``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``~r"regex"ilmsuxa``    Regexes have ``~`` in front and are quoted like
-                        literals. Any flags follow the end quotes as single
-                        chars. Regexes are good for representing character
-                        classes (``[a-z0-9]``) and optimizing for speed. The
-                        downside is that they won't be able to take advantage
-                        of our fancy debugging, once we get that working.
-                        Ultimately, I'd like to deprecate explicit regexes and
-                        instead have Parsimonious dynamically build them out of
-                        simpler primitives.
+``~r"regex"asilmx``    Regexes have ``~`` in front and are quoted like
+                        literals. Any
+                        `flags <https://docs.python.org/3/howto/regex.html#compilation>`_
+                        (``asilmx``) follow the end quotes as single chars.
+                        Regexes are good for representing character classes
+                        (``[a-z0-9]``) and optimizing for speed. The downside is
+                        that they won't be able to take advantage of our fancy
+                        debugging, once we get that working. Ultimately, I'd
+                        like to deprecate explicit regexes and instead have
+                        Parsimonious dynamically build them out of simpler
+                        primitives.
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
@@ -267,13 +269,13 @@ Don't Repeat Expressions
 ------------------------
 
 If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it
-twice. Make it a rule of its own, and reference it from wherever you need it. 
-You'll get the most out of the caching this way, since cache lookups are by 
-expression object identity (for speed). 
+twice. Make it a rule of its own, and reference it from wherever you need it.
+You'll get the most out of the caching this way, since cache lookups are by
+expression object identity (for speed).
 
-Even if you have an expression that's very simple, not repeating it will 
-save RAM, as there can, at worst, be a cached int for every char in the text 
-you're parsing. In the future, we may identify repeated subexpressions 
+Even if you have an expression that's very simple, not repeating it will
+save RAM, as there can, at worst, be a cached int for every char in the text
+you're parsing. In the future, we may identify repeated subexpressions
 automatically and factor them up while building the grammar.
 
 How much should you shove into one regex, versus how much should you break them
