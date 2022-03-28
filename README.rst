@@ -245,22 +245,21 @@ Syntax Reference
 ``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``~r"regex"asilmx``    Regexes have ``~`` in front and are quoted like
-                        literals. Any
-                        `flags <https://docs.python.org/3/howto/regex.html#compilation>`_
-                        (``asilmx``) follow the end quotes as single chars.
-                        Regexes are good for representing character classes
-                        (``[a-z0-9]``) and optimizing for speed. The downside is
-                        that they won't be able to take advantage of our fancy
-                        debugging, once we get that working. Ultimately, I'd
-                        like to deprecate explicit regexes and instead have
-                        Parsimonious dynamically build them out of simpler
-                        primitives.
+``~r"regex"asilmx``     Regexes have ``~`` in front and are quoted like
+                        literals. Any flags_ (``asilmx``) follow the end quotes
+                        as single chars. Regexes are good for representing
+                        character classes (``[a-z0-9]``) and optimizing for
+                        speed. The downside is that they won't be able to take
+                        advantage of our fancy debugging, once we get that
+                        working. Ultimately, I'd like to deprecate explicit
+                        regexes and instead have Parsimonious dynamically build
+                        them out of simpler primitives.
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
 ====================    ========================================================
 
+.. _flags: https://docs.python.org/3/howto/regex.html#compilation
 
 Optimizing Grammars
 ===================
