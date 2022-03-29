@@ -266,13 +266,15 @@ Syntax Reference
                         advantage of our fancy debugging, once we get that
                         working. Ultimately, I'd like to deprecate explicit
                         regexes and instead have Parsimonious dynamically build
-                        them out of simpler primitives.
+                        them out of simpler primitives. Parsimonious uses the
+                        regex_ library instead of the built-in re module.
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
 ====================    ========================================================
 
 .. _flags: https://docs.python.org/3/howto/regex.html#compilation
+.. _regex: https://github.com/mrabarnett/mrab-regex
 
 Optimizing Grammars
 ===================
