@@ -8,6 +8,11 @@ which means you feed it a simplified sort of EBNF notation. Parsimonious was
 designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
 of RAM to do one page, but it's applicable to all sorts of languages.
 
+:Code:    https://github.com/erikrose/parsimonious/
+:Issues:  https://github.com/erikrose/parsimonious/issues
+:License: MIT License (MIT)
+:Package: https://pypi.org/project/parsimonious/
+
 
 Goals
 =====
@@ -24,6 +29,14 @@ Goals
   with a tree: for example, render wiki markup to HTML *or* to text.
 * Good error reporting. I want the parser to work *with* me as I develop a
   grammar.
+
+
+Install
+=======
+
+To install Parsimonious, run::
+
+    $ pip install parsimonious
 
 
 Example Usage
