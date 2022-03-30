@@ -512,3 +512,15 @@ def test_precedence_of_string_modifiers():
         escaped_bell = r"\b"
     """)
     assert g2.parse("\\b")
+
+
+def test_binary_grammar():
+    g = Grammar(r"""
+        file = header body terminator
+        header = b"\xFF" length b"~"
+        length = ~b"\d+"
+        body = ~b"[^\xFF]*"
+        terminator = b"\xFF"
+    """)
+    length = 22
+    assert g.parse(b"\xff22~" + (b"a" * 22) + b"\xff") is not None
