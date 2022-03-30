@@ -422,6 +422,18 @@ Niceties
 Version History
 ===============
 
+0.9.0
+  * Add support for Python 3.7, 3.8, 3.9, 3.10 (righthandabacus, Lonnen)
+  * Drop support for Python 2.x, 3.3, 3.4 (righthandabacus, Lonnen)
+  * Remove six and go all in on Python 3 idioms (Lonnen)
+  * Replace re with regex for improved handling of unicode characters
+    in regexes (Oderjunkie)
+  * Dropped nose for unittest (swayson)
+  * `Grammar.__repr__()` now correctly escapes backslashes (ingolemo)
+  * Custom rules can now be class methods in addition to
+    functions (James Addison)
+  * Make the ascii flag available in the regex syntax (Roman Inflianskas)
+
 0.8.1
   * Switch to a function-style ``print`` in the benchmark tests so we work
     cleanly as a dependency on Python 3. (Edward Betts)

@@ -7,7 +7,7 @@ long_description=open('README.rst', 'r', encoding='utf8').read()
 
 setup(
     name='parsimonious',
-    version='0.8.1',
+    version='0.9.0',
     description='(Soon to be) the fastest pure-Python PEG parser I could muster',
     long_description=long_description,
     author='Erik Rose',
