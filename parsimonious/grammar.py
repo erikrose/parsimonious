@@ -246,7 +246,7 @@ rule_syntax = (r'''
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
     # rule defined somewhere else):
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*(?![\"'])" _
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
