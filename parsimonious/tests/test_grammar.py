@@ -6,7 +6,7 @@ from unittest import TestCase
 import sys
 import pytest
 
-from parsimonious.exceptions import UndefinedLabel, ParseError
+from parsimonious.exceptions import UndefinedLabel, ParseError, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -524,3 +524,26 @@ def test_binary_grammar():
     """)
     length = 22
     assert g.parse(b"\xff22~" + (b"a" * 22) + b"\xff") is not None
+
+
+def test_inconsistent_string_types_in_grammar():
+    with pytest.raises(VisitationError) as e:
+        Grammar(r"""
+            foo = b"foo"
+            bar = "bar"
+        """)
+    assert str(e.value).startswith("BadGrammar:")
+    with pytest.raises(VisitationError) as e:
+        Grammar(r"""
+            foo = ~b"foo"
+            bar = "bar"
+        """)
+    assert str(e.value).startswith("BadGrammar:")
+    Grammar(r"""
+        foo = b"foo"
+        bar = b"bar"
+    """)
+    Grammar(r"""
+        foo = "foo"
+        bar = "bar"
+    """)

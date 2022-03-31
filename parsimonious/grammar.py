@@ -6,6 +6,7 @@ by hand.
 
 """
 from collections import OrderedDict
+from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -286,6 +287,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         self.custom_rules = custom_rules or {}
+        self._last_literal_node_and_type = None
 
     def visit_parenthesized(self, node, parenthesized):
         """Treat a parenthesized subexpression as just its contents.
@@ -368,7 +370,19 @@ class RuleVisitor(NodeVisitor):
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
-        return Literal(evaluate_string(spaceless_literal.text))
+        literal_value = evaluate_string(spaceless_literal.text)
+        if self._last_literal_node_and_type:
+            last_node, last_type = self._last_literal_node_and_type
+            if last_type != type(literal_value):
+                raise BadGrammar(dedent(f"""\
+                    Found {last_node.text} ({last_type}) and {spaceless_literal.text} ({type(literal_value)}) string literals.
+                    All strings in a single grammar must be of the same type.
+                """)
+                )
+
+        self._last_literal_node_and_type = spaceless_literal, type(literal_value)
+
+        return Literal(literal_value)
 
     def visit_literal(self, node, literal):
         """Pick just the literal out of a literal-and-junk combo."""
