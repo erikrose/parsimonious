@@ -518,7 +518,7 @@ def test_binary_grammar():
     g = Grammar(r"""
         file = header body terminator
         header = b"\xFF" length b"~"
-        length = ~b"\d+"
+        length = ~rb"\d+"
         body = ~b"[^\xFF]*"
         terminator = b"\xFF"
     """)
