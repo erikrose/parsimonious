@@ -4,6 +4,7 @@ from sys import version_info
 from unittest import TestCase
 
 import sys
+import pytest
 
 from parsimonious.exceptions import UndefinedLabel, ParseError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
@@ -493,3 +494,21 @@ class TokenGrammarTests(TestCase):
             self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
         else:
             self.assertEqual(u'<Token "💣">', t.__repr__())
+
+
+def test_precedence_of_string_modifiers():
+    # r"strings", etc. should be parsed as a single literal, not r followed
+    # by a string literal.
+    g = Grammar(r"""
+        escaped_bell = r"\b"
+        r = "irrelevant"
+    """)
+    assert isinstance(g["escaped_bell"], Literal)
+    assert g["escaped_bell"].literal == "\\b"
+    with pytest.raises(ParseError):
+        g.parse("irrelevant\b")
+
+    g2 = Grammar(r"""
+        escaped_bell = r"\b"
+    """)
+    assert g2.parse("\\b")
