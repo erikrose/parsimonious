@@ -236,6 +236,14 @@ Syntax Reference
                         conventions for "raw" and Unicode strings help support
                         fiddly characters.
 
+``b"some literal"``     A bytes literal. Using bytes literals and regular
+                        expressions allows your grammar to parse binary files.
+						Note that all literals and regular expressions must be
+						of the same type within a grammar. In grammars that
+						process bytestrings, you should make the grammar string
+						an ``r"""string"""`` so that byte literals like ``\xff``
+						work correctly.
+
 [space]                 Sequences are made out of space- or tab-delimited
                         things. ``a b c`` matches spots where those 3
                         terms appear in that order.
@@ -268,6 +276,9 @@ Syntax Reference
                         regexes and instead have Parsimonious dynamically build
                         them out of simpler primitives. Parsimonious uses the
                         regex_ library instead of the built-in re module.
+
+``~br"regex"``          A bytes regex; required if your grammar parses
+                        bytestrings.
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
