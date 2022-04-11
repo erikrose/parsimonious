@@ -30,14 +30,17 @@ class ParseError(StrAndRepr, Exception):
         match."""
         # This is a method rather than a property in case we ever wanted to
         # pass in which line endings we want to use.
-        return self.text.count('\n', 0, self.pos) + 1
+        if isinstance(self.text, list):  # TokenGrammar
+            return None
+        else:
+            return self.text.count('\n', 0, self.pos) + 1
 
     def column(self):
         """Return the 1-based column where the expression ceased to match."""
         # We choose 1-based because that's what Python does with SyntaxErrors.
         try:
             return self.pos - self.text.rindex('\n', 0, self.pos)
-        except ValueError:
+        except (ValueError, AttributeError):
             return self.pos + 1
 
 
