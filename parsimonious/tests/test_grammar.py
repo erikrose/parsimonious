@@ -491,10 +491,29 @@ class TokenGrammarTests(TestCase):
     def test_token_repr(self):
         t = Token(u'💣')
         self.assertTrue(isinstance(t.__repr__(), str))
-        if sys.version_info < (3, 0):
-            self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
-        else:
-            self.assertEqual(u'<Token "💣">', t.__repr__())
+        self.assertEqual(u'<Token "💣">', t.__repr__())
+
+    def test_token_star_plus_expressions(self):
+        a = Token("a")
+        b = Token("b")
+        grammar = TokenGrammar("""
+            foo = "a"*
+            bar = "a"+
+        """)
+        assert grammar["foo"].parse([]) is not None
+        assert grammar["foo"].parse([a]) is not None
+        assert grammar["foo"].parse([a, a]) is not None
+
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([b])
+
+        assert grammar["bar"].parse([a]) is not None
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([b])
 
 
 def test_precedence_of_string_modifiers():
@@ -551,3 +570,25 @@ def test_inconsistent_string_types_in_grammar():
         foo = "foo"
         bar = "bar"
     """)
+
+    def test_token_star_plus_expressions(self):
+        a = Token("a")
+        b = Token("b")
+        grammar = TokenGrammar("""
+            foo = "a"*
+            bar = "a"+
+        """)
+        assert grammar["foo"].parse([]) is not None
+        assert grammar["foo"].parse([a]) is not None
+        assert grammar["foo"].parse([a, a]) is not None
+
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([b])
+
+        assert grammar["bar"].parse([a]) is not None
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([b])
