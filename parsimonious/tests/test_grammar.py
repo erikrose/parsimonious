@@ -3,6 +3,7 @@
 from sys import version_info
 from unittest import TestCase
 
+import pytest
 import sys
 import pytest
 
@@ -483,9 +484,9 @@ class TokenGrammarTests(TestCase):
         grammar = TokenGrammar("""
             foo = "token1" "token2"
             """)
-        self.assertRaises(ParseError,
-                      grammar.parse,
-                      [Token('tokenBOO'), Token('token2')])
+        with pytest.raises(ParseError) as e:
+            grammar.parse([Token('tokenBOO'), Token('token2')])
+        assert "Rule 'foo' didn't match at" in str(e.value)
 
     def test_token_repr(self):
         t = Token(u'💣')
