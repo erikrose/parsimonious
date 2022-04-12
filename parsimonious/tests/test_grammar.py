@@ -6,7 +6,7 @@ from unittest import TestCase
 import sys
 import pytest
 
-from parsimonious.exceptions import UndefinedLabel, ParseError, VisitationError
+from parsimonious.exceptions import BadGrammar, UndefinedLabel, ParseError, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -532,13 +532,16 @@ def test_inconsistent_string_types_in_grammar():
             foo = b"foo"
             bar = "bar"
         """)
-    assert str(e.value).startswith("BadGrammar:")
+    assert e.value.original_class is BadGrammar
     with pytest.raises(VisitationError) as e:
         Grammar(r"""
             foo = ~b"foo"
             bar = "bar"
         """)
-    assert str(e.value).startswith("BadGrammar:")
+    assert e.value.original_class is BadGrammar
+
+    # The following should parse without errors because they use the same
+    # string types:
     Grammar(r"""
         foo = b"foo"
         bar = b"bar"
