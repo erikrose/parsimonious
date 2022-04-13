@@ -9,13 +9,9 @@ are public.
 from inspect import isfunction
 from sys import version_info, exc_info
 
-from six import reraise, python_2_unicode_compatible, with_metaclass, \
-    iteritems
-
 from parsimonious.exceptions import VisitationError, UndefinedLabel
 
 
-@python_2_unicode_compatible
 class Node(object):
     """A parse tree node
 
@@ -139,7 +135,7 @@ class RuleDecoratorMeta(type):
             """Remove any leading "visit_" from a method name."""
             return name[6:] if name.startswith('visit_') else name
 
-        methods = [v for k, v in iteritems(namespace) if
+        methods = [v for k, v in namespace.items() if
                    hasattr(v, '_rule') and isfunction(v)]
         if methods:
             from parsimonious.grammar import Grammar  # circular import dodge
@@ -158,7 +154,7 @@ class RuleDecoratorMeta(type):
                      metaclass).__new__(metaclass, name, bases, namespace)
 
 
-class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
+class NodeVisitor(object, metaclass=RuleDecoratorMeta):
     """A shell for writing things that turn parse trees into something useful
 
     Performs a depth-first traversal of an AST. Subclass this, add methods for
@@ -218,13 +214,15 @@ class NodeVisitor(with_metaclass(RuleDecoratorMeta, object)):
         except (VisitationError, UndefinedLabel):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
-        except self.unwrapped_exceptions:
-            raise
-        except Exception:
+        except Exception as exc:
+            # implentors may define exception classes that should not be
+            # wrapped.
+            if isinstance(exc, self.unwrapped_exceptions):
+                raise
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
-            exc_class, exc, tb = exc_info()
-            reraise(VisitationError, VisitationError(exc, exc_class, node), tb)
+            exc_class = type(exc)
+            raise VisitationError(exc, exc_class, node)
 
     def generic_visit(self, node, visited_children):
         """Default visitor method

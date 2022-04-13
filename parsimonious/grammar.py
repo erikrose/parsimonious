@@ -6,18 +6,15 @@ by hand.
 
 """
 from collections import OrderedDict
-from inspect import isfunction, ismethod
-
-from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
+from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
     Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
-    expression)
+    expression, is_callable)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
-@python_2_unicode_compatible
 class Grammar(OrderedDict):
     """A collection of rules that describe a language
 
@@ -63,8 +60,8 @@ class Grammar(OrderedDict):
         """
 
         decorated_custom_rules = {
-            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
-            for k, v in iteritems(more_rules)}
+            k: (expression(v, k, self) if is_callable(v) else v)
+            for k, v in more_rules.items()}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
         super(Grammar, self).__init__(exprs.items())
@@ -85,7 +82,7 @@ class Grammar(OrderedDict):
 
         """
         new = Grammar.__new__(Grammar)
-        super(Grammar, new).__init__(iteritems(self))
+        super(Grammar, new).__init__(self.items())
         new.default_rule = self.default_rule
         return new
 
@@ -135,14 +132,13 @@ class Grammar(OrderedDict):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
         exprs = [self.default_rule] if self.default_rule else []
-        exprs.extend(expr for expr in itervalues(self) if
+        exprs.extend(expr for expr in self.values() if
                      expr is not self.default_rule)
         return '\n'.join(expr.as_rule() for expr in exprs)
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
-        codec = 'string_escape' if PY2 else 'unicode_escape'
-        return "Grammar('%s')" % str(self).encode(codec)
+        return "Grammar({!r})".format(str(self))
 
 
 class TokenGrammar(Grammar):
@@ -231,8 +227,8 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
-                        ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
+    spaceless_literal = ~"u?r?b?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
+                        ~"u?r?b?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
     expression = ored / sequence / term
     or_term = "/" _ term
@@ -251,7 +247,7 @@ rule_syntax = (r'''
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
     # rule defined somewhere else):
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*(?![\"'])" _
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
@@ -260,7 +256,7 @@ rule_syntax = (r'''
     ''')
 
 
-class LazyReference(text_type):
+class LazyReference(str):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
@@ -291,6 +287,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         self.custom_rules = custom_rules or {}
+        self._last_literal_node_and_type = None
 
     def visit_parenthesized(self, node, parenthesized):
         """Treat a parenthesized subexpression as just its contents.
@@ -373,7 +370,19 @@ class RuleVisitor(NodeVisitor):
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
-        return Literal(evaluate_string(spaceless_literal.text))
+        literal_value = evaluate_string(spaceless_literal.text)
+        if self._last_literal_node_and_type:
+            last_node, last_type = self._last_literal_node_and_type
+            if last_type != type(literal_value):
+                raise BadGrammar(dedent(f"""\
+                    Found {last_node.text} ({last_type}) and {spaceless_literal.text} ({type(literal_value)}) string literals.
+                    All strings in a single grammar must be of the same type.
+                """)
+                )
+
+        self._last_literal_node_and_type = spaceless_literal, type(literal_value)
+
+        return Literal(literal_value)
 
     def visit_literal(self, node, literal):
         """Pick just the literal out of a literal-and-junk combo."""
@@ -410,7 +419,7 @@ class RuleVisitor(NodeVisitor):
         if expr in resolved:
             newref = resolved[expr]
         elif isinstance(expr, LazyReference):
-            label = text_type(expr)
+            label = str(expr)
             try:
                 reffed_expr = rule_map[label]
             except KeyError:

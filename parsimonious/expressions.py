@@ -6,17 +6,19 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
-from inspect import getargspec
-import re
-
-from six import integer_types, python_2_unicode_compatible
-from six.moves import range
+from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
+import regex as re
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
 MARKER = object()
+
+
+def is_callable(value):
+    criteria = [isfunction, ismethod, ismethoddescriptor]
+    return any([criterion(value) for criterion in criteria])
 
 
 def expression(callable, rule_name, grammar):
@@ -57,7 +59,16 @@ def expression(callable, rule_name, grammar):
         part of, to make delegating to other rules possible
 
     """
-    num_args = len(getargspec(callable).args)
+
+    # Resolve unbound methods; allows grammars to use @staticmethod custom rules
+    # https://stackoverflow.com/questions/41921255/staticmethod-object-is-not-callable
+    if ismethoddescriptor(callable) and hasattr(callable, '__func__'):
+        callable = callable.__func__
+
+    num_args = len(getfullargspec(callable).args)
+    if ismethod(callable):
+        # do not count the first argument (typically 'self') for methods
+        num_args -= 1
     if num_args == 2:
         is_simple = True
     elif num_args == 5:
@@ -71,7 +82,7 @@ def expression(callable, rule_name, grammar):
             result = (callable(text, pos) if is_simple else
                       callable(text, pos, cache, error, grammar))
 
-            if isinstance(result, integer_types):
+            if isinstance(result, int):
                 end, children = result, None
             elif isinstance(result, tuple):
                 end, children = result
@@ -86,7 +97,6 @@ def expression(callable, rule_name, grammar):
     return AdHocExpression(name=rule_name)
 
 
-@python_2_unicode_compatible
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -239,8 +249,7 @@ class Literal(Expression):
             return Node(self, text, pos, pos + len(self.literal))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+        return repr(self.literal)
 
 
 class TokenMatcher(Literal):
@@ -290,9 +299,8 @@ class Regex(Expression):
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
-                            self._regex_flags_from_bits(self.re.flags))
+        return '~{!r}{}'.format(self.re.pattern,
+                                self._regex_flags_from_bits(self.re.flags))
 
 
 class Compound(Expression):
