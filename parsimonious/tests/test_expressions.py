@@ -50,6 +50,8 @@ class LengthTests(TestCase):
     def test_optional(self):
         self.len_eq(Sequence(Optional(Literal('a')), Literal('b')).match('b'), 1)  # contained expr fails
         self.len_eq(Sequence(Optional(Literal('a')), Literal('b')).match('ab'), 2)  # contained expr succeeds
+        self.len_eq(Optional(Literal('a')).match('aa'), 1)
+        self.len_eq(Optional(Literal('a')).match('bb'), 0)
 
     def test_zero_or_more(self):
         self.len_eq(ZeroOrMore(Literal('b')).match(''), 0)  # zero
