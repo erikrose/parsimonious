@@ -422,18 +422,18 @@ class Quantifier(Compound):
 
     def _as_rhs(self):
         if self.min == 0 and self.max == 1:
-            qualifier = u'?'
+            qualifier = '?'
         elif self.min == 0 and self.max == float('inf'):
-            qualifier = u'*'
+            qualifier = '*'
         elif self.min == 1 and self.max == float('inf'):
-            qualifier = u'+'
+            qualifier = '+'
         elif self.max == float('inf'):
-            qualifier = u'{%d,}' % self.min
+            qualifier = '{%d,}' % self.min
         elif self.min == 0:
-            qualifier = u'{,%d}' % self.max
+            qualifier = '{,%d}' % self.max
         else:
-            qualifier = u'{%d,%d}' % (self.min, self.max)
-        return u'%s%s' % (self._unicode_members()[0], qualifier)
+            qualifier = '{%d,%d}' % (self.min, self.max)
+        return '%s%s' % (self._unicode_members()[0], qualifier)
 
 def ZeroOrMore(member, name=''):
     return Quantifier(member, name=name, min=0, max=float('inf'))
