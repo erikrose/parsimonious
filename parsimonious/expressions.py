@@ -377,9 +377,9 @@ class Lookahead(Compound):
 
     __slots__ = ['negativity']
 
-    def __init__(self, *members, **kwargs):
-        super(Lookahead, self).__init__(*members, **kwargs)
-        self.negativity = bool(kwargs.get('negative'))
+    def __init__(self, member, *, negative=False, **kwargs):
+        super(Lookahead, self).__init__(member, **kwargs)
+        self.negativity = bool(negative)
 
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
@@ -399,10 +399,10 @@ class Quantifier(Compound):
 
     __slots__ = ['min', 'max']
 
-    def __init__(self, *members, **kwargs):
-        super(Quantifier, self).__init__(*members, **kwargs)
-        self.min = kwargs.get('min', 0)
-        self.max = kwargs.get('max', float('inf'))
+    def __init__(self, member, *, min=0, max=float('inf'), name='', **kwargs):
+        super(Quantifier, self).__init__(member, name=name, **kwargs)
+        self.min = min
+        self.max = max
 
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
@@ -435,11 +435,11 @@ class Quantifier(Compound):
             qualifier = u'{%d,%d}' % (self.min, self.max)
         return u'%s%s' % (self._unicode_members()[0], qualifier)
 
-def ZeroOrMore(*args, **kwargs):
-    return Quantifier(*args, **kwargs)
+def ZeroOrMore(member, name=''):
+    return Quantifier(member, name=name, min=0, max=float('inf'))
 
 def OneOrMore(member, name='', min=1):
-    return Quantifier(member, name=name, min=min)
+    return Quantifier(member, name=name, min=min, max=float('inf'))
 
-def Optional(*args, **kwargs):
-    return Quantifier(*args, **kwargs)
+def Optional(member, name=''):
+    return Quantifier(member, name=name, min=0, max=1)
