@@ -435,6 +435,8 @@ Version History
 
 (Next release)
   * Add support for grammars on bytestrings (lucaswiman)
+  * Fix LazyReference resolution bug #134 (righthandabacus)
+
   .. warning::
 
       This release makes backward-incompatible changes:
