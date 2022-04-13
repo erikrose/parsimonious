@@ -282,6 +282,15 @@ Syntax Reference
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
+
+``thing{n}``            Exactly ``n`` repetitions of ``thing``.
+
+``thing{n,m}``          Between ``n`` and ``m`` repititions (inclusive.)
+
+``thing{,m}``           At most ``m`` repetitions of ``thing``.
+
+``thing{n,}``           At least ``n`` repetitions of ``thing``.
+
 ====================    ========================================================
 
 .. _flags: https://docs.python.org/3/howto/regex.html#compilation
@@ -434,6 +443,8 @@ Version History
 ===============
 
 (Next release)
+  * Add support for range ``{min,max}`` repetition expressions (righthandabacus)
+  * Fix bug in ``*`` and ``+`` for token grammars (lucaswiman)
   * Add support for grammars on bytestrings (lucaswiman)
   .. warning::
 
