@@ -6,6 +6,7 @@ by hand.
 
 """
 from collections import OrderedDict
+from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -226,8 +227,8 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
-                        ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
+    spaceless_literal = ~"u?r?b?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
+                        ~"u?r?b?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
     expression = ored / sequence / term
     or_term = "/" _ term
@@ -246,7 +247,7 @@ rule_syntax = (r'''
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
     # rule defined somewhere else):
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*(?![\"'])" _
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
@@ -286,6 +287,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         self.custom_rules = custom_rules or {}
+        self._last_literal_node_and_type = None
 
     def visit_parenthesized(self, node, parenthesized):
         """Treat a parenthesized subexpression as just its contents.
@@ -368,7 +370,19 @@ class RuleVisitor(NodeVisitor):
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
-        return Literal(evaluate_string(spaceless_literal.text))
+        literal_value = evaluate_string(spaceless_literal.text)
+        if self._last_literal_node_and_type:
+            last_node, last_type = self._last_literal_node_and_type
+            if last_type != type(literal_value):
+                raise BadGrammar(dedent(f"""\
+                    Found {last_node.text} ({last_type}) and {spaceless_literal.text} ({type(literal_value)}) string literals.
+                    All strings in a single grammar must be of the same type.
+                """)
+                )
+
+        self._last_literal_node_and_type = spaceless_literal, type(literal_value)
+
+        return Literal(literal_value)
 
     def visit_literal(self, node, literal):
         """Pick just the literal out of a literal-and-junk combo."""

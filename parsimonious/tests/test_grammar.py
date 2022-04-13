@@ -4,8 +4,9 @@ from sys import version_info
 from unittest import TestCase
 
 import sys
+import pytest
 
-from parsimonious.exceptions import UndefinedLabel, ParseError
+from parsimonious.exceptions import BadGrammar, UndefinedLabel, ParseError, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -493,3 +494,59 @@ class TokenGrammarTests(TestCase):
             self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
         else:
             self.assertEqual(u'<Token "💣">', t.__repr__())
+
+
+def test_precedence_of_string_modifiers():
+    # r"strings", etc. should be parsed as a single literal, not r followed
+    # by a string literal.
+    g = Grammar(r"""
+        escaped_bell = r"\b"
+        r = "irrelevant"
+    """)
+    assert isinstance(g["escaped_bell"], Literal)
+    assert g["escaped_bell"].literal == "\\b"
+    with pytest.raises(ParseError):
+        g.parse("irrelevant\b")
+
+    g2 = Grammar(r"""
+        escaped_bell = r"\b"
+    """)
+    assert g2.parse("\\b")
+
+
+def test_binary_grammar():
+    g = Grammar(r"""
+        file = header body terminator
+        header = b"\xFF" length b"~"
+        length = ~rb"\d+"
+        body = ~b"[^\xFF]*"
+        terminator = b"\xFF"
+    """)
+    length = 22
+    assert g.parse(b"\xff22~" + (b"a" * 22) + b"\xff") is not None
+
+
+def test_inconsistent_string_types_in_grammar():
+    with pytest.raises(VisitationError) as e:
+        Grammar(r"""
+            foo = b"foo"
+            bar = "bar"
+        """)
+    assert e.value.original_class is BadGrammar
+    with pytest.raises(VisitationError) as e:
+        Grammar(r"""
+            foo = ~b"foo"
+            bar = "bar"
+        """)
+    assert e.value.original_class is BadGrammar
+
+    # The following should parse without errors because they use the same
+    # string types:
+    Grammar(r"""
+        foo = b"foo"
+        bar = b"bar"
+    """)
+    Grammar(r"""
+        foo = "foo"
+        bar = "bar"
+    """)
