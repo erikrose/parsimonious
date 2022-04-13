@@ -262,6 +262,34 @@ class LazyReference(str):
 
     name = u''
 
+    def resolve_refs(self, rule_map):
+        """
+        Traverse the rule map following top-level lazy references,
+        until we reach a cycle (raise an error) or a concrete expression.
+
+        For example, the following is a circular reference:
+            foo = bar
+            baz = foo2
+            foo2 = foo
+
+        Note that every RHS of a grammar rule _must_ be either a
+        LazyReference or a concrete expression, so the reference chain will
+        eventually either terminate or find a cycle.
+        """
+        seen = set()
+        cur = self
+        while True:
+            if cur in seen:
+                raise BadGrammar(f"Circular Reference resolving {self.name}={self}.")
+            else:
+                seen.add(cur)
+            try:
+                cur = rule_map[str(cur)]
+            except KeyError:
+                raise UndefinedLabel(cur)
+            if not isinstance(cur, LazyReference):
+                return cur
+
     # Just for debugging:
     def _as_rhs(self):
         return u'<LazyReference to %s>' % self
@@ -415,53 +443,6 @@ class RuleVisitor(NodeVisitor):
         """
         return visited_children or node  # should semantically be a tuple
 
-    def _resolve_refs(self, rule_map, expr, resolved):
-        """Return an expression with all its lazy references recursively
-        resolved.
-
-        Resolve any lazy references in the expression ``expr``, recursing into
-        all subexpressions.
-
-        :arg done: The set of Expressions that have already been or are
-            currently being resolved, to ward off redundant work and prevent
-            infinite recursion for circular refs
-        """
-        if expr in resolved:
-            newref = resolved[expr]
-        elif isinstance(expr, LazyReference):
-            label = str(expr)
-            try:
-                reffed_expr = rule_map[label]
-            except KeyError:
-                raise UndefinedLabel(expr)
-            newref = resolved[expr] = self._resolve_refs(rule_map, reffed_expr, resolved)
-        else:
-            if getattr(expr, 'members', ()) and expr not in resolved:
-                # Prevents infinite recursion for circular refs. At worst, one
-                # of `expr.members` can refer back to `expr`, but it can't go
-                # any farther.
-                resolved[expr] = expr
-                expr.members = tuple(self._resolve_refs(rule_map, member, resolved)
-                                     for member in expr.members)
-            newref = expr
-        return newref
-
-    def _find_unresolved(self, rules):
-        """Recursively find all LazyReference objects and return them as a set"""
-        seen = set()
-        to_resolve = set()
-        def _find_referenced_rules(rulelist):
-            for expr in rulelist:
-                if expr in seen:
-                    continue
-                seen.add(expr)
-                if isinstance(expr, LazyReference):
-                    to_resolve.add(expr)
-                elif getattr(expr, 'members', None):
-                    _find_referenced_rules(expr.members)
-        _find_referenced_rules(rules)
-        return to_resolve
-
     def visit_rules(self, node, rules_list):
         """Collate all the rules into a map. Return (map, default rule).
 
@@ -486,18 +467,11 @@ class RuleVisitor(NodeVisitor):
         rule_map.update(self.custom_rules)
 
         # Resolve references. This tolerates forward references.
-        # We use a job pool `to_resolve` to remember all rules to resolve. It is
-        # initialized with all existing rules in `rule_map` and all
-        # LazyReference rules found later will be added as well.
-        to_resolve = set(rule_map.values())
-        resolved = {}
-        while to_resolve:
-            expr = to_resolve.pop()
-            newexpr = self._resolve_refs(rule_map, expr, resolved)
-            if getattr(expr, 'name', None):
-                rule_map[expr.name] = newexpr
-            if getattr(newexpr, 'members', ()):
-                to_resolve.update(self._find_unresolved(newexpr.members))
+        for name, rule in list(rule_map.items()):
+            if hasattr(rule, 'resolve_refs'):
+                # Some custom rules may not define a resolve_refs method,
+                # though anything that inherits from Expression will have it.
+                rule_map[name] = rule.resolve_refs(rule_map)
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;

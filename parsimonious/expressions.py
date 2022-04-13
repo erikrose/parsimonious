@@ -119,6 +119,10 @@ class Expression(StrAndRepr):
     def __ne__(self, other):
         return not (self == other)
 
+    def resolve_refs(self, rule_map):
+        # Nothing to do on the base expression.
+        return self
+
     def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
 
@@ -312,6 +316,10 @@ class Compound(Expression):
         """``members`` is a sequence of expressions."""
         super(Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
+
+    def resolve_refs(self, rule_map):
+        self.members = tuple(m.resolve_refs(rule_map) for m in self.members)
+        return self
 
     def __hash__(self):
         # Note we leave members out of the hash computation, since compounds can get added to
