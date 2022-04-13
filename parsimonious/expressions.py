@@ -407,7 +407,8 @@ class Quantifier(Compound):
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
-        while True:
+        size = len(text)
+        while new_pos < size and len(children) < self.max:
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
                 break # no more matches
@@ -416,8 +417,6 @@ class Quantifier(Compound):
             if len(children) >= self.min and length == 0:  # Don't loop infinitely
                 break
             new_pos += length
-            if len(children) == self.max:
-                break # reached max repetition
         if len(children) >= self.min:
             return Node(self, text, pos, new_pos, children)
 

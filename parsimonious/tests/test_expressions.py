@@ -24,7 +24,7 @@ class LengthTests(TestCase):
 
         """
         node_length = None if node is None else node.end - node.start
-        self.assertTrue(node_length == length)
+        assert node_length == length
 
     def test_regex(self):
         self.len_eq(Literal('hello').match('ehello', 1), 5)  # simple
