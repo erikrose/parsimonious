@@ -432,11 +432,17 @@ Niceties
 
 Version History
 ===============
+
 (Next release)
   * Add support for grammars on bytestrings (lucaswiman)
-  * Fix precedence of string literal modifiers u/r/b.
-    This will break grammars with no spaces between a
-	reference and a string literal. (lucaswiman)
+  .. warning::
+
+      This release makes backward-incompatible changes:
+
+      * Fix precedence of string literal modifiers ``u/r/b``.
+        This will break grammars with no spaces between a
+        reference and a string literal. (lucaswiman)
+
 
 0.9.0
   * Add support for Python 3.7, 3.8, 3.9, 3.10 (righthandabacus, Lonnen)
