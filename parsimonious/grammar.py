@@ -241,7 +241,7 @@ rule_syntax = (r'''
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
-    quantifier = ~"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
+    quantifier = ~r"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
 
     # A subsequent equal sign is the only thing that distinguishes a label
