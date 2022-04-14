@@ -168,7 +168,7 @@ class GrammarTests(TestCase):
 
         That the correct ``Expression`` tree is built is already tested in
         ``RuleGrammarTests``. This tests only that the ``Grammar`` base class's
-        ``_expressions_from_rules`` works.
+        ``expressions_from_rules`` works.
 
         """
         greeting_grammar = Grammar('greeting = "hi" / "howdy"')

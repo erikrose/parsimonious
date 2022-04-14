@@ -7,6 +7,7 @@ by hand.
 """
 from collections import OrderedDict
 from textwrap import dedent
+from typing import Type
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -44,6 +45,9 @@ class Grammar(OrderedDict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
+    rule_visitor: Type["RuleVisitor"]
+    rule_grammar: "Grammar"
+
     def __init__(self, rules='', **more_rules):
         """Construct a grammar.
 
@@ -63,7 +67,7 @@ class Grammar(OrderedDict):
             k: (expression(v, k, self) if is_callable(v) else v)
             for k, v in more_rules.items()}
 
-        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        exprs, first = self.expressions_from_rules(rules, decorated_custom_rules)
         super().__init__(exprs.items())
         self.default_rule = first  # may be None
 
@@ -86,7 +90,8 @@ class Grammar(OrderedDict):
         new.default_rule = self.default_rule
         return new
 
-    def _expressions_from_rules(self, rules, custom_rules):
+    @classmethod
+    def expressions_from_rules(cls, rules, custom_rules):
         """Return a 2-tuple: a dict of rule names pointing to their
         expressions, and then the first rule.
 
@@ -99,8 +104,8 @@ class Grammar(OrderedDict):
             Expressions
 
         """
-        tree = rule_grammar.parse(rules)
-        return RuleVisitor(custom_rules).visit(tree)
+        tree = cls.rule_grammar.parse(rules)
+        return cls.visitor_cls(custom_rules).visit(tree)
 
     def parse(self, text, pos=0):
         """Parse some text with the :term:`default rule`.
@@ -141,18 +146,6 @@ class Grammar(OrderedDict):
         return "Grammar({!r})".format(str(self))
 
 
-class TokenGrammar(Grammar):
-    """A Grammar which takes a list of pre-lexed tokens instead of text
-
-    This is useful if you want to do the lexing yourself, as a separate pass:
-    for example, to implement indentation-based languages.
-
-    """
-    def _expressions_from_rules(self, rules, custom_rules):
-        tree = rule_grammar.parse(rules)
-        return TokenRuleVisitor(custom_rules).visit(tree)
-
-
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
     grammars
@@ -162,7 +155,7 @@ class BootstrappingGrammar(Grammar):
     grammar description syntax.
 
     """
-    def _expressions_from_rules(self, rule_syntax, custom_rules):
+    def expressions_from_rules(self, rule_syntax, custom_rules):
         """Return the rules for parsing the grammar definition syntax.
 
         Return a 2-tuple: a dict of rule names pointing to their expressions,
@@ -496,13 +489,24 @@ class TokenRuleVisitor(RuleVisitor):
                          'than characters.')
 
 
+class TokenGrammar(Grammar):
+    """A Grammar which takes a list of pre-lexed tokens instead of text
+
+    This is useful if you want to do the lexing yourself, as a separate pass:
+    for example, to implement indentation-based languages.
+
+    """
+    visitor_cls = TokenRuleVisitor
+
+
 # Bootstrap to level 1...
-rule_grammar = BootstrappingGrammar(rule_syntax)
+Grammar.visitor_cls = RuleVisitor
+rule_grammar = Grammar.rule_grammar = BootstrappingGrammar(rule_syntax)
 # ...and then to level 2. This establishes that the node tree of our rule
 # syntax is built by the same machinery that will build trees of our users'
 # grammars. And the correctness of that tree is tested, indirectly, in
 # test_grammar.
-rule_grammar = Grammar(rule_syntax)
+rule_grammar = Grammar.rule_grammar = Grammar(rule_syntax)
 
 
 # TODO: Teach Expression trees how to spit out Python representations of
