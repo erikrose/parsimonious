@@ -326,6 +326,24 @@ class GrammarTests(TestCase):
             main = number
             """)
 
+    def test_circular_toplevel_reference(self):
+        with pytest.raises(VisitationError):
+            Grammar("""
+                foo = bar
+                bar = foo
+            """)
+        with pytest.raises(VisitationError):
+            Grammar("""
+                foo = foo
+                bar = foo
+            """)
+        with pytest.raises(VisitationError):
+            Grammar("""
+                foo = bar
+                bar = baz
+                baz = foo
+            """)
+
     def test_right_recursive(self):
         """Right-recursive refs should resolve."""
         grammar = Grammar("""
