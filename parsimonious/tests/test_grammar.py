@@ -3,8 +3,8 @@
 from sys import version_info
 from unittest import TestCase
 
-import sys
 import pytest
+import sys
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel, ParseError, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
@@ -487,6 +487,43 @@ class GrammarTests(TestCase):
             list(grammar.keys()),
             ['r%s' % i for i in range(100)])
 
+    def test_repetitions(self):
+        grammar = Grammar(r'''
+            left_missing = "a"{,5}
+            right_missing = "a"{5,}
+            exact = "a"{5}
+            range = "a"{2,5}
+            optional = "a"?
+            plus = "a"+
+            star = "a"*
+        ''')
+        should_parse = [
+            ("left_missing", ["a" * i for i in range(6)]),
+            ("right_missing", ["a" * i for i in range(5, 8)]),
+            ("exact", ["a" * 5]),
+            ("range", ["a" * i for i in range(2, 6)]),
+            ("optional", ["", "a"]),
+            ("plus", ["a", "aa"]),
+            ("star", ["", "a", "aa"]),
+        ]
+        for rule, examples in should_parse:
+            for example in examples:
+                assert grammar[rule].parse(example)
+
+        should_not_parse = [
+            ("left_missing", ["a" * 6]),
+            ("right_missing", ["a" * i for i in range(5)]),
+            ("exact", ["a" * i for i in list(range(5)) + list(range(6, 10))]),
+            ("range", ["a" * i for i in list(range(2)) + list(range(6, 10))]),
+            ("optional", ["aa"]),
+            ("plus", [""]),
+            ("star", ["b"]),
+        ]
+        for rule, examples in should_not_parse:
+            for example in examples:
+                with pytest.raises(ParseError):
+                    grammar[rule].parse(example)
+
 
 class TokenGrammarTests(TestCase):
     """Tests for the TokenGrammar class and associated machinery"""
@@ -508,17 +545,36 @@ class TokenGrammarTests(TestCase):
         grammar = TokenGrammar("""
             foo = "token1" "token2"
             """)
-        self.assertRaises(ParseError,
-                      grammar.parse,
-                      [Token('tokenBOO'), Token('token2')])
+        with pytest.raises(ParseError) as e:
+            grammar.parse([Token('tokenBOO'), Token('token2')])
+        assert "Rule 'foo' didn't match at" in str(e.value)
 
     def test_token_repr(self):
         t = Token(u'💣')
         self.assertTrue(isinstance(t.__repr__(), str))
-        if sys.version_info < (3, 0):
-            self.assertEqual(u'<Token "💣">'.encode('utf-8'), t.__repr__())
-        else:
-            self.assertEqual(u'<Token "💣">', t.__repr__())
+        self.assertEqual(u'<Token "💣">', t.__repr__())
+
+    def test_token_star_plus_expressions(self):
+        a = Token("a")
+        b = Token("b")
+        grammar = TokenGrammar("""
+            foo = "a"*
+            bar = "a"+
+        """)
+        assert grammar["foo"].parse([]) is not None
+        assert grammar["foo"].parse([a]) is not None
+        assert grammar["foo"].parse([a, a]) is not None
+
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([b])
+
+        assert grammar["bar"].parse([a]) is not None
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([a, b])
+        with pytest.raises(ParseError):
+            grammar["bar"].parse([b])
 
 
 def test_precedence_of_string_modifiers():

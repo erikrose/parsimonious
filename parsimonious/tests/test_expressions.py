@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf, Not,
-                                      Optional, ZeroOrMore, OneOrMore, Expression)
+                                      Quantifier, Optional, ZeroOrMore, OneOrMore, Expression)
 from parsimonious.grammar import Grammar, rule_grammar
 from parsimonious.nodes import Node
 
@@ -24,7 +24,7 @@ class LengthTests(TestCase):
 
         """
         node_length = None if node is None else node.end - node.start
-        self.assertTrue(node_length == length)
+        assert node_length == length
 
     def test_regex(self):
         self.len_eq(Literal('hello').match('ehello', 1), 5)  # simple
@@ -50,6 +50,8 @@ class LengthTests(TestCase):
     def test_optional(self):
         self.len_eq(Sequence(Optional(Literal('a')), Literal('b')).match('b'), 1)  # contained expr fails
         self.len_eq(Sequence(Optional(Literal('a')), Literal('b')).match('ab'), 2)  # contained expr succeeds
+        self.len_eq(Optional(Literal('a')).match('aa'), 1)
+        self.len_eq(Optional(Literal('a')).match('bb'), 0)
 
     def test_zero_or_more(self):
         self.len_eq(ZeroOrMore(Literal('b')).match(''), 0)  # zero
@@ -64,7 +66,10 @@ class LengthTests(TestCase):
         self.len_eq(OneOrMore(Literal('b')).match('b'), 1)  # one
         self.len_eq(OneOrMore(Literal('b')).match('bbb'), 3)  # more
         self.len_eq(OneOrMore(Literal('b'), min=3).match('bbb'), 3)  # with custom min; success
+        self.len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbb'), 4)  # with custom min and max; success
+        self.len_eq(Quantifier(Literal('b'), min=3, max=5).match('bbbbbb'), 5)  # with custom min and max; success
         self.assertRaises(ParseError, OneOrMore(Literal('b'), min=3).match, 'bb')  # with custom min; failure
+        self.assertRaises(ParseError, Quantifier(Literal('b'), min=3, max=5).match, 'bb')  # with custom min and max; failure
         self.len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
 
 
@@ -267,6 +272,20 @@ class RepresentationTests(TestCase):
         self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
                          u"foo = 'bar' ('baz' 'eggs')* 'spam'")
 
+        # Quantifiers
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){2,4} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){2,4} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){2,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){2,} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){1,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')+ 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){,4} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs'){,4} 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){0,1} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')? 'spam'")
+        self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){0,} "spam"')),
+                         "foo = 'bar' ('baz' 'eggs')* 'spam'")
+
         # OneOf
         self.assertEqual(str(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
                          u"foo = 'bar' ('baz' / 'eggs') 'spam'")
@@ -305,7 +324,7 @@ class SlotsTests(TestCase):
         But it does.
 
         """
-        class Smoo(Optional):
+        class Smoo(Quantifier):
             __slots__ = ['smoo']
 
             def __init__(self):
