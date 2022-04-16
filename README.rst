@@ -447,6 +447,7 @@ Version History
   * Fix bug in ``*`` and ``+`` for token grammars (lucaswiman)
   * Add support for grammars on bytestrings (lucaswiman)
   * Fix LazyReference resolution bug #134 (righthandabacus)
+  * ~15% speedup on benchmarks with a faster node cache (ethframe)
 
   .. warning::
 
