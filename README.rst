@@ -8,6 +8,11 @@ which means you feed it a simplified sort of EBNF notation. Parsimonious was
 designed to undergird a MediaWiki parser that wouldn't take 5 seconds or a GB
 of RAM to do one page, but it's applicable to all sorts of languages.
 
+:Code:    https://github.com/erikrose/parsimonious/
+:Issues:  https://github.com/erikrose/parsimonious/issues
+:License: MIT License (MIT)
+:Package: https://pypi.org/project/parsimonious/
+
 
 Goals
 =====
@@ -24,6 +29,14 @@ Goals
   with a tree: for example, render wiki markup to HTML *or* to text.
 * Good error reporting. I want the parser to work *with* me as I develop a
   grammar.
+
+
+Install
+=======
+
+To install Parsimonious, run::
+
+    $ pip install parsimonious
 
 
 Example Usage
@@ -50,7 +63,7 @@ Next, let's parse something and get an abstract syntax tree:
 
 .. code:: python
 
-    >>> print grammar.parse('((bold stuff))')
+    >>> print(grammar.parse('((bold stuff))'))
     <Node called "bold_text" matching "((bold stuff))">
         <Node called "bold_open" matching "((">
         <RegexNode called "text" matching "bold stuff">
@@ -59,6 +72,90 @@ Next, let's parse something and get an abstract syntax tree:
 You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
 the tree and do something useful with it.
 
+Another example would be to implement a parser for ``.ini``-files. Consider the following:
+
+.. code:: python
+
+    grammar = Grammar(
+        r"""
+        expr        = (entry / emptyline)*
+        entry       = section pair*
+
+        section     = lpar word rpar ws
+        pair        = key equal value ws?
+
+        key         = word+
+        value       = (word / quoted)+
+        word        = ~r"[-\w]+"
+        quoted      = ~'"[^\"]+"'
+        equal       = ws? "=" ws?
+        lpar        = "["
+        rpar        = "]"
+        ws          = ~"\s*"
+        emptyline   = ws+
+        """
+    )
+
+
+We could now implement a subclass of ``NodeVisitor`` like so:
+
+.. code:: python
+
+    class IniVisitor(NodeVisitor):
+        def visit_expr(self, node, visited_children):
+            """ Returns the overall output. """
+            output = {}
+            for child in visited_children:
+                output.update(child[0])
+            return output
+
+        def visit_entry(self, node, visited_children):
+            """ Makes a dict of the section (as key) and the key/value pairs. """
+            key, values = visited_children
+            return {key: dict(values)}
+
+        def visit_section(self, node, visited_children):
+            """ Gets the section name. """
+            _, section, *_ = visited_children
+            return section.text
+
+        def visit_pair(self, node, visited_children):
+            """ Gets each key/value pair, returns a tuple. """
+            key, _, value, *_ = node.children
+            return key.text, value.text
+
+        def generic_visit(self, node, visited_children):
+            """ The generic visit method. """
+            return visited_children or node
+
+And call it like that:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+    from parsimonious.nodes import NodeVisitor
+
+    data = """[section]
+    somekey = somevalue
+    someotherkey=someothervalue
+
+    [anothersection]
+    key123 = "what the heck?"
+    key456="yet another one here"
+
+    """
+
+    tree = grammar.parse(data)
+
+    iv = IniVisitor()
+    output = iv.visit(tree)
+    print(output)
+
+This would yield
+
+.. code:: python
+
+    {'section': {'somekey': 'somevalue', 'someotherkey': 'someothervalue'}, 'anothersection': {'key123': '"what the heck?"', 'key456': '"yet another one here"'}}
 
 Status
 ======
@@ -72,7 +169,7 @@ Status
   and nodes are clear and helpful as well. The ``Grammar`` ones are
   even round-trippable!
 * The grammar extensibility story is underdeveloped at the moment. You should
-  be able to extend a grammar by simply concatening more rules onto the
+  be able to extend a grammar by simply concatenating more rules onto the
   existing ones; later rules of the same name should override previous ones.
   However, this is untested and may not be the final story.
 * Sphinx docs are coming, but the docstrings are quite useful now.
@@ -139,6 +236,14 @@ Syntax Reference
                         conventions for "raw" and Unicode strings help support
                         fiddly characters.
 
+``b"some literal"``     A bytes literal. Using bytes literals and regular
+                        expressions allows your grammar to parse binary files.
+						Note that all literals and regular expressions must be
+						of the same type within a grammar. In grammars that
+						process bytestrings, you should make the grammar string
+						an ``r"""string"""`` so that byte literals like ``\xff``
+						work correctly.
+
 [space]                 Sequences are made out of space- or tab-delimited
                         things. ``a b c`` matches spots where those 3
                         terms appear in that order.
@@ -161,20 +266,35 @@ Syntax Reference
 ``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
-``~r"regex"ilmsux``     Regexes have ``~`` in front and are quoted like
-                        literals. Any flags follow the end quotes as single
-                        chars. Regexes are good for representing character
-                        classes (``[a-z0-9]``) and optimizing for speed. The
-                        downside is that they won't be able to take advantage
-                        of our fancy debugging, once we get that working.
-                        Ultimately, I'd like to deprecate explicit regexes and
-                        instead have Parsimonious dynamically build them out of
-                        simpler primitives.
+``~r"regex"ilmsuxa``    Regexes have ``~`` in front and are quoted like
+                        literals. Any flags_ (``asilmx``) follow the end quotes
+                        as single chars. Regexes are good for representing
+                        character classes (``[a-z0-9]``) and optimizing for
+                        speed. The downside is that they won't be able to take
+                        advantage of our fancy debugging, once we get that
+                        working. Ultimately, I'd like to deprecate explicit
+                        regexes and instead have Parsimonious dynamically build
+                        them out of simpler primitives. Parsimonious uses the
+                        regex_ library instead of the built-in re module.
+
+``~br"regex"``          A bytes regex; required if your grammar parses
+                        bytestrings.
 
 ``(things)``            Parentheses are used for grouping, like in every other
                         language.
+
+``thing{n}``            Exactly ``n`` repetitions of ``thing``.
+
+``thing{n,m}``          Between ``n`` and ``m`` repititions (inclusive.)
+
+``thing{,m}``           At most ``m`` repetitions of ``thing``.
+
+``thing{n,}``           At least ``n`` repetitions of ``thing``.
+
 ====================    ========================================================
 
+.. _flags: https://docs.python.org/3/howto/regex.html#compilation
+.. _regex: https://github.com/mrabarnett/mrab-regex
 
 Optimizing Grammars
 ===================
@@ -183,13 +303,13 @@ Don't Repeat Expressions
 ------------------------
 
 If you need a ``~"[a-z0-9]"i`` at two points in your grammar, don't type it
-twice. Make it a rule of its own, and reference it from wherever you need it. 
-You'll get the most out of the caching this way, since cache lookups are by 
-expression object identity (for speed). 
+twice. Make it a rule of its own, and reference it from wherever you need it.
+You'll get the most out of the caching this way, since cache lookups are by
+expression object identity (for speed).
 
-Even if you have an expression that's very simple, not repeating it will 
-save RAM, as there can, at worst, be a cached int for every char in the text 
-you're parsing. In the future, we may identify repeated subexpressions 
+Even if you have an expression that's very simple, not repeating it will
+save RAM, as there can, at worst, be a cached int for every char in the text
+you're parsing. In the future, we may identify repeated subexpressions
 automatically and factor them up while building the grammar.
 
 How much should you shove into one regex, versus how much should you break them
@@ -321,6 +441,37 @@ Niceties
 
 Version History
 ===============
+
+(Next release)
+  * Add support for range ``{min,max}`` repetition expressions (righthandabacus)
+  * Fix bug in ``*`` and ``+`` for token grammars (lucaswiman)
+  * Add support for grammars on bytestrings (lucaswiman)
+  * Fix LazyReference resolution bug #134 (righthandabacus)
+
+  .. warning::
+
+      This release makes backward-incompatible changes:
+
+      * Fix precedence of string literal modifiers ``u/r/b``.
+        This will break grammars with no spaces between a
+        reference and a string literal. (lucaswiman)
+
+
+0.9.0
+  * Add support for Python 3.7, 3.8, 3.9, 3.10 (righthandabacus, Lonnen)
+  * Drop support for Python 2.x, 3.3, 3.4 (righthandabacus, Lonnen)
+  * Remove six and go all in on Python 3 idioms (Lonnen)
+  * Replace re with regex for improved handling of unicode characters
+    in regexes (Oderjunkie)
+  * Dropped nose for unittest (swayson)
+  * `Grammar.__repr__()` now correctly escapes backslashes (ingolemo)
+  * Custom rules can now be class methods in addition to
+    functions (James Addison)
+  * Make the ascii flag available in the regex syntax (Roman Inflianskas)
+
+0.8.1
+  * Switch to a function-style ``print`` in the benchmark tests so we work
+    cleanly as a dependency on Python 3. (Edward Betts)
 
 0.8.0
   * Make Grammar iteration ordered, making the ``__repr__`` more like the

@@ -2,8 +2,6 @@
 
 import ast
 
-from six import python_2_unicode_compatible
-
 
 class StrAndRepr(object):
     """Mix-in which gives the class the same __repr__ and __str__."""
@@ -14,14 +12,15 @@ class StrAndRepr(object):
 
 def evaluate_string(string):
     """Piggyback on Python's string support so we can have backslash escaping
-    and niceties like \n, \t, etc. string.decode('string_escape') would have
-    been a lower-level possibility.
+    and niceties like \n, \t, etc.
 
+    This also supports:
+    1. b"strings", allowing grammars to parse bytestrings, in addition to str.
+    2. r"strings" to simplify regexes.
     """
     return ast.literal_eval(string)
 
 
-@python_2_unicode_compatible
 class Token(StrAndRepr):
     """A class to represent tokens, for use with TokenGrammars
 

@@ -6,18 +6,15 @@ by hand.
 
 """
 from collections import OrderedDict
-from inspect import isfunction, ismethod
-
-from six import (text_type, itervalues, iteritems, python_2_unicode_compatible, PY2)
+from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
-    expression)
+    Lookahead, Quantifier, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
+    expression, is_callable)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
 
-@python_2_unicode_compatible
 class Grammar(OrderedDict):
     """A collection of rules that describe a language
 
@@ -63,8 +60,8 @@ class Grammar(OrderedDict):
         """
 
         decorated_custom_rules = {
-            k: (expression(v, k, self) if isfunction(v) or ismethod(v) else v)
-            for k, v in iteritems(more_rules)}
+            k: (expression(v, k, self) if is_callable(v) else v)
+            for k, v in more_rules.items()}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
         super(Grammar, self).__init__(exprs.items())
@@ -85,7 +82,7 @@ class Grammar(OrderedDict):
 
         """
         new = Grammar.__new__(Grammar)
-        super(Grammar, new).__init__(iteritems(self))
+        super(Grammar, new).__init__(self.items())
         new.default_rule = self.default_rule
         return new
 
@@ -135,14 +132,13 @@ class Grammar(OrderedDict):
         """Return a rule string that, when passed to the constructor, would
         reconstitute the grammar."""
         exprs = [self.default_rule] if self.default_rule else []
-        exprs.extend(expr for expr in itervalues(self) if
+        exprs.extend(expr for expr in self.values() if
                      expr is not self.default_rule)
         return '\n'.join(expr.as_rule() for expr in exprs)
 
     def __repr__(self):
         """Return an expression that will reconstitute the grammar."""
-        codec = 'string_escape' if PY2 else 'unicode_escape'
-        return "Grammar('%s')" % str(self).encode(codec)
+        return "Grammar({!r})".format(str(self))
 
 
 class TokenGrammar(Grammar):
@@ -190,7 +186,7 @@ class BootstrappingGrammar(Grammar):
         literal = Sequence(spaceless_literal, _, name='literal')
         regex = Sequence(Literal('~'),
                          literal,
-                         Regex('[ilmsux]*', ignore_case=True),
+                         Regex('[ilmsuxa]*', ignore_case=True),
                          _,
                          name='regex')
         atom = OneOf(reference, literal, regex, name='atom')
@@ -231,8 +227,8 @@ rule_syntax = (r'''
     literal = spaceless_literal _
 
     # So you can't spell a regex like `~"..." ilm`:
-    spaceless_literal = ~"u?r?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
-                        ~"u?r?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
+    spaceless_literal = ~"u?r?b?\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\""is /
+                        ~"u?r?b?'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'"is
 
     expression = ored / sequence / term
     or_term = "/" _ term
@@ -243,15 +239,15 @@ rule_syntax = (r'''
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
-    regex = "~" spaceless_literal ~"[ilmsux]*"i _
+    regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
-    quantifier = ~"[*+?]" _
+    quantifier = ~r"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
 
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
     # rule defined somewhere else):
-    label = ~"[a-zA-Z_][a-zA-Z_0-9]*" _
+    label = ~"[a-zA-Z_][a-zA-Z_0-9]*(?![\"'])" _
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
@@ -260,11 +256,39 @@ rule_syntax = (r'''
     ''')
 
 
-class LazyReference(text_type):
+class LazyReference(str):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
     name = u''
+
+    def resolve_refs(self, rule_map):
+        """
+        Traverse the rule map following top-level lazy references,
+        until we reach a cycle (raise an error) or a concrete expression.
+
+        For example, the following is a circular reference:
+            foo = bar
+            baz = foo2
+            foo2 = foo
+
+        Note that every RHS of a grammar rule _must_ be either a
+        LazyReference or a concrete expression, so the reference chain will
+        eventually either terminate or find a cycle.
+        """
+        seen = set()
+        cur = self
+        while True:
+            if cur in seen:
+                raise BadGrammar(f"Circular Reference resolving {self.name}={self}.")
+            else:
+                seen.add(cur)
+            try:
+                cur = rule_map[str(cur)]
+            except KeyError:
+                raise UndefinedLabel(cur)
+            if not isinstance(cur, LazyReference):
+                return cur
 
     # Just for debugging:
     def _as_rhs(self):
@@ -291,6 +315,7 @@ class RuleVisitor(NodeVisitor):
 
         """
         self.custom_rules = custom_rules or {}
+        self._last_literal_node_and_type = None
 
     def visit_parenthesized(self, node, parenthesized):
         """Treat a parenthesized subexpression as just its contents.
@@ -308,7 +333,17 @@ class RuleVisitor(NodeVisitor):
 
     def visit_quantified(self, node, quantified):
         atom, quantifier = quantified
-        return self.quantifier_classes[quantifier.text](atom)
+        try:
+            return self.quantifier_classes[quantifier.text](atom)
+        except KeyError:
+            # This should pass: assert re.full_match("\{(\d*)(,(\d*))?\}", quantifier)
+            quantifier = quantifier.text[1:-1].split(",")
+            if len(quantifier) == 1:
+                min_match = max_match = int(quantifier[0])
+            else:
+                min_match = int(quantifier[0]) if quantifier[0] else 0
+                max_match = int(quantifier[1]) if quantifier[1] else float('inf')
+            return Quantifier(atom, min=min_match, max=max_match)
 
     def visit_lookahead_term(self, node, lookahead_term):
         ampersand, term, _ = lookahead_term
@@ -368,11 +403,24 @@ class RuleVisitor(NodeVisitor):
                               multiline='M' in flags,
                               dot_all='S' in flags,
                               unicode='U' in flags,
-                              verbose='X' in flags)
+                              verbose='X' in flags,
+                              ascii='A' in flags)
 
     def visit_spaceless_literal(self, spaceless_literal, visited_children):
         """Turn a string literal into a ``Literal`` that recognizes it."""
-        return Literal(evaluate_string(spaceless_literal.text))
+        literal_value = evaluate_string(spaceless_literal.text)
+        if self._last_literal_node_and_type:
+            last_node, last_type = self._last_literal_node_and_type
+            if last_type != type(literal_value):
+                raise BadGrammar(dedent(f"""\
+                    Found {last_node.text} ({last_type}) and {spaceless_literal.text} ({type(literal_value)}) string literals.
+                    All strings in a single grammar must be of the same type.
+                """)
+                )
+
+        self._last_literal_node_and_type = spaceless_literal, type(literal_value)
+
+        return Literal(literal_value)
 
     def visit_literal(self, node, literal):
         """Pick just the literal out of a literal-and-junk combo."""
@@ -394,35 +442,6 @@ class RuleVisitor(NodeVisitor):
 
         """
         return visited_children or node  # should semantically be a tuple
-
-    def _resolve_refs(self, rule_map, expr, done):
-        """Return an expression with all its lazy references recursively
-        resolved.
-
-        Resolve any lazy references in the expression ``expr``, recursing into
-        all subexpressions.
-
-        :arg done: The set of Expressions that have already been or are
-            currently being resolved, to ward off redundant work and prevent
-            infinite recursion for circular refs
-
-        """
-        if isinstance(expr, LazyReference):
-            label = text_type(expr)
-            try:
-                reffed_expr = rule_map[label]
-            except KeyError:
-                raise UndefinedLabel(expr)
-            return self._resolve_refs(rule_map, reffed_expr, done)
-        else:
-            if getattr(expr, 'members', ()) and expr not in done:
-                # Prevents infinite recursion for circular refs. At worst, one
-                # of `expr.members` can refer back to `expr`, but it can't go
-                # any farther.
-                done.add(expr)
-                expr.members = tuple(self._resolve_refs(rule_map, member, done)
-                                     for member in expr.members)
-            return expr
 
     def visit_rules(self, node, rules_list):
         """Collate all the rules into a map. Return (map, default rule).
@@ -448,9 +467,11 @@ class RuleVisitor(NodeVisitor):
         rule_map.update(self.custom_rules)
 
         # Resolve references. This tolerates forward references.
-        done = set()
-        rule_map = OrderedDict((expr.name, self._resolve_refs(rule_map, expr, done))
-                               for expr in itervalues(rule_map))
+        for name, rule in list(rule_map.items()):
+            if hasattr(rule, 'resolve_refs'):
+                # Some custom rules may not define a resolve_refs method,
+                # though anything that inherits from Expression will have it.
+                rule_map[name] = rule.resolve_refs(rule_map)
 
         # isinstance() is a temporary hack around the fact that * rules don't
         # always get transformed into lists by NodeVisitor. We should fix that;

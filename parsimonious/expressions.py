@@ -7,15 +7,17 @@ These do the parsing.
 # anything--for speed. And kill all the dots.
 
 from collections import defaultdict
-from inspect import getargspec
-import re
-
-from six import integer_types, python_2_unicode_compatible
-from six.moves import range
+from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
+import regex as re
 
 from parsimonious.exceptions import ParseError, IncompleteParseError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
+
+
+def is_callable(value):
+    criteria = [isfunction, ismethod, ismethoddescriptor]
+    return any([criterion(value) for criterion in criteria])
 
 
 def expression(callable, rule_name, grammar):
@@ -56,7 +58,16 @@ def expression(callable, rule_name, grammar):
         part of, to make delegating to other rules possible
 
     """
-    num_args = len(getargspec(callable).args)
+
+    # Resolve unbound methods; allows grammars to use @staticmethod custom rules
+    # https://stackoverflow.com/questions/41921255/staticmethod-object-is-not-callable
+    if ismethoddescriptor(callable) and hasattr(callable, '__func__'):
+        callable = callable.__func__
+
+    num_args = len(getfullargspec(callable).args)
+    if ismethod(callable):
+        # do not count the first argument (typically 'self') for methods
+        num_args -= 1
     if num_args == 2:
         is_simple = True
     elif num_args == 5:
@@ -70,7 +81,7 @@ def expression(callable, rule_name, grammar):
             result = (callable(text, pos) if is_simple else
                       callable(text, pos, cache, error, grammar))
 
-            if isinstance(result, integer_types):
+            if isinstance(result, int):
                 end, children = result, None
             elif isinstance(result, tuple):
                 end, children = result
@@ -85,7 +96,6 @@ def expression(callable, rule_name, grammar):
     return AdHocExpression(name=rule_name)
 
 
-@python_2_unicode_compatible
 class Expression(StrAndRepr):
     """A thing that can be matched against a piece of text"""
 
@@ -107,6 +117,10 @@ class Expression(StrAndRepr):
 
     def __ne__(self, other):
         return not (self == other)
+
+    def resolve_refs(self, rule_map):
+        # Nothing to do on the base expression.
+        return self
 
     def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
@@ -239,8 +253,7 @@ class Literal(Expression):
             return Node(self, text, pos, pos + len(self.literal))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '"%s"' % self.literal
+        return repr(self.literal)
 
 
 class TokenMatcher(Literal):
@@ -264,14 +277,15 @@ class Regex(Expression):
     __slots__ = ['re']
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
-                 multiline=False, dot_all=False, unicode=False, verbose=False):
+                 multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False):
         super(Regex, self).__init__(name)
         self.re = re.compile(pattern, (ignore_case and re.I) |
                                       (locale and re.L) |
                                       (multiline and re.M) |
                                       (dot_all and re.S) |
                                       (unicode and re.U) |
-                                      (verbose and re.X))
+                                      (verbose and re.X) |
+                                      (ascii and re.A))
         self.identity_tuple = (self.name, self.re)
 
     def _uncached_match(self, text, pos, cache, error):
@@ -285,13 +299,12 @@ class Regex(Expression):
 
     def _regex_flags_from_bits(self, bits):
         """Return the textual equivalent of numerically encoded regex flags."""
-        flags = 'ilmsux'
+        flags = 'ilmsuxa'
         return ''.join(flags[i - 1] if (1 << i) & bits else '' for i in range(1, len(flags) + 1))
 
     def _as_rhs(self):
-        # TODO: Get backslash escaping right.
-        return '~"%s"%s' % (self.re.pattern,
-                            self._regex_flags_from_bits(self.re.flags))
+        return '~{!r}{}'.format(self.re.pattern,
+                                self._regex_flags_from_bits(self.re.flags))
 
 
 class Compound(Expression):
@@ -303,6 +316,10 @@ class Compound(Expression):
         """``members`` is a sequence of expressions."""
         super(Compound, self).__init__(kwargs.get('name', ''))
         self.members = members
+
+    def resolve_refs(self, rule_map):
+        self.members = tuple(m.resolve_refs(rule_map) for m in self.members)
+        return self
 
     def __hash__(self):
         # Note we leave members out of the hash computation, since compounds can get added to
@@ -366,105 +383,71 @@ class Lookahead(Compound):
     """An expression which consumes nothing, even if its contained expression
     succeeds"""
 
-    # TODO: Merge this and Not for better cache hit ratios and less code.
-    # Downside: pretty-printed grammars might be spelled differently than what
-    # went in. That doesn't bother me.
+    __slots__ = ['negativity']
+
+    def __init__(self, member, *, negative=False, **kwargs):
+        super(Lookahead, self).__init__(member, **kwargs)
+        self.negativity = bool(negative)
 
     def _uncached_match(self, text, pos, cache, error):
         node = self.members[0].match_core(text, pos, cache, error)
-        if node is not None:
+        if (node is None) == self.negativity: # negative lookahead == match only if not found
             return Node(self, text, pos, pos)
 
     def _as_rhs(self):
-        return u'&%s' % self._unicode_members()[0]
+        return u'%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
 
-
-class Not(Compound):
-    """An expression that succeeds only if the expression within it doesn't
-
-    In any case, it never consumes any characters; it's a negative lookahead.
-
-    """
-    def _uncached_match(self, text, pos, cache, error):
-        # FWIW, the implementation in Parsing Techniques in Figure 15.29 does
-        # not bother to cache NOTs directly.
-        node = self.members[0].match_core(text, pos, cache, error)
-        if node is None:
-            return Node(self, text, pos, pos)
-
-    def _as_rhs(self):
-        # TODO: Make sure this parenthesizes the member properly if it's an OR
-        # or AND.
-        return u'!%s' % self._unicode_members()[0]
-
+def Not(term):
+    return Lookahead(term, negative=True)
 
 # Quantifiers. None of these is strictly necessary, but they're darn handy.
 
-class Optional(Compound):
-    """An expression that succeeds whether or not the contained one does
+class Quantifier(Compound):
+    """An expression wrapper like the */+/?/{n,m} quantifier in regexes."""
 
-    If the contained expression succeeds, it goes ahead and consumes what it
-    consumes. Otherwise, it consumes nothing.
+    __slots__ = ['min', 'max']
 
-    """
-    def _uncached_match(self, text, pos, cache, error):
-        node = self.members[0].match_core(text, pos, cache, error)
-        return (Node(self, text, pos, pos) if node is None else
-                Node(self, text, pos, node.end, children=[node]))
-
-    def _as_rhs(self):
-        return u'%s?' % self._unicode_members()[0]
-
-
-# TODO: Merge with OneOrMore.
-class ZeroOrMore(Compound):
-    """An expression wrapper like the * quantifier in regexes."""
-
-    def _uncached_match(self, text, pos, cache, error):
-        new_pos = pos
-        children = []
-        while True:
-            node = self.members[0].match_core(text, new_pos, cache, error)
-            if node is None or not (node.end - node.start):
-                # Node was None or 0 length. 0 would otherwise loop infinitely.
-                return Node(self, text, pos, new_pos, children)
-            children.append(node)
-            new_pos += node.end - node.start
-
-    def _as_rhs(self):
-        return u'%s*' % self._unicode_members()[0]
-
-
-class OneOrMore(Compound):
-    """An expression wrapper like the + quantifier in regexes.
-
-    You can also pass in an alternate minimum to make this behave like "2 or
-    more", "3 or more", etc.
-
-    """
-    __slots__ = ['min']
-
-    # TODO: Add max. It should probably succeed if there are more than the max
-    # --just not consume them.
-
-    def __init__(self, member, name='', min=1):
-        super(OneOrMore, self).__init__(member, name=name)
+    def __init__(self, member, *, min=0, max=float('inf'), name='', **kwargs):
+        super(Quantifier, self).__init__(member, name=name, **kwargs)
         self.min = min
+        self.max = max
 
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
-        while True:
+        size = len(text)
+        while new_pos < size and len(children) < self.max:
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
-                break
+                break # no more matches
             children.append(node)
             length = node.end - node.start
-            if length == 0:  # Don't loop infinitely.
+            if len(children) >= self.min and length == 0:  # Don't loop infinitely
                 break
             new_pos += length
         if len(children) >= self.min:
             return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
-        return u'%s+' % self._unicode_members()[0]
+        if self.min == 0 and self.max == 1:
+            qualifier = '?'
+        elif self.min == 0 and self.max == float('inf'):
+            qualifier = '*'
+        elif self.min == 1 and self.max == float('inf'):
+            qualifier = '+'
+        elif self.max == float('inf'):
+            qualifier = '{%d,}' % self.min
+        elif self.min == 0:
+            qualifier = '{,%d}' % self.max
+        else:
+            qualifier = '{%d,%d}' % (self.min, self.max)
+        return '%s%s' % (self._unicode_members()[0], qualifier)
+
+def ZeroOrMore(member, name=''):
+    return Quantifier(member, name=name, min=0, max=float('inf'))
+
+def OneOrMore(member, name='', min=1):
+    return Quantifier(member, name=name, min=min, max=float('inf'))
+
+def Optional(member, name=''):
+    return Quantifier(member, name=name, min=0, max=1)
