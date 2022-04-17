@@ -621,7 +621,6 @@ def test_binary_grammar():
         body = ~b"[^\xFF]*"
         terminator = b"\xFF"
     """)
-    length = 22
     assert g.parse(b"\xff22~" + (b"a" * 22) + b"\xff") is not None
 
 
@@ -649,3 +648,37 @@ def test_inconsistent_string_types_in_grammar():
         foo = "foo"
         bar = "bar"
     """)
+
+
+def test_grammar_extend_method():
+    g = Grammar(r"""
+        a = (b / c)+
+        b = "b"
+        c = "c"
+    """)
+    g2 = g.extend(r"""
+        b = ^b / "B"
+        c = ^c / "C"
+    """)
+    assert g.parse("bc")
+    assert g2.parse("bBcC")
+    with pytest.raises(ParseError):
+        g.parse("bBcC")
+
+
+def test_grammar_extend_dsl():
+    g = Grammar(r"""
+        a = (b / c)+
+        b = "b"
+        c = "c"
+    """)
+    g2 = Grammar(fr"""
+        {g.rule_definition[0]}
+        ======================
+        b = ^b / "B"
+        c = ^c / "C"
+    """)
+    assert g.parse("bc")
+    assert g2.parse("bBcC")
+    with pytest.raises(ParseError):
+        g.parse("bBcC")
