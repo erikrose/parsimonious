@@ -222,7 +222,7 @@ class NodeVisitor(object, metaclass=RuleDecoratorMeta):
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class = type(exc)
-            raise VisitationError(exc, exc_class, node)
+            raise VisitationError(exc, exc_class, node) from exc
 
     def generic_visit(self, node, visited_children):
         """Default visitor method
