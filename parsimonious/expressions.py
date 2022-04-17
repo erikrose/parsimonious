@@ -344,7 +344,6 @@ class Sequence(Compound):
     """
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
-        length_of_sequence = 0
         children = []
         for m in self.members:
             node = m.match_core(text, new_pos, cache, error)
@@ -353,9 +352,8 @@ class Sequence(Compound):
             children.append(node)
             length = node.end - node.start
             new_pos += length
-            length_of_sequence += length
         # Hooray! We got through all the members!
-        return Node(self, text, pos, pos + length_of_sequence, children)
+        return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
         return u'({0})'.format(u' '.join(self._unicode_members()))
