@@ -62,6 +62,8 @@ class Grammar(OrderedDict):
             ``rules`` in case of naming conflicts.
 
         """
+        # Retain a copy of the arguments to allow grammar extensions
+        self.rule_definition = rules, more_rules
 
         decorated_custom_rules = {
             k: (expression(v, k, self) if is_callable(v) else v)
@@ -70,6 +72,18 @@ class Grammar(OrderedDict):
         exprs, first = self.expressions_from_rules(rules, decorated_custom_rules)
         super().__init__(exprs.items())
         self.default_rule = first  # may be None
+
+    def extend(self, rules: str, **more_rules) -> "Grammar":
+        """Return a new grammar with the given rules added.
+        """
+        new_rules = f"""
+            {self.rule_definition[0]}
+            =========================
+            {rules}
+        """
+        new_more_rules = self.rule_definition[1].copy()
+        new_more_rules.update(more_rules)
+        return Grammar(new_rules, **new_more_rules)
 
     def default(self, rule_name):
         """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
@@ -215,6 +229,7 @@ rule_syntax = (r'''
     # leafmost kinds of nodes. Literals like "/" count as leaves.
 
     rules = _ rule*
+
     rule = label equals expression
     equals = "=" _
     literal = spaceless_literal _
@@ -231,11 +246,12 @@ rule_syntax = (r'''
     lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = reference / literal / regex / parenthesized
+    atom = inherited_reference / reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~r"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
+    inherited_reference = "^" reference
 
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
@@ -244,8 +260,13 @@ rule_syntax = (r'''
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
-    meaninglessness = ~r"\s+" / comment
+    meaninglessness = ~r"\s+" / comment / divider
     comment = ~r"#[^\r\n]*"
+
+    # At least two dashes or equals signs. Used for separating grammars which inherit by
+    # concatenation. Currently has no semantic content, though may later be used to make
+    # the syntax of the inherited/overridden rules explicit.
+    divider = ~r"={2,}|-{2,}"
     ''')
 
 
@@ -285,7 +306,10 @@ class LazyReference(str):
 
     # Just for debugging:
     def _as_rhs(self):
-        return '<LazyReference to %s>' % self
+        return f'<{self.__class__.__name__} to %s>' % self
+
+    def resolve_inherited_references(self, rule_map):
+        return self
 
 
 class RuleVisitor(NodeVisitor):
@@ -452,7 +476,9 @@ class RuleVisitor(NodeVisitor):
         # override earlier ones. This lets us define rules multiple times and
         # have the last declaration win, so you can extend grammars by
         # concatenation.
-        rule_map = OrderedDict((expr.name, expr) for expr in rules)
+        rule_map = OrderedDict()
+        for rule in rules:
+            rule_map[rule.name] = rule.resolve_inherited_references(rule_map)
 
         # And custom rules override string-based rules. This is the least
         # surprising choice when you compare the dict constructor:
@@ -471,6 +497,24 @@ class RuleVisitor(NodeVisitor):
         # it's surprising and requires writing lame branches like this.
         return rule_map, (rule_map[rules[0].name]
                           if isinstance(rules, list) and rules else None)
+
+    def visit_descendant_rules(self, node, visited_children):
+        divider, _, rules = visited_children
+        return rules
+
+    def visit_inherited_reference(self, node, visited_children):
+        caret, name = visited_children
+        return LazyInheritedReference(name)
+
+
+class LazyInheritedReference(LazyReference):
+    def resolve_refs(self, rule_map):
+        # This is a bug in RuleVisitor.visit_rules.
+        raise AssertionError(
+            f"Inherited references should have been resolved, but has not been resolved {self!r}.")
+
+    def resolve_inherited_references(self, rule_map):
+        return rule_map[self]
 
 
 class TokenRuleVisitor(RuleVisitor):

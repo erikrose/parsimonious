@@ -122,6 +122,9 @@ class Expression(StrAndRepr):
         # Nothing to do on the base expression.
         return self
 
+    def resolve_inherited_references(self, rule_map):
+        return self
+
     def parse(self, text, pos=0):
         """Return a parse tree of ``text``.
 
@@ -319,6 +322,10 @@ class Compound(Expression):
 
     def resolve_refs(self, rule_map):
         self.members = tuple(m.resolve_refs(rule_map) for m in self.members)
+        return self
+
+    def resolve_inherited_references(self, rule_map):
+        self.members = tuple(m.resolve_inherited_references(rule_map) for m in self.members)
         return self
 
     def __hash__(self):
