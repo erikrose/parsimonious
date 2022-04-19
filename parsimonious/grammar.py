@@ -64,7 +64,7 @@ class Grammar(OrderedDict):
             for k, v in more_rules.items()}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
-        super(Grammar, self).__init__(exprs.items())
+        super().__init__(exprs.items())
         self.default_rule = first  # may be None
 
     def default(self, rule_name):
@@ -260,7 +260,7 @@ class LazyReference(str):
     """A lazy reference to a rule, which we resolve after grokking all the
     rules"""
 
-    name = u''
+    name = ''
 
     def resolve_refs(self, rule_map):
         """
@@ -292,7 +292,7 @@ class LazyReference(str):
 
     # Just for debugging:
     def _as_rhs(self):
-        return u'<LazyReference to %s>' % self
+        return '<LazyReference to %s>' % self
 
 
 class RuleVisitor(NodeVisitor):

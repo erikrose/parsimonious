@@ -204,7 +204,7 @@ class Expression(StrAndRepr):
         return node
 
     def __str__(self):
-        return u'<%s %s>' % (
+        return '<%s %s>' % (
             self.__class__.__name__,
             self.as_rule())
 
@@ -218,7 +218,7 @@ class Expression(StrAndRepr):
         if rhs.startswith('(') and rhs.endswith(')'):
             rhs = rhs[1:-1]
 
-        return (u'%s = %s' % (self.name, rhs)) if self.name else rhs
+        return ('%s = %s' % (self.name, rhs)) if self.name else rhs
 
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
@@ -244,7 +244,7 @@ class Literal(Expression):
     __slots__ = ['literal']
 
     def __init__(self, literal, name=''):
-        super(Literal, self).__init__(name)
+        super().__init__(name)
         self.literal = literal
         self.identity_tuple = (name, literal)
 
@@ -278,7 +278,7 @@ class Regex(Expression):
 
     def __init__(self, pattern, name='', ignore_case=False, locale=False,
                  multiline=False, dot_all=False, unicode=False, verbose=False, ascii=False):
-        super(Regex, self).__init__(name)
+        super().__init__(name)
         self.re = re.compile(pattern, (ignore_case and re.I) |
                                       (locale and re.L) |
                                       (multiline and re.M) |
@@ -314,7 +314,7 @@ class Compound(Expression):
 
     def __init__(self, *members, **kwargs):
         """``members`` is a sequence of expressions."""
-        super(Compound, self).__init__(kwargs.get('name', ''))
+        super().__init__(kwargs.get('name', ''))
         self.members = members
 
     def resolve_refs(self, rule_map):
@@ -356,7 +356,7 @@ class Sequence(Compound):
         return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
-        return u'({0})'.format(u' '.join(self._unicode_members()))
+        return '({0})'.format(' '.join(self._unicode_members()))
 
 
 class OneOf(Compound):
@@ -374,7 +374,7 @@ class OneOf(Compound):
                 return Node(self, text, pos, node.end, children=[node])
 
     def _as_rhs(self):
-        return u'({0})'.format(u' / '.join(self._unicode_members()))
+        return '({0})'.format(' / '.join(self._unicode_members()))
 
 
 class Lookahead(Compound):
@@ -384,7 +384,7 @@ class Lookahead(Compound):
     __slots__ = ['negativity']
 
     def __init__(self, member, *, negative=False, **kwargs):
-        super(Lookahead, self).__init__(member, **kwargs)
+        super().__init__(member, **kwargs)
         self.negativity = bool(negative)
 
     def _uncached_match(self, text, pos, cache, error):
@@ -393,7 +393,7 @@ class Lookahead(Compound):
             return Node(self, text, pos, pos)
 
     def _as_rhs(self):
-        return u'%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
+        return '%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
 
 def Not(term):
     return Lookahead(term, negative=True)
@@ -406,7 +406,7 @@ class Quantifier(Compound):
     __slots__ = ['min', 'max']
 
     def __init__(self, member, *, min=0, max=float('inf'), name='', **kwargs):
-        super(Quantifier, self).__init__(member, name=name, **kwargs)
+        super().__init__(member, name=name, **kwargs)
         self.min = min
         self.max = max
 
