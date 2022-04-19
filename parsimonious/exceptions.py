@@ -76,7 +76,7 @@ class VisitationError(Exception):
 
         """
         self.original_class = exc_class
-        super(VisitationError, self).__init__(
+        super().__init__(
             '%s: %s\n\n'
             'Parse tree:\n'
             '%s' %

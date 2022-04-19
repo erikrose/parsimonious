@@ -64,7 +64,7 @@ class Grammar(OrderedDict):
             for k, v in more_rules.items()}
 
         exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
-        super(Grammar, self).__init__(exprs.items())
+        super().__init__(exprs.items())
         self.default_rule = first  # may be None
 
     def default(self, rule_name):
