@@ -14,9 +14,9 @@ class ParseError(StrAndRepr, Exception):
         self.expr = expr
 
     def __str__(self):
-        rule_name = ((u"'%s'" % self.expr.name) if self.expr.name else
+        rule_name = (("'%s'" % self.expr.name) if self.expr.name else
                      str(self.expr))
-        return u"Rule %s didn't match at '%s' (line %s, column %s)." % (
+        return "Rule %s didn't match at '%s' (line %s, column %s)." % (
                 rule_name,
                 self.text[self.pos:self.pos + 20],
                 self.line(),
@@ -49,7 +49,7 @@ class IncompleteParseError(ParseError):
     entire text."""
 
     def __str__(self):
-        return u"Rule '%s' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with '%s' (line %s, column %s)." % (
+        return "Rule '%s' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with '%s' (line %s, column %s)." % (
                 self.expr.name,
                 self.text[self.pos:self.pos + 20],
                 self.line(),
@@ -105,4 +105,4 @@ class UndefinedLabel(BadGrammar):
         self.label = label
 
     def __str__(self):
-        return u'The label "%s" was never defined.' % self.label
+        return 'The label "%s" was never defined.' % self.label

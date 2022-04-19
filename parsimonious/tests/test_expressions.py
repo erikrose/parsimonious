@@ -219,7 +219,7 @@ class ErrorReportingTests(TestCase):
             grammar.parse('chitty bangbang')
         except IncompleteParseError as error:
             self.assertEqual(str(
-                error), u"Rule 'sequence' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with 'bang' (line 1, column 12).")
+                error), "Rule 'sequence' matched in its entirety, but it didn't consume all the text. The non-matching portion of the text begins with 'bang' (line 1, column 12).")
 
     def test_favoring_named_rules(self):
         """Named rules should be used in error messages in favor of anonymous
@@ -229,7 +229,7 @@ class ErrorReportingTests(TestCase):
         try:
             grammar.parse('burp')
         except ParseError as error:
-            self.assertEqual(str(error), u"Rule 'starts_with_a' didn't match at 'burp' (line 1, column 1).")
+            self.assertEqual(str(error), "Rule 'starts_with_a' didn't match at 'burp' (line 1, column 1).")
 
     def test_line_and_column(self):
         """Make sure we got the line and column computation right."""
@@ -252,7 +252,7 @@ class RepresentationTests(TestCase):
     def test_unicode_crash(self):
         """Make sure matched unicode strings don't crash ``__str__``."""
         grammar = Grammar(r'string = ~r"\S+"u')
-        str(grammar.parse(u'中文'))
+        str(grammar.parse('中文'))
 
     def test_unicode(self):
         """Smoke-test the conversion of expressions to bits of rules.
@@ -270,7 +270,7 @@ class RepresentationTests(TestCase):
         """
         # ZeroOrMore
         self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs")* "spam"')),
-                         u"foo = 'bar' ('baz' 'eggs')* 'spam'")
+                         "foo = 'bar' ('baz' 'eggs')* 'spam'")
 
         # Quantifiers
         self.assertEqual(str(Grammar('foo = "bar" ("baz" "eggs"){2,4} "spam"')),
@@ -288,15 +288,15 @@ class RepresentationTests(TestCase):
 
         # OneOf
         self.assertEqual(str(Grammar('foo = "bar" ("baz" / "eggs") "spam"')),
-                         u"foo = 'bar' ('baz' / 'eggs') 'spam'")
+                         "foo = 'bar' ('baz' / 'eggs') 'spam'")
 
         # Lookahead
         self.assertEqual(str(Grammar('foo = "bar" &("baz" "eggs") "spam"')),
-                         u"foo = 'bar' &('baz' 'eggs') 'spam'")
+                         "foo = 'bar' &('baz' 'eggs') 'spam'")
 
         # Multiple sequences
         self.assertEqual(str(Grammar('foo = ("bar" "baz") / ("baff" "bam")')),
-                         u"foo = ('bar' 'baz') / ('baff' 'bam')")
+                         "foo = ('bar' 'baz') / ('baff' 'bam')")
 
     def test_unicode_surrounding_parens(self):
         """
@@ -305,7 +305,7 @@ class RepresentationTests(TestCase):
 
         """
         self.assertEqual(str(Grammar('foo = ("foo" ("bar" "baz"))')),
-                         u"foo = 'foo' ('bar' 'baz')")
+                         "foo = 'foo' ('bar' 'baz')")
 
 
 class SlotsTests(TestCase):

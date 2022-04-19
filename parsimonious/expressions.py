@@ -204,7 +204,7 @@ class Expression(StrAndRepr):
         return node
 
     def __str__(self):
-        return u'<%s %s>' % (
+        return '<%s %s>' % (
             self.__class__.__name__,
             self.as_rule())
 
@@ -218,7 +218,7 @@ class Expression(StrAndRepr):
         if rhs.startswith('(') and rhs.endswith(')'):
             rhs = rhs[1:-1]
 
-        return (u'%s = %s' % (self.name, rhs)) if self.name else rhs
+        return ('%s = %s' % (self.name, rhs)) if self.name else rhs
 
     def _unicode_members(self):
         """Return an iterable of my unicode-represented children, stopping
@@ -356,7 +356,7 @@ class Sequence(Compound):
         return Node(self, text, pos, new_pos, children)
 
     def _as_rhs(self):
-        return u'({0})'.format(u' '.join(self._unicode_members()))
+        return '({0})'.format(' '.join(self._unicode_members()))
 
 
 class OneOf(Compound):
@@ -374,7 +374,7 @@ class OneOf(Compound):
                 return Node(self, text, pos, node.end, children=[node])
 
     def _as_rhs(self):
-        return u'({0})'.format(u' / '.join(self._unicode_members()))
+        return '({0})'.format(' / '.join(self._unicode_members()))
 
 
 class Lookahead(Compound):
@@ -393,7 +393,7 @@ class Lookahead(Compound):
             return Node(self, text, pos, pos)
 
     def _as_rhs(self):
-        return u'%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
+        return '%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
 
 def Not(term):
     return Lookahead(term, negative=True)

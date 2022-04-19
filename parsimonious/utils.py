@@ -36,7 +36,7 @@ class Token(StrAndRepr):
         self.type = type
 
     def __str__(self):
-        return u'<Token "%s">' % (self.type,)
+        return '<Token "%s">' % (self.type,)
 
     def __eq__(self, other):
         return self.type == other.type

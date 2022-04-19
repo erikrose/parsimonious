@@ -568,9 +568,9 @@ class TokenGrammarTests(TestCase):
         assert "Rule 'foo' didn't match at" in str(e.value)
 
     def test_token_repr(self):
-        t = Token(u'💣')
+        t = Token('💣')
         self.assertTrue(isinstance(t.__repr__(), str))
-        self.assertEqual(u'<Token "💣">', t.__repr__())
+        self.assertEqual('<Token "💣">', t.__repr__())
 
     def test_token_star_plus_expressions(self):
         a = Token("a")
