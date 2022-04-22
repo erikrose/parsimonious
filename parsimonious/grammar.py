@@ -509,7 +509,7 @@ class RuleVisitor(NodeVisitor):
 
 class LazyInheritedReference(LazyReference):
     def resolve_refs(self, rule_map):
-        # This is a bug in RuleVisitor.visit_rules.
+        # If triggered, this indicates a bug in RuleVisitor.visit_rules.
         raise AssertionError(
             f"Inherited references should have been resolved, but has not been resolved {self!r}.")
 
