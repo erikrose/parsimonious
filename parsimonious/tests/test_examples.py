@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from parsimonious.exceptions import ParseError
-from parsimonious.tests.examples.grammar_syntax_extension import AttrsTokenGrammar
+from parsimonious.examples.grammar_syntax_extension import AttrsTokenGrammar
 
 
 def noparse(grammar, text):
