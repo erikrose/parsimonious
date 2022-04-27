@@ -406,7 +406,7 @@ class RuleVisitor(NodeVisitor):
         We resolve them all later.
 
         """
-        label, not_equals = reference
+        label, *_ = reference
         return LazyReference(label)
 
     def visit_regex(self, node, regex):

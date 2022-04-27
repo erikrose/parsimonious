@@ -9,7 +9,7 @@ This example extends parsimonious's grammar syntax for a different approach to t
 
 from typing import Dict
 
-from parsimonious.grammar import Grammar
+from parsimonious.grammar import Grammar, LazyReference
 from parsimonious.expressions import Expression
 from parsimonious.nodes import Node
 
@@ -18,6 +18,18 @@ class TokenRef(Expression):
     def __init__(self, ref, name=""):
         super().__init__(name=name)
         self.ref = ref
+
+    def __repr__(self):
+        if self.name:
+            return f"TokenRef({self.ref!r}, {self.name!r})"
+        else:
+            return f"TokenRef({self.ref!r})"
+
+    def __str__(self):
+        return self.ref
+
+    def _as_rhs(self):
+        return self.ref
 
     def _uncached_match(self, token_list, pos, cache, error):
         if self.ref == getattr(token_list[pos], "type", None):
@@ -56,7 +68,7 @@ class AttrsTokenGrammar(Grammar):
 
         # Token names are required to be all-caps alphanumeric, with underscores.
         reference = token_reference / ^reference
-        token_reference = ~r"[A-Z_][A-Z0-9_]*"
+        token_reference = ~r"[A-Z_][A-Z0-9_]*" _ !equals
 
         attrs_predicate_expression = token_reference "[" _ attr_expressions "]" _
         attr_expressions = ("@" label "=" _ expression _)+
@@ -64,7 +76,14 @@ class AttrsTokenGrammar(Grammar):
 
     class visitor_cls(Grammar.visitor_cls):
         def visit_token_reference(self, node, children) -> str:
-            return TokenRef(node.text)
+            ref, _, _ = children
+            return TokenRef(ref.text, name=ref.text)
+
+        def visit_reference(self, node, children):
+            if isinstance(children[0], TokenRef):
+                return children[0]
+            else:
+                return LazyReference(children[0])
 
         def visit_attrs_predicate_expression(self, node, children):
             label, _, lbrac,  attr_expressions, rbrac, _ = children

@@ -215,13 +215,14 @@ class NodeVisitor(object, metaclass=RuleDecoratorMeta):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
         except Exception as exc:
-            # implentors may define exception classes that should not be
+            # implementors may define exception classes that should not be
             # wrapped.
             if isinstance(exc, self.unwrapped_exceptions):
                 raise
             # Catch any exception, and tack on a parse tree so it's easier to
             # see where it went wrong.
             exc_class = type(exc)
+            raise
             raise VisitationError(exc, exc_class, node)
 
     def generic_visit(self, node, visited_children):
