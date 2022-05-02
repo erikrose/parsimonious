@@ -41,9 +41,10 @@ class AttrsPredicateExpression(Expression):
     A predicate expression that matches a node with a given set of attributes.
     """
 
-    def __init__(self, token_type, attrs: Dict[str, str]):
+    def __init__(self, token_type, attrs: Dict[str, str], name=""):
         self.attrs = attrs
         self.token_type = token_type
+        super().__init__(name=name)
 
     def __repr__(self) -> str:
         return f"AttrsPredicateExpression({self.token_type}[{self.attrs}])" % self.attrs
