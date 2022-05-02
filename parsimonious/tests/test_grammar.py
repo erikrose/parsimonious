@@ -663,4 +663,5 @@ def test_left_associative():
     """
 
     grammar = Grammar(language_grammar)
-    grammar.parse('1 + 2')
+    assert grammar["operator_expression"].parse("1+2") is not None
+    grammar.parse("1+2")
