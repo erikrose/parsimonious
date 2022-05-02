@@ -649,3 +649,18 @@ def test_inconsistent_string_types_in_grammar():
         foo = "foo"
         bar = "bar"
     """)
+
+
+def test_left_associative():
+    # Regression test for https://github.com/erikrose/parsimonious/issues/209
+    language_grammar = r"""
+    expression = operator_expression / non_operator_expression
+    non_operator_expression = number_expression
+
+    operator_expression = expression "+" non_operator_expression
+
+    number_expression = ~"[0-9]+"
+    """
+
+    grammar = Grammar(language_grammar)
+    grammar.parse('1 + 2')
