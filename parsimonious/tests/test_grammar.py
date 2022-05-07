@@ -4,9 +4,8 @@ from sys import version_info
 from unittest import TestCase
 
 import pytest
-import sys
 
-from parsimonious.exceptions import BadGrammar, UndefinedLabel, ParseError, VisitationError
+from parsimonious.exceptions import BadGrammar, LeftRecursionError, ParseError, UndefinedLabel, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -663,5 +662,6 @@ def test_left_associative():
     """
 
     grammar = Grammar(language_grammar)
-    assert grammar["operator_expression"].parse("1+2") is not None
-    grammar.parse("1+2")
+    with pytest.raises(LeftRecursionError) as e:
+        grammar["operator_expression"].parse("1+2")
+    assert "Parsimonious is a packrat parser, so it can't handle left recursion." in str(e.value)
