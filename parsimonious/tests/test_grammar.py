@@ -4,9 +4,8 @@ from sys import version_info
 from unittest import TestCase
 
 import pytest
-import sys
 
-from parsimonious.exceptions import BadGrammar, UndefinedLabel, ParseError, VisitationError
+from parsimonious.exceptions import BadGrammar, LeftRecursionError, ParseError, UndefinedLabel, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -649,3 +648,20 @@ def test_inconsistent_string_types_in_grammar():
         foo = "foo"
         bar = "bar"
     """)
+
+
+def test_left_associative():
+    # Regression test for https://github.com/erikrose/parsimonious/issues/209
+    language_grammar = r"""
+    expression = operator_expression / non_operator_expression
+    non_operator_expression = number_expression
+
+    operator_expression = expression "+" non_operator_expression
+
+    number_expression = ~"[0-9]+"
+    """
+
+    grammar = Grammar(language_grammar)
+    with pytest.raises(LeftRecursionError) as e:
+        grammar["operator_expression"].parse("1+2")
+    assert "Parsimonious is a packrat parser, so it can't handle left recursion." in str(e.value)
