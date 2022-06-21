@@ -7,7 +7,7 @@ import pytest
 
 from parsimonious.exceptions import BadGrammar, LeftRecursionError, ParseError, UndefinedLabel, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
-from parsimonious.grammar import rule_grammar, RuleVisitor, Grammar, TokenGrammar, LazyReference
+from parsimonious.grammar import rule_grammar, rule_syntax, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
 from parsimonious.utils import Token
 
@@ -540,6 +540,12 @@ class GrammarTests(TestCase):
             for example in examples:
                 with pytest.raises(ParseError):
                     grammar[rule].parse(example)
+
+    def test_equal(self):
+        self.assertEqual(Grammar(rule_syntax), Grammar(rule_syntax))
+        self.assertNotEqual(Grammar('expr = ~"[a-z]{1,3}"'), Grammar('expr = ~"[a-z]{2,3}"'))
+        self.assertNotEqual(Grammar('expr = ~"[a-z]{1,3}"'), Grammar('expr = ~"[a-z]{1,4}"'))
+        self.assertNotEqual(Grammar('expr = &"a"'), Grammar('expr = !"a"'))
 
 
 class TokenGrammarTests(TestCase):
