@@ -215,7 +215,7 @@ class NodeVisitor(object, metaclass=RuleDecoratorMeta):
             # Don't catch and re-wrap already-wrapped exceptions.
             raise
         except Exception as exc:
-            # implentors may define exception classes that should not be
+            # implementors may define exception classes that should not be
             # wrapped.
             if isinstance(exc, self.unwrapped_exceptions):
                 raise

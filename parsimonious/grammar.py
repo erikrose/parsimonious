@@ -7,6 +7,7 @@ by hand.
 """
 from collections import OrderedDict
 from textwrap import dedent
+from typing import Type
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
@@ -44,6 +45,9 @@ class Grammar(OrderedDict):
       increase cache hit ratio. [Is this implemented yet?]
 
     """
+    rule_visitor: Type["RuleVisitor"]
+    rule_grammar: "Grammar"
+
     def __init__(self, rules='', **more_rules):
         """Construct a grammar.
 
@@ -58,14 +62,28 @@ class Grammar(OrderedDict):
             ``rules`` in case of naming conflicts.
 
         """
+        # Retain a copy of the arguments to allow grammar extensions
+        self.rule_definition = rules, more_rules
 
         decorated_custom_rules = {
             k: (expression(v, k, self) if is_callable(v) else v)
             for k, v in more_rules.items()}
 
-        exprs, first = self._expressions_from_rules(rules, decorated_custom_rules)
+        exprs, first = self.expressions_from_rules(rules, decorated_custom_rules)
         super().__init__(exprs.items())
         self.default_rule = first  # may be None
+
+    def extend(self, rules: str, **more_rules) -> "Grammar":
+        """Return a new grammar with the given rules added.
+        """
+        new_rules = f"""
+            {self.rule_definition[0]}
+            =========================
+            {rules}
+        """
+        new_more_rules = self.rule_definition[1].copy()
+        new_more_rules.update(more_rules)
+        return Grammar(new_rules, **new_more_rules)
 
     def default(self, rule_name):
         """Return a new Grammar whose :term:`default rule` is ``rule_name``."""
@@ -86,7 +104,8 @@ class Grammar(OrderedDict):
         new.default_rule = self.default_rule
         return new
 
-    def _expressions_from_rules(self, rules, custom_rules):
+    @classmethod
+    def expressions_from_rules(cls, rules, custom_rules):
         """Return a 2-tuple: a dict of rule names pointing to their
         expressions, and then the first rule.
 
@@ -99,8 +118,8 @@ class Grammar(OrderedDict):
             Expressions
 
         """
-        tree = rule_grammar.parse(rules)
-        return RuleVisitor(custom_rules).visit(tree)
+        tree = cls.rule_grammar.parse(rules)
+        return cls.visitor_cls(custom_rules).visit(tree)
 
     def parse(self, text, pos=0):
         """Parse some text with the :term:`default rule`.
@@ -141,18 +160,6 @@ class Grammar(OrderedDict):
         return "Grammar({!r})".format(str(self))
 
 
-class TokenGrammar(Grammar):
-    """A Grammar which takes a list of pre-lexed tokens instead of text
-
-    This is useful if you want to do the lexing yourself, as a separate pass:
-    for example, to implement indentation-based languages.
-
-    """
-    def _expressions_from_rules(self, rules, custom_rules):
-        tree = rule_grammar.parse(rules)
-        return TokenRuleVisitor(custom_rules).visit(tree)
-
-
 class BootstrappingGrammar(Grammar):
     """The grammar used to recognize the textual rules that describe other
     grammars
@@ -162,7 +169,7 @@ class BootstrappingGrammar(Grammar):
     grammar description syntax.
 
     """
-    def _expressions_from_rules(self, rule_syntax, custom_rules):
+    def expressions_from_rules(self, rule_syntax, custom_rules):
         """Return the rules for parsing the grammar definition syntax.
 
         Return a 2-tuple: a dict of rule names pointing to their expressions,
@@ -222,6 +229,7 @@ rule_syntax = (r'''
     # leafmost kinds of nodes. Literals like "/" count as leaves.
 
     rules = _ rule*
+
     rule = label equals expression
     equals = "=" _
     literal = spaceless_literal _
@@ -238,11 +246,12 @@ rule_syntax = (r'''
     lookahead_term = "&" term _
     term = not_term / lookahead_term / quantified / atom
     quantified = atom quantifier
-    atom = reference / literal / regex / parenthesized
+    atom = inherited_reference / reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
     parenthesized = "(" _ expression ")" _
     quantifier = ~r"[*+?]|\{\d*,\d+\}|\{\d+,\d*\}|\{\d+\}" _
     reference = label !equals
+    inherited_reference = "^" reference
 
     # A subsequent equal sign is the only thing that distinguishes a label
     # (which begins a new rule) from a reference (which is just a pointer to a
@@ -251,8 +260,13 @@ rule_syntax = (r'''
 
     # _ = ~r"\s*(?:#[^\r\n]*)?\s*"
     _ = meaninglessness*
-    meaninglessness = ~r"\s+" / comment
+    meaninglessness = ~r"\s+" / comment / divider
     comment = ~r"#[^\r\n]*"
+
+    # At least two dashes or equals signs. Used for separating grammars which inherit by
+    # concatenation. Currently has no semantic content, though may later be used to make
+    # the syntax of the inherited/overridden rules explicit.
+    divider = ~r"={2,}|-{2,}"
     ''')
 
 
@@ -292,7 +306,10 @@ class LazyReference(str):
 
     # Just for debugging:
     def _as_rhs(self):
-        return '<LazyReference to %s>' % self
+        return f'<{self.__class__.__name__} to %s>' % self
+
+    def resolve_inherited_references(self, rule_map):
+        return self
 
 
 class RuleVisitor(NodeVisitor):
@@ -389,7 +406,7 @@ class RuleVisitor(NodeVisitor):
         We resolve them all later.
 
         """
-        label, not_equals = reference
+        label, *_ = reference
         return LazyReference(label)
 
     def visit_regex(self, node, regex):
@@ -459,7 +476,9 @@ class RuleVisitor(NodeVisitor):
         # override earlier ones. This lets us define rules multiple times and
         # have the last declaration win, so you can extend grammars by
         # concatenation.
-        rule_map = OrderedDict((expr.name, expr) for expr in rules)
+        rule_map = OrderedDict()
+        for rule in rules:
+            rule_map[rule.name] = rule.resolve_inherited_references(rule_map)
 
         # And custom rules override string-based rules. This is the least
         # surprising choice when you compare the dict constructor:
@@ -479,6 +498,24 @@ class RuleVisitor(NodeVisitor):
         return rule_map, (rule_map[rules[0].name]
                           if isinstance(rules, list) and rules else None)
 
+    def visit_descendant_rules(self, node, visited_children):
+        divider, _, rules = visited_children
+        return rules
+
+    def visit_inherited_reference(self, node, visited_children):
+        caret, name = visited_children
+        return LazyInheritedReference(name)
+
+
+class LazyInheritedReference(LazyReference):
+    def resolve_refs(self, rule_map):
+        # If triggered, this indicates a bug in RuleVisitor.visit_rules.
+        raise AssertionError(
+            f"Inherited references should have been resolved, but has not been resolved {self!r}.")
+
+    def resolve_inherited_references(self, rule_map):
+        return rule_map[self]
+
 
 class TokenRuleVisitor(RuleVisitor):
     """A visitor which builds expression trees meant to work on sequences of
@@ -496,13 +533,24 @@ class TokenRuleVisitor(RuleVisitor):
                          'than characters.')
 
 
+class TokenGrammar(Grammar):
+    """A Grammar which takes a list of pre-lexed tokens instead of text
+
+    This is useful if you want to do the lexing yourself, as a separate pass:
+    for example, to implement indentation-based languages.
+
+    """
+    visitor_cls = TokenRuleVisitor
+
+
 # Bootstrap to level 1...
-rule_grammar = BootstrappingGrammar(rule_syntax)
+Grammar.visitor_cls = RuleVisitor
+rule_grammar = Grammar.rule_grammar = BootstrappingGrammar(rule_syntax)
 # ...and then to level 2. This establishes that the node tree of our rule
 # syntax is built by the same machinery that will build trees of our users'
 # grammars. And the correctness of that tree is tested, indirectly, in
 # test_grammar.
-rule_grammar = Grammar(rule_syntax)
+rule_grammar = Grammar.rule_grammar = Grammar(rule_syntax)
 
 
 # TODO: Teach Expression trees how to spit out Python representations of
