@@ -10,7 +10,7 @@ from collections import defaultdict
 from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
 import regex as re
 
-from parsimonious.exceptions import ParseError, IncompleteParseError
+from parsimonious.exceptions import ParseError, IncompleteParseError, LeftRecursionError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
@@ -94,6 +94,9 @@ def expression(callable, rule_name, grammar):
             return '{custom function "%s"}' % callable.__name__
 
     return AdHocExpression(name=rule_name)
+
+
+IN_PROGRESS = object()
 
 
 class Expression(StrAndRepr):
@@ -189,10 +192,10 @@ class Expression(StrAndRepr):
             node = expr_cache[pos]
         else:
             # TODO: Set default value to prevent infinite recursion in left-recursive rules.
-            node = expr_cache[pos] = self._uncached_match(text,
-                                                          pos,
-                                                          cache,
-                                                          error)
+            expr_cache[pos] = IN_PROGRESS  # Mark as in progress
+            node = expr_cache[pos] = self._uncached_match(text, pos, cache, error)
+        if node is IN_PROGRESS:
+            raise LeftRecursionError(text, pos=-1, expr=self)
 
         # Record progress for error reporting:
         if node is None and pos >= error.pos and (

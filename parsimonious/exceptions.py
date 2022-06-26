@@ -1,3 +1,4 @@
+from textwrap import dedent
 
 from parsimonious.utils import StrAndRepr
 
@@ -42,6 +43,20 @@ class ParseError(StrAndRepr, Exception):
             return self.pos - self.text.rindex('\n', 0, self.pos)
         except (ValueError, AttributeError):
             return self.pos + 1
+
+
+class LeftRecursionError(ParseError):
+    def __str__(self):
+        rule_name = self.expr.name if self.expr.name else str(self.expr)
+        window = self.text[self.pos:self.pos + 20]
+        return dedent(f"""
+            Left recursion in rule {rule_name!r} at {window!r} (line {self.line()}, column {self.column()}).
+
+            Parsimonious is a packrat parser, so it can't handle left recursion.
+            See https://en.wikipedia.org/wiki/Parsing_expression_grammar#Indirect_left_recursion
+            for how to rewrite your grammar into a rule that does not use left-recursion.
+            """
+        ).strip()
 
 
 class IncompleteParseError(ParseError):
