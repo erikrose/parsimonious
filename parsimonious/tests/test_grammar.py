@@ -542,6 +542,13 @@ class GrammarTests(TestCase):
                     grammar[rule].parse(example)
 
     def test_equal(self):
+        grammar_def = (r"""
+            x = y / z / ""
+            y = "y" x
+            z = "z" x
+        """)
+        assert Grammar(grammar_def) == Grammar(grammar_def)
+
         self.assertEqual(Grammar(rule_syntax), Grammar(rule_syntax))
         self.assertNotEqual(Grammar('expr = ~"[a-z]{1,3}"'), Grammar('expr = ~"[a-z]{2,3}"'))
         self.assertNotEqual(Grammar('expr = ~"[a-z]{1,3}"'), Grammar('expr = ~"[a-z]{1,4}"'))
