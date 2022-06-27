@@ -116,12 +116,12 @@ class Expression(StrAndRepr):
         return hash(self.identity_tuple)
 
     def __eq__(self, other):
-        return self._eq_no_recursion(other, set())
+        return self._eq_check_cycles(other, set())
 
     def __ne__(self, other):
         return not (self == other)
 
-    def _eq_no_recursion(self, other, checked):
+    def _eq_check_cycles(self, other, checked):
         # keep a set of all pairs that are already checked, so we won't fall into infinite recursions.
         checked.add((id(self), id(other)))
         return other.__class__ is self.__class__ and self.identity_tuple == other.identity_tuple
@@ -329,11 +329,11 @@ class Compound(Expression):
         self.members = tuple(m.resolve_refs(rule_map) for m in self.members)
         return self
 
-    def _eq_no_recursion(self, other, checked):
+    def _eq_check_cycles(self, other, checked):
         return (
-            super()._eq_no_recursion(other, checked) and
+            super()._eq_check_cycles(other, checked) and
             len(self.members) == len(other.members) and
-            all(m._eq_no_recursion(mo, checked) for m, mo in zip(self.members, other.members) if (id(m), id(mo)) not in checked)
+            all(m._eq_check_cycles(mo, checked) for m, mo in zip(self.members, other.members) if (id(m), id(mo)) not in checked)
         )
 
     def __hash__(self):
@@ -404,9 +404,9 @@ class Lookahead(Compound):
     def _as_rhs(self):
         return '%s%s' % ('!' if self.negativity else '&', self._unicode_members()[0])
 
-    def _eq_no_recursion(self, other, checked):
+    def _eq_check_cycles(self, other, checked):
         return (
-            super()._eq_no_recursion(other, checked) and
+            super()._eq_check_cycles(other, checked) and
             self.negativity == other.negativity
         )
 
@@ -456,9 +456,9 @@ class Quantifier(Compound):
             qualifier = '{%d,%d}' % (self.min, self.max)
         return '%s%s' % (self._unicode_members()[0], qualifier)
 
-    def _eq_no_recursion(self, other, checked):
+    def _eq_check_cycles(self, other, checked):
         return (
-            super()._eq_no_recursion(other, checked) and
+            super()._eq_check_cycles(other, checked) and
             self.min == other.min and
             self.max == other.max
         )
