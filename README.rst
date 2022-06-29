@@ -441,8 +441,11 @@ Niceties
 
 Version History
 ===============
+(Next release)
+  * ...
 
 0.10.0
+  * Fix infinite recursion in __eq__ in some cases. (FelisNivalis)
   * Improve error message in left-recursive rules. (lucaswiman)
   * Add support for range ``{min,max}`` repetition expressions (righthandabacus)
   * Fix bug in ``*`` and ``+`` for token grammars (lucaswiman)
