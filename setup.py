@@ -10,6 +10,7 @@ setup(
     version='0.10.0',
     description='(Soon to be) the fastest pure-Python PEG parser I could muster',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     author='Erik Rose',
     author_email='erikrose@grinchcentral.com',
     license='MIT',
