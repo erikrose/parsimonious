@@ -41,9 +41,10 @@ dependencies = ["regex>=2022.3.15"]
 testing = ["pytest"]
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false  # otherwise the tests will be included as data. Currently we have no data files within package.
 
-[tool.setuptools.packages]
-find = {namespaces = false}
+[tool.setuptools.packages.find]
+namespaces = false
+exclude = ["parsimonious.tests", "parsimonious.tests.*"]
 
 [tool.setuptools_scm]
