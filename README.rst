@@ -227,6 +227,9 @@ serve best:
 You can wrap a rule across multiple lines if you like; the syntax is very
 forgiving.
 
+If you want to save your grammar into a separate file, you should name it using
+``.ppeg`` extension.
+
 
 Syntax Reference
 ----------------
