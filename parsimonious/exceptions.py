@@ -2,9 +2,11 @@ from textwrap import dedent
 
 from parsimonious.utils import StrAndRepr
 
+
 class ParsimoniousError(Exception):
     """A base exception class to allow library users to catch any Parsimonious error."""
     pass
+
 
 class ParseError(StrAndRepr, ParsimoniousError):
     """A call to ``Expression.parse()`` or ``match()`` didn't match."""
