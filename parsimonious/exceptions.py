@@ -2,8 +2,11 @@ from textwrap import dedent
 
 from parsimonious.utils import StrAndRepr
 
+class ParsimoniousError(Exception):
+    """A base exception class to allow library users to catch any Parsimonious error."""
+    pass
 
-class ParseError(StrAndRepr, Exception):
+class ParseError(StrAndRepr, ParsimoniousError):
     """A call to ``Expression.parse()`` or ``match()`` didn't match."""
 
     def __init__(self, text, pos=-1, expr=None):
@@ -71,7 +74,7 @@ class IncompleteParseError(ParseError):
                 self.column())
 
 
-class VisitationError(Exception):
+class VisitationError(ParsimoniousError):
     """Something went wrong while traversing a parse tree.
 
     This exception exists to augment an underlying exception with information
@@ -100,7 +103,7 @@ class VisitationError(Exception):
              node.prettily(error=node)))
 
 
-class BadGrammar(StrAndRepr, Exception):
+class BadGrammar(StrAndRepr, ParsimoniousError):
     """Something was wrong with the definition of a grammar.
 
     Note that a ParseError might be raised instead if the error is in the
