@@ -145,10 +145,10 @@ And call it like that:
 
     """
 
-    tree = grammar.parse(data)
+    ini_visitor = IniVisitor(grammar)
 
-    iv = IniVisitor()
-    output = iv.visit(tree)
+    output = ini_visitor.parse(data)
+
     print(output)
 
 This would yield

@@ -188,6 +188,9 @@ class NodeVisitor(object, metaclass=RuleDecoratorMeta):
     #: wrapped in a VisitationError when they arise.
     unwrapped_exceptions = ()
 
+    def __init__(self, grammar=None):
+        self.grammar = grammar
+
     # TODO: If we need to optimize this, we can go back to putting subclasses
     # in charge of visiting children; they know when not to bother. Or we can
     # mark nodes as not descent-worthy in the grammar.
