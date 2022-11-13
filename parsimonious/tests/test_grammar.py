@@ -275,6 +275,23 @@ class GrammarTests(TestCase):
             <Node matching " ">
             <Node matching "bang">""")
 
+    def test_named_parens(self):
+        grammar = Grammar(r'''sequence = "chitty" (?P<bang_container> " " "bang")+''')
+        # Make sure it's not as if the parens aren't there:
+        self.assertRaises(ParseError, grammar.parse, 'chitty bangbang')
+
+        s = 'chitty bang bang'
+        self.assertEqual(str(grammar.parse(s)),
+            """<Node called "sequence" matching "chitty bang bang">
+    <Node matching "chitty">
+    <Node matching " bang bang">
+        <Node called "bang_container" matching " bang">
+            <Node matching " ">
+            <Node matching "bang">
+        <Node called "bang_container" matching " bang">
+            <Node matching " ">
+            <Node matching "bang">""")
+
     def test_resolve_refs_order(self):
         """Smoke-test a circumstance where lazy references don't get resolved."""
         grammar = Grammar("""
