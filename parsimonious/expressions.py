@@ -6,7 +6,7 @@ These do the parsing.
 # TODO: Make sure all symbol refs are local--not class lookups or
 # anything--for speed. And kill all the dots.
 
-from inspect import getargspec
+from inspect import getfullargspec
 import re
 
 from six import integer_types, python_2_unicode_compatible
@@ -57,7 +57,7 @@ def expression(callable, rule_name, grammar):
         part of, to make delegating to other rules possible
 
     """
-    num_args = len(getargspec(callable).args)
+    num_args = len(getfullargspec(callable).args)
     if num_args == 2:
         is_simple = True
     elif num_args == 5:
