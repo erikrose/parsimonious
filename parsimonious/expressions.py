@@ -8,7 +8,10 @@ These do the parsing.
 
 from collections import defaultdict
 from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
-import regex as re
+try:
+    import regex as re
+except ImportError:
+    import re  # Fallback as per https://github.com/erikrose/parsimonious/issues/231
 
 from parsimonious.exceptions import ParseError, IncompleteParseError, LeftRecursionError
 from parsimonious.nodes import Node, RegexNode
