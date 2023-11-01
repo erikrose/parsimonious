@@ -36,7 +36,8 @@ class ParseError(StrAndRepr, ParsimoniousError):
         match."""
         # This is a method rather than a property in case we ever wanted to
         # pass in which line endings we want to use.
-        if isinstance(self.text, list):  # TokenGrammar
+        # Check if TokenGrammar or BinaryGrammar where line number does not make sense.
+        if isinstance(self.text, list) or isinstance(self.text, (bytes, bytearray)):  
             return None
         else:
             return self.text.count('\n', 0, self.pos) + 1
@@ -46,7 +47,7 @@ class ParseError(StrAndRepr, ParsimoniousError):
         # We choose 1-based because that's what Python does with SyntaxErrors.
         try:
             return self.pos - self.text.rindex('\n', 0, self.pos)
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, TypeError):
             return self.pos + 1
 
 
