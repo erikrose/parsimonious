@@ -7,7 +7,7 @@ These do the parsing.
 # anything--for speed. And kill all the dots.
 
 from collections import defaultdict
-from inspect import getfullargspec, isfunction, ismethod, ismethoddescriptor
+from inspect import getargs, isfunction, ismethod, ismethoddescriptor
 try:
     import regex as re
 except ImportError:
@@ -67,7 +67,7 @@ def expression(callable, rule_name, grammar):
     if ismethoddescriptor(callable) and hasattr(callable, '__func__'):
         callable = callable.__func__
 
-    num_args = len(getfullargspec(callable).args)
+    num_args = len(getargs(callable).args)
     if ismethod(callable):
         # do not count the first argument (typically 'self') for methods
         num_args -= 1
