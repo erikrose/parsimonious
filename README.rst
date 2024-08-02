@@ -91,7 +91,7 @@ Another example would be to implement a parser for ``.ini``-files. Consider the 
         equal       = ws? "=" ws?
         lpar        = "["
         rpar        = "]"
-        ws          = ~"\s*"
+        ws          = ~r"\s*"
         emptyline   = ws+
         """
     )
