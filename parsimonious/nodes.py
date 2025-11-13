@@ -99,6 +99,12 @@ class Node(object):
                 self.end == other.end and
                 self.children == other.children)
 
+    def __hash__(self) -> int:
+        """A unique hash key for this specific Node instance."""
+        return hash(
+            (self.expr, self.full_text, self.start, self.end, self.children)
+        )
+
     def __ne__(self, other):
         return not self == other
 
