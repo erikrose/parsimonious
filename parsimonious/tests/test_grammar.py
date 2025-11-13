@@ -601,6 +601,9 @@ class TokenGrammarTests(TestCase):
         with pytest.raises(ParseError) as e:
             grammar.parse([Token('tokenBOO'), Token('token2')])
         assert "Rule 'foo' didn't match at" in str(e.value)
+        with pytest.raises(ParseError) as e:
+            grammar.parse([Token('token1')])
+        assert "Rule <TokenMatcher 'token2'> didn't match at" in str(e.value)
 
     def test_token_repr(self):
         t = Token('💣')
