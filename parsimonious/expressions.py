@@ -305,7 +305,13 @@ class Regex(Expression):
         if m is not None:
             span = m.span()
             node = RegexNode(self, text, pos, pos + span[1] - span[0])
-            node.match = m  # TODO: A terrible idea for cache size?
+            # Only store match object for small texts to avoid GC pressure.
+            # Large queries (e.g. IN clauses with 1000+ values) can create
+            # thousands of match objects that all reference the same large
+            # input string, causing expensive GC pauses (300-400ms).
+            # For texts < 2KB, the memory pressure is negligible.
+            if len(text) < 2048:
+                node.match = m
             return node
 
     def _regex_flags_from_bits(self, bits):
