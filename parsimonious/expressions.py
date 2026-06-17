@@ -432,7 +432,10 @@ class Quantifier(Compound):
         new_pos = pos
         children = []
         size = len(text)
-        while new_pos < size and len(children) < self.max:
+        # Keep matching while there's input left to consume, or while we still
+        # need more matches to satisfy the minimum (a zero-width member, such as
+        # a lookahead or an empty-matching regex, can match even at end of input).
+        while (new_pos < size or len(children) < self.min) and len(children) < self.max:
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
                 break # no more matches

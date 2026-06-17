@@ -72,6 +72,19 @@ class LengthTests(TestCase):
         self.assertRaises(ParseError, Quantifier(Literal('b'), min=3, max=5).match, 'bb')  # with custom min and max; failure
         self.len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
 
+    def test_quantifier_zero_width_at_end_of_input(self):
+        # A member that can match zero-width (a lookahead or empty-matching
+        # regex) must be attempted even at the end of the input. ``*`` and ``?``
+        # already do this; ``+`` and ``{n,}`` must behave consistently.
+        self.len_eq(OneOrMore(Regex('^')).match(''), 0)  # +, whole input consumed
+        self.len_eq(OneOrMore(Regex('$')).match('ab', 2), 0)  # + at end of input
+        self.len_eq(Quantifier(Regex('^'), min=2, max=5).match(''), 0)  # {2,5}
+        # Consistency with the * and ? siblings at end of input:
+        self.len_eq(ZeroOrMore(Regex('$')).match('ab', 2), 0)
+        self.len_eq(Optional(Regex('$')).match('ab', 2), 0)
+        # A member that genuinely cannot match at end of input must still fail.
+        self.assertRaises(ParseError, OneOrMore(Literal('a')).match, '')
+
 
 class TreeTests(TestCase):
     """Tests for building the right trees

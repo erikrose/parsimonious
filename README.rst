@@ -445,6 +445,10 @@ Niceties
 Version History
 ===============
 
+Unreleased
+  * Fix ``+`` and ``{min,}`` quantifiers failing on a zero-width member (such as
+    a lookahead or empty-matching regex) at the end of the input. (gaoflow)
+
 0.11.0
   * Correctly handle `/` expressions with multiple terms in a row. (lucaswiman)
   * Start using pyproject.toml. (Kolanich)
