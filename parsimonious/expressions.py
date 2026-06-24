@@ -274,7 +274,7 @@ class TokenMatcher(Literal):
 
     """
     def _uncached_match(self, token_list, pos, cache, error):
-        if token_list[pos].type == self.literal:
+        if pos < len(token_list) and token_list[pos].type == self.literal:
             return Node(self, token_list, pos, pos + 1)
 
 
