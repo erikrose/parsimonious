@@ -274,7 +274,7 @@ class TokenMatcher(Literal):
 
     """
     def _uncached_match(self, token_list, pos, cache, error):
-        if token_list[pos].type == self.literal:
+        if pos < len(token_list) and token_list[pos].type == self.literal:
             return Node(self, token_list, pos, pos + 1)
 
 
@@ -431,8 +431,10 @@ class Quantifier(Compound):
     def _uncached_match(self, text, pos, cache, error):
         new_pos = pos
         children = []
-        size = len(text)
-        while new_pos < size and len(children) < self.max:
+        # Don't stop at end-of-input: the member may still match zero-width
+        # there (e.g. ``~"a*"+`` on ""). The zero-width guard below prevents
+        # looping forever. See #257.
+        while len(children) < self.max:
             node = self.members[0].match_core(text, new_pos, cache, error)
             if node is None:
                 break # no more matches

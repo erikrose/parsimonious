@@ -71,6 +71,7 @@ class LengthTests(TestCase):
         self.assertRaises(ParseError, OneOrMore(Literal('b'), min=3).match, 'bb')  # with custom min; failure
         self.assertRaises(ParseError, Quantifier(Literal('b'), min=3, max=5).match, 'bb')  # with custom min and max; failure
         self.len_eq(OneOrMore(Regex('^')).match('bb'), 0)  # attempt infinite loop
+        self.len_eq(OneOrMore(Regex('a*')).match(''), 0)  # zero-width match at end-of-input (#257)
 
 
 class TreeTests(TestCase):
