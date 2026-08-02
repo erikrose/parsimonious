@@ -186,3 +186,57 @@ class SpecialCasesTests(TestCase):
         with self.assertRaises(NotImplementedError) as e:
             MyVisitor().parse('bar')
         self.assertIn("No visitor method was defined for this expression: myrule = ~'[bar]'", str(e.exception))
+
+    def test_ini_visitor_handles_leading_empty_lines(self):
+        """
+        The IniVisitor example from README should handle inputs starting
+        with empty lines without crashing.
+
+        Regression test for https://github.com/erikrose/parsimonious/issues/235
+        """
+        grammar = Grammar(r'''
+            expr        = (entry / emptyline)*
+            entry       = section pair*
+            section     = lbrac word rbrac ws
+            pair        = key eq value ws
+            key         = word+
+            eq          = ~"="
+            value       = ~"[^\n]*"
+            word        = ~"\w+"
+            lbrac       = ~"\["
+            rbrac       = ~"\]"
+            ws          = ~"\s*"
+            emptyline   = ws+
+        ''')
+
+        class IniVisitor(NodeVisitor):
+            def visit_expr(self, node, visited_children):
+                output = {}
+                for child in visited_children:
+                    output.update(child[0])
+                return output
+
+            def visit_entry(self, node, visited_children):
+                key, values = visited_children
+                return {key: dict(values)}
+
+            def visit_section(self, node, visited_children):
+                _, section, *_ = visited_children
+                return section.text
+
+            def visit_pair(self, node, visited_children):
+                key, _, value, *_ = node.children
+                return key.text, value.text
+
+            def visit_emptyline(self, node, visited_children):
+                """ Ignore empty lines. """
+                return {}
+
+            def generic_visit(self, node, visited_children):
+                return visited_children or node
+
+        # Input with leading empty lines should parse and visit without error
+        data = '\n\n[section]\nkey=value\n'
+        tree = grammar.parse(data)
+        result = IniVisitor().visit(tree)
+        self.assertEqual(result, {'section': {'key': 'value'}})

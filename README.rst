@@ -124,6 +124,10 @@ We could now implement a subclass of ``NodeVisitor`` like so:
             key, _, value, *_ = node.children
             return key.text, value.text
 
+        def visit_emptyline(self, node, visited_children):
+            """ Ignore empty lines. """
+            return {}
+
         def generic_visit(self, node, visited_children):
             """ The generic visit method. """
             return visited_children or node
