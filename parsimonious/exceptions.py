@@ -64,6 +64,22 @@ class LeftRecursionError(ParseError):
         ).strip()
 
 
+class RecursionLimitError(ParseError):
+    """Python's recursion limit was hit while matching deeply nested input."""
+
+    def __str__(self):
+        rule_name = (("'%s'" % self.expr.name) if self.expr and self.expr.name else
+                     str(self.expr))
+        return (
+            "Recursion limit exceeded while matching rule %s at '%s' "
+            "(line %s, column %s)."
+            % (rule_name,
+               self.text[self.pos:self.pos + 20],
+               self.line(),
+               self.column())
+        )
+
+
 class IncompleteParseError(ParseError):
     """A call to ``parse()`` matched a whole Expression but did not consume the
     entire text."""

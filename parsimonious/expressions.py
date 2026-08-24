@@ -13,7 +13,7 @@ try:
 except ImportError:
     import re  # Fallback as per https://github.com/erikrose/parsimonious/issues/231
 
-from parsimonious.exceptions import ParseError, IncompleteParseError, LeftRecursionError
+from parsimonious.exceptions import ParseError, IncompleteParseError, LeftRecursionError, RecursionLimitError
 from parsimonious.nodes import Node, RegexNode
 from parsimonious.utils import StrAndRepr
 
@@ -156,7 +156,10 @@ class Expression(StrAndRepr):
 
         """
         error = ParseError(text)
-        node = self.match_core(text, pos, defaultdict(dict), error)
+        try:
+            node = self.match_core(text, pos, defaultdict(dict), error)
+        except RecursionError as exc:
+            raise RecursionLimitError(text, pos=pos, expr=self) from exc
         if node is None:
             raise error
         return node

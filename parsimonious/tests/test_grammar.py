@@ -5,7 +5,7 @@ from unittest import TestCase
 
 import pytest
 
-from parsimonious.exceptions import BadGrammar, LeftRecursionError, ParseError, UndefinedLabel, VisitationError
+from parsimonious.exceptions import BadGrammar, LeftRecursionError, ParseError, ParsimoniousError, UndefinedLabel, VisitationError
 from parsimonious.expressions import Literal, Lookahead, Regex, Sequence, TokenMatcher, is_callable
 from parsimonious.grammar import rule_grammar, rule_syntax, RuleVisitor, Grammar, TokenGrammar, LazyReference
 from parsimonious.nodes import Node
@@ -701,3 +701,26 @@ def test_left_associative():
     with pytest.raises(LeftRecursionError) as e:
         grammar["operator_expression"].parse("1+2")
     assert "Parsimonious is a packrat parser, so it can't handle left recursion." in str(e.value)
+
+
+
+def test_deep_right_recursive_nesting_raises_parsimonious_error():
+    # Regression for https://github.com/erikrose/parsimonious/issues/262
+    grammar = Grammar(r'''
+        expr = paren / "x"
+        paren = "(" expr ")"
+    ''')
+    for depth in range(2, 11):
+        nested = "(" * depth + "x" + ")" * depth
+        assert grammar.parse(nested)
+
+    deep = "(" * 248 + "x" + ")" * 248
+    assert not issubclass(RecursionError, ParsimoniousError)
+    try:
+        grammar.parse(deep)
+    except RecursionError:
+        raise AssertionError("raw RecursionError is not a ParsimoniousError")
+    except ParsimoniousError:
+        pass
+    else:
+        raise AssertionError("expected ParsimoniousError for deeply nested input")
