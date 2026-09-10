@@ -6,6 +6,7 @@ by hand.
 
 """
 from collections import OrderedDict
+from copy import copy
 from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
@@ -288,6 +289,27 @@ class LazyReference(str):
             except KeyError:
                 raise UndefinedLabel(cur)
             if not isinstance(cur, LazyReference):
+                # ``self`` is either a named, top-level rule (e.g. "foo" in
+                # "foo = bar") whose right-hand side is nothing but a bare
+                # reference to another rule, or an anonymous reference to
+                # "foo" used inline in some other rule's definition (e.g.
+                # the "foo" in "baz = foo / quux"). Either way, ``cur`` ends
+                # up being the actual Expression instance belonging to
+                # whatever "foo" ultimately resolves to, possibly several
+                # aliases down the chain. Returning it as-is would make
+                # "foo" and that expression the very same object, which is
+                # harmless until something reports on either of them by
+                # name: both would then show up under the final target's
+                # name in parse trees and error messages, and "foo" itself
+                # would seem to vanish. Make an independent copy carrying
+                # the name this reference was actually made under, so
+                # aliasing one rule to another doesn't erase the alias's
+                # own identity.
+                requested_name = self.name or str(self)
+                if cur.name != requested_name:
+                    cur = copy(cur)
+                    cur.name = requested_name
+                    cur.identity_tuple = (requested_name,) + cur.identity_tuple[1:]
                 return cur
 
     # Just for debugging:

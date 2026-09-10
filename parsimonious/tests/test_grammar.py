@@ -465,12 +465,50 @@ class GrammarTests(TestCase):
         the first rule has forward references and is thus a LazyReference at
         some point during grammar compilation.
 
+        The resulting node should be reported under the default rule's own
+        name (``styled_text``), not under the name of the rule it merely
+        aliases (``text``); the two are distinct rules even though one is
+        defined as a bare reference to the other.
+
         """
         grammar = Grammar(r"""
             styled_text = text
             text        = "hi"
             """)
-        self.assertEqual(grammar.parse('hi'), Node(grammar['text'], 'hi', 0, 2))
+        self.assertEqual(grammar.parse('hi'), Node(grammar['styled_text'], 'hi', 0, 2))
+
+    def test_rule_aliasing_keeps_its_own_name(self):
+        """A rule that is defined as a bare reference to another rule is
+        still its own rule and should keep its own name in the parse tree,
+        instead of the two being silently merged under whichever rule the
+        alias happens to point to.
+
+        This also has to hold when the alias is reached indirectly, through
+        another rule that just mentions it in passing (``rule0`` below),
+        since resolving that reference must not collapse straight down to
+        the ultimate concrete rule and skip ``rule1``'s own identity along
+        the way.
+
+        """
+        grammar = Grammar(r"""
+            rule0 = rule1 / rule3
+            rule1 = rule2
+            rule2 = ~"[a-z][a-zA-Z0-9]*"
+            rule3 = rule2 " " rule2
+            """)
+
+        self.assertEqual(grammar['rule1'].name, 'rule1')
+        self.assertEqual(grammar['rule2'].name, 'rule2')
+
+        tree = grammar.parse('abc')
+        self.assertEqual(tree.expr_name, 'rule0')
+        self.assertEqual(tree.children[0].expr_name, 'rule1')
+
+        # A plain, unaliased reference to rule2 (as used inside rule3) is
+        # untouched and still reports as rule2.
+        rule3_match = grammar['rule3'].parse('abc def')
+        self.assertEqual(rule3_match.expr_name, 'rule3')
+        self.assertEqual(rule3_match.children[0].expr_name, 'rule2')
 
     def test_immutable_grammar(self):
         """Make sure that a Grammar is immutable after being created."""
