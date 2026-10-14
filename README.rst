@@ -445,6 +445,10 @@ Niceties
 Version History
 ===============
 
+Unreleased
+  * Preserve inherited ``@rule`` definitions and the default parsing rule when
+    a visitor subclass adds or replaces decorated rules. (#51)
+
 0.11.0
   * Correctly handle `/` expressions with multiple terms in a row. (lucaswiman)
   * Start using pyproject.toml. (Kolanich)
