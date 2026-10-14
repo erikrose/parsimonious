@@ -7,7 +7,7 @@ are public.
 """
 # TODO: If this is slow, think about using cElementTree or something.
 from inspect import isfunction
-from sys import version_info, exc_info
+from sys import version_info
 
 from parsimonious.exceptions import VisitationError, UndefinedLabel
 
@@ -130,6 +130,25 @@ class RegexNode(Node):
 
 
 class RuleDecoratorMeta(type):
+    @staticmethod
+    def _ancestors(bases):
+        """Merge base MROs before class creation invokes subclass hooks."""
+        sequences = [list(base.__mro__) for base in bases] + [list(bases)]
+        ancestors = []
+        while any(sequences):
+            sequences = [sequence for sequence in sequences if sequence]
+            for sequence in sequences:
+                candidate = sequence[0]
+                if all(candidate not in other[1:] for other in sequences):
+                    break
+            else:
+                raise TypeError('Cannot create a consistent method resolution order')
+            ancestors.append(candidate)
+            for sequence in sequences:
+                if sequence[0] is candidate:
+                    sequence.pop(0)
+        return ancestors
+
     def __new__(metaclass, name, bases, namespace):
         def unvisit(name):
             """Remove any leading "visit_" from a method name."""
@@ -143,13 +162,35 @@ class RuleDecoratorMeta(type):
             methods.sort(key=(lambda x: x.func_code.co_firstlineno)
                              if version_info[0] < 3 else
                              (lambda x: x.__code__.co_firstlineno))
-            # Possible enhancement: once we get the Grammar extensibility story
-            # solidified, we can have @rules *add* to the default grammar
-            # rather than pave over it.
-            namespace['grammar'] = Grammar(
-                '\n'.join('{name} = {expr}'.format(name=unvisit(m.__name__),
-                                                   expr=m._rule)
-                          for m in methods))
+            # Keep rule strings separate from visitor methods: overriding a
+            # method without @rule must not discard its inherited rule.
+            local_rules = {unvisit(m.__name__): m._rule for m in methods}
+            mro = metaclass._ancestors(bases)
+            grammar_owner = next((base for base in mro
+                                  if 'grammar' in base.__dict__), None)
+            ancestors = []
+            for base in mro:
+                # An explicitly supplied grammar replaces the decorated one.
+                if ('grammar' in base.__dict__ and
+                        '_rule_strings' not in base.__dict__):
+                    if grammar_owner is None or base in grammar_owner.__mro__:
+                        break
+                    continue
+                ancestors.append(base)
+
+            rules = {}
+            for base in reversed(ancestors):
+                rules.update(base.__dict__.get('_rule_strings', {}))
+            rules.update(local_rules)
+            grammar = Grammar('\n'.join('{name} = {expr}'.format(name=k, expr=v)
+                                        for k, v in rules.items()))
+            # Keep the nearest inherited decorated grammar's entry point.
+            for base in ancestors:
+                if 'grammar' in base.__dict__:
+                    grammar = grammar.default(base.grammar.default_rule.name)
+                    break
+            namespace['grammar'] = grammar
+            namespace['_rule_strings'] = local_rules
         return super(RuleDecoratorMeta,
                      metaclass).__new__(metaclass, name, bases, namespace)
 
@@ -308,18 +349,21 @@ def rule(rule_string):
     a :class:`~parsimonious.Grammar` that becomes the NodeVisitor's
     :term:`default grammar`.
 
-    Typically, the choice of a default rule for this grammar is simple: whatever
-    ``@rule`` comes first in the class is the default. But the choice may become
-    surprising if you divide the ``@rule`` calls among subclasses. At the
-    moment, which method "comes first" is decided simply by comparing line
-    numbers, so whatever method is on the smallest-numbered line will be the
-    default. In a future release, this will change to pick the
-    first ``@rule`` call on the basemost class that has one. That way, a
-    subclass which does not override the default rule's ``visit_*`` method
-    won't unintentionally change which rule is the default.
+    The first decorated method, ordered by its source line number, supplies
+    the default rule in a new visitor. A subclass can add or replace rules
+    without losing inherited rules or changing the inherited default rule.
+    Overriding a visitor method without ``@rule`` changes only its behavior,
+    not the rule it visits. When a subclass declares decorated rules, inherited
+    rule overrides follow Python's method resolution order. Rebuilding the
+    subclass's grammar leaves its parents unchanged.
+
+    An explicit ``grammar`` attribute replaces the inherited decorated
+    grammar. If a subclass then introduces decorated rules, they start a new
+    grammar rather than extending that explicit grammar. As before, decorated
+    rules take precedence over an explicit grammar in the same class.
 
     """
     def decorator(method):
-        method._rule = rule_string  # XXX: Maybe register them on a class var instead so we can just override a @rule'd visitor method on a subclass without blowing away the rule string that comes with it.
+        method._rule = rule_string
         return method
     return decorator
