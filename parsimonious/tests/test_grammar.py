@@ -629,6 +629,21 @@ class TokenGrammarTests(TestCase):
         with pytest.raises(ParseError):
             grammar["bar"].parse([b])
 
+    def test_token_literal_at_end_of_input(self):
+        """Token literals should fail to match, not raise IndexError, when
+        there are no tokens left, so lookaheads and sequences work at the end
+        of the token list."""
+        a = Token("a")
+        grammar = TokenGrammar("""
+            foo = "a" "b"
+            bar = "a" !"b"
+        """)
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([a])
+        with pytest.raises(ParseError):
+            grammar["foo"].parse([])
+        assert grammar["bar"].parse([a]) is not None
+
 
 def test_precedence_of_string_modifiers():
     # r"strings", etc. should be parsed as a single literal, not r followed
