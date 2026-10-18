@@ -125,8 +125,21 @@ We could now implement a subclass of ``NodeVisitor`` like so:
             return key.text, value.text
 
         def generic_visit(self, node, visited_children):
-            """ The generic visit method. """
+            """Keep child results for non-leaves; keep the node for leaves."""
             return visited_children or node
+
+``visited_children`` is always a list containing the return value of each
+child's visitor method, in order. Its elements need not be ``Node`` objects:
+the visitor methods above return strings, tuples, dictionaries, or lists.
+
+The example's ``generic_visit`` returns a non-empty ``visited_children`` list
+unchanged, but returns ``node`` when that list is empty. This includes an
+optional expression that matched nothing: it has no children, so this visitor
+returns its ``Node``, whereas a matched optional expression returns a one-item
+list containing its child's visitor result. Nested expressions can therefore
+produce nested lists. This is a choice made by this example's visitor, not an
+automatic conversion performed by Parsimonious; override ``generic_visit`` or
+add a ``visit_<rule_name>`` method to choose different return values.
 
 And call it like that:
 
