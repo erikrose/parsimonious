@@ -59,7 +59,7 @@ You can have forward references and even right recursion; it's all taken care
 of by the grammar compiler. The first rule is taken to be the default start
 symbol, but you can override that.
 
-Next, let's parse something and get an abstract syntax tree:
+Next, let's parse something and get a concrete syntax tree:
 
 .. code:: python
 
@@ -69,8 +69,12 @@ Next, let's parse something and get an abstract syntax tree:
         <RegexNode called "text" matching "bold stuff">
         <Node called "bold_close" matching "))">
 
-You'd typically then use a ``nodes.NodeVisitor`` subclass (see below) to walk
-the tree and do something useful with it.
+The tree includes the matched delimiters, such as ``bold_open`` and
+``bold_close``, as well as the text between them. You'd typically then use a
+``nodes.NodeVisitor`` subclass (see below) to walk the tree and produce the
+representation your application needs. A visitor can discard those delimiter
+nodes to build an abstract syntax tree, or return another kind of value, such
+as the dictionary in the following example.
 
 Another example would be to implement a parser for ``.ini``-files. Consider the following:
 
