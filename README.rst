@@ -299,6 +299,61 @@ Syntax Reference
 .. _flags: https://docs.python.org/3/howto/regex.html#compilation
 .. _regex: https://github.com/mrabarnett/mrab-regex
 
+Keywords and Identifiers
+------------------------
+
+A literal such as ``"while"`` also matches the beginning of ``whilevar``.
+When excluding reserved words from identifiers, include the identifier's word
+boundary in the reserved-word rule. Negative lookahead then rejects the whole
+keyword without rejecting identifiers that merely start with it:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+
+    grammar = Grammar(r'''
+        identifier = !reserved ~"[a-zA-Z_][a-zA-Z_0-9?]*"
+        reserved = ("if" / "while" / "case") !identifier_char
+        identifier_char = ~"[a-zA-Z_0-9?]"
+    ''')
+
+    assert grammar.parse("whilevar").text == "whilevar"
+    assert grammar.parse("if_ready").text == "if_ready"
+    # grammar.parse("while") raises ParseError.
+
+The boundary must use the same continuation characters as your identifiers.
+For this grammar, ``while?`` is an identifier, while ``while`` is reserved.
+
+Stopping at a Delimiter Word
+----------------------------
+
+Repetition and regex matching are greedy. A regex that accepts spaces and words
+will consume a delimiter word too. Check for the delimiter before consuming each
+word instead:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+
+    movement = Grammar(r'''
+        command = source _ "to" _ destination
+        source = word (_ !to_word word)*
+        destination = word (_ word)*
+        to_word = "to" !word_char
+        word = ~"[a-zA-Z_]+"
+        word_char = ~"[a-zA-Z_]"
+        _ = ~"[ \\t]+"
+    ''')
+
+    tree = movement.parse("place the shelves to higher place")
+    assert tree.children[0].text == "place the shelves"
+    assert tree.children[4].text == "higher place"
+    assert movement.parse("go toward town to another place")
+
+``!to_word`` leaves the delimiter for ``command`` to consume. The word boundary
+allows words such as ``toward`` to remain part of the source. Whitespace is
+explicit in this grammar, so the spaces on either side of ``to`` are required.
+
 Optimizing Grammars
 ===================
 
