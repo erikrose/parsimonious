@@ -331,6 +331,52 @@ can. Otherwise, lower-level patterns could succeed but be empty and put a bunch
 of useless nodes in your tree that didn't really match anything.
 
 
+Handling Whitespace Explicitly
+=============================
+
+Parsimonious does not skip whitespace automatically. Spaces between expressions
+in the grammar separate those expressions; they do not match or discard spaces
+in the input. Add a whitespace rule where the language permits it. A common
+convention is to call that rule ``_`` and include it in token rules:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+    from parsimonious.nodes import NodeVisitor
+
+    grammar = Grammar(r'''
+        bold_text = bold_open text bold_close
+        bold_open = "((" _
+        bold_close = _ "))"
+        text = ~"[A-Z0-9_]+"i
+        _ = ~"\\s*"
+    ''')
+
+    class TextVisitor(NodeVisitor):
+        def visit_text(self, node, visited_children):
+            return node.text
+
+        def visit_bold_text(self, node, visited_children):
+            opening, text, closing = visited_children
+            return text
+
+        def generic_visit(self, node, visited_children):
+            return visited_children
+
+    visitor = TextVisitor()
+    assert visitor.visit(grammar.parse("((bold_stuff))")) == "bold_stuff"
+    assert visitor.visit(grammar.parse("(( bold_stuff ))")) == "bold_stuff"
+    assert visitor.visit(grammar.parse("((\nBold_Stuff\t))")) == "Bold_Stuff"
+
+Here ``\\s*`` permits zero or more whitespace characters next to the
+delimiters, including tabs and newlines. It does not allow whitespace *inside*
+``text``. Use a narrower expression such as ``[ \\t]*`` if newlines are
+significant to your language.
+
+Whitespace still produces parse-tree nodes. A visitor can leave those results
+out of its return value, as ``visit_bold_text`` does above. The name ``_``
+itself has no special skipping behavior.
+
 Processing Parse Trees
 ======================
 
