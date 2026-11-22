@@ -331,6 +331,47 @@ can. Otherwise, lower-level patterns could succeed but be empty and put a bunch
 of useless nodes in your tree that didn't really match anything.
 
 
+Finding a Match Within Text
+==========================
+
+``parse()`` requires the grammar to consume the entire input from the given
+position. ``match()`` allows a suffix to remain, but still starts at the given
+position (zero by default); it does not search ahead automatically.
+
+To find the first occurrence of a rule, add a search rule that skips characters
+only while the desired rule does not match. This example finds a user ID and
+latitude, in that order, inside the same pair of parentheses:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+
+    search = Grammar(r'''
+        search = (!record any)* record
+        record = "(" before_user userid before_lat latitude tail ")"
+        before_user = (!(userid / ")") any)*
+        before_lat = (!(latitude / ")") any)*
+        tail = (!")" any)*
+        userid = ~"user_?id=[0-9a-zA-Z]+"
+        latitude = "lat" ("=" / ":") ~"[0-9]+(?:\\.[0-9]+)?"
+        any = ~"."s
+    ''')
+
+    text = "prefix (user_id=1000&lat=23.3) suffix"
+    record = search.match(text).children[1]
+    assert record.text == "(user_id=1000&lat=23.3)"
+    assert text[record.start:record.end] == record.text
+
+    text = "prefix (... user_id=1000 ... lat:23.3 ...) suffix"
+    record = search.match(text).children[1]
+    assert record.text == "(... user_id=1000 ... lat:23.3 ...)"
+
+The negative lookaheads stop the gaps at the next field or closing parenthesis,
+so fields from separate parenthesized groups cannot be combined. ``match()``
+leaves the suffix unconsumed; a missing complete record raises ``ParseError``.
+If the starting position is already known, use
+``search['record'].match(text, pos=...)`` directly.
+
 Processing Parse Trees
 ======================
 
