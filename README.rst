@@ -383,6 +383,66 @@ When something goes wrong in your visitor, you get a nice error like this::
 The parse tree is tacked onto the exception, and the node whose visitor method
 raised the error is pointed out.
 
+Interpreting a Shared Rule in Different Contexts
+----------------------------------------------
+
+A rule can appear under several parent rules. Its visitor method receives the
+same kind of node each time; use the enclosing rules' visitor methods to group
+or interpret the returned values according to their context. For example, both
+a board and artwork can contain lines:
+
+.. code:: python
+
+    from parsimonious.grammar import Grammar
+    from parsimonious.nodes import NodeVisitor
+
+    grammar = Grammar(r'''
+        document = board artwork
+        board = "board{" line* "}"
+        artwork = "artwork{" line* "}"
+        line = "line(" number "," number ")"
+        number = ~"[0-9]+"
+    ''')
+
+    class DrawingVisitor(NodeVisitor):
+        def visit_document(self, node, visited_children):
+            return visited_children
+
+        def visit_board(self, node, visited_children):
+            opening, lines, closing = visited_children
+            return {"kind": "board", "lines": lines}
+
+        def visit_artwork(self, node, visited_children):
+            opening, lines, closing = visited_children
+            return {"kind": "artwork", "lines": lines}
+
+        def visit_line(self, node, visited_children):
+            opening, x, comma, y, closing = visited_children
+            return (x, y)
+
+        def visit_number(self, node, visited_children):
+            return int(node.text)
+
+        def generic_visit(self, node, visited_children):
+            return visited_children
+
+    tree = grammar.parse("board{line(1,2)line(3,4)}artwork{line(5,6)}")
+    assert DrawingVisitor().visit(tree) == [
+        {"kind": "board", "lines": [(1, 2), (3, 4)]},
+        {"kind": "artwork", "lines": [(5, 6)]},
+    ]
+
+``visited_children`` contains the results of visiting the children, not the
+original child nodes. In this example, ``generic_visit`` keeps the list returned
+by each ``line*`` expression. The shared ``visit_line`` creates coordinates,
+while ``visit_board`` and ``visit_artwork`` keep the two collections separate.
+
+Children are visited before their parent, so setting a "current parent" inside
+``visit_board`` is too late to affect its children's visits. Also, a simple
+alias such as ``board_line = line`` reuses the expression; it does not create an
+extra wrapper node with its own visit. Keep context-specific interpretation in
+the enclosing structured rule instead.
+
 Why No Streaming Tree Processing?
 ---------------------------------
 
