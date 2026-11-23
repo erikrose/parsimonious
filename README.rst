@@ -337,6 +337,11 @@ Processing Parse Trees
 A parse tree has a node for each expression matched, even if it matched a
 zero-length string, like ``"thing"?`` might.
 
+A node's truth value indicates whether it consumed any input. Empty optional
+or repeated matches, empty literals, and successful lookaheads are false;
+nonempty matches are true even when the node has no children. This also applies
+to bytes and token grammars. A false node still represents a successful match.
+
 The ``NodeVisitor`` class provides an inversion-of-control framework for
 walking a tree and returning a new construct (tree, string, or whatever) based
 on it. For now, have a look at its docstrings for more detail. There's also a
