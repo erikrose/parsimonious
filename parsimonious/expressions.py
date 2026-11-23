@@ -274,7 +274,7 @@ class TokenMatcher(Literal):
 
     """
     def _uncached_match(self, token_list, pos, cache, error):
-        if token_list[pos].type == self.literal:
+        if pos < len(token_list) and token_list[pos].type == self.literal:
             return Node(self, token_list, pos, pos + 1)
 
 
@@ -465,6 +465,43 @@ class Quantifier(Compound):
             self.min == other.min and
             self.max == other.max
         )
+
+class Separated(Quantifier):
+    """Repeated items with a separator between successive matches.
+
+    The repetition bounds count items. Children contain only item nodes, so
+    visitors can collect them uniformly. The node's span includes separators.
+    A separator is consumed only if the following item also matches.
+    """
+
+    def __init__(self, member, separator, *, min=0, max=float('inf'), name=''):
+        super().__init__(member, min=min, max=max, name=name)
+        self.members = (member, separator)
+
+    def _uncached_match(self, text, pos, cache, error):
+        member, separator = self.members
+        new_pos = pos
+        children = []
+        while len(children) < self.max:
+            item_pos = new_pos
+            if children:
+                delimiter = separator.match_core(text, new_pos, cache, error)
+                if delimiter is None:
+                    break
+                item_pos = delimiter.end
+            node = member.match_core(text, item_pos, cache, error)
+            if node is None:
+                break
+            children.append(node)
+            previous_pos, new_pos = new_pos, node.end
+            if new_pos == previous_pos and len(children) >= self.min:
+                break  # Empty items and separators must not loop forever.
+        if len(children) >= self.min:
+            return Node(self, text, pos, new_pos, children)
+
+    def _as_rhs(self):
+        return '(%s %% %s)' % (super()._as_rhs(), self._unicode_members()[1])
+
 
 def ZeroOrMore(member, name=''):
     return Quantifier(member, name=name, min=0, max=float('inf'))

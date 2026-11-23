@@ -269,6 +269,13 @@ Syntax Reference
 ``things+``             One or more things. This is greedy, always consuming as
                         many repetitions as it can.
 
+``things+ % sep``       One or more things separated by ``sep``. Use ``*`` for
+                        zero or more, or a range quantifier to bound the item
+                        count. Separators are consumed only between items.
+                        The resulting node has item children only; its text
+                        and span include separators. Group a compound separator
+                        with parentheses, as in ``word+ % ("," space*)``.
+
 ``~r"regex"ilmsuxa``    Regexes have ``~`` in front and are quoted like
                         literals. Any flags_ (``asilmx``) follow the end quotes
                         as single chars. Regexes are good for representing
@@ -444,6 +451,10 @@ Niceties
 
 Version History
 ===============
+
+Unreleased
+  * Add separated repetitions with ``item+ % separator``, ``item* % separator``
+    and bounded forms, and a ``Separated`` expression for programmatic grammars.
 
 0.11.0
   * Correctly handle `/` expressions with multiple terms in a row. (lucaswiman)
