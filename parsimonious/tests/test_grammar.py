@@ -548,7 +548,7 @@ class GrammarTests(TestCase):
         ]
         for rule, examples in should_parse:
             for example in examples:
-                assert grammar[rule].parse(example)
+                assert grammar[rule].parse(example) is not None
 
         should_not_parse = [
             ("left_missing", ["a" * 6]),

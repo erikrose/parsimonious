@@ -58,6 +58,10 @@ class Node(object):
         """
         return iter(self.children)
 
+    def __bool__(self):
+        """Return whether this node consumed any input."""
+        return self.start != self.end
+
     @property
     def text(self):
         """Return the text this node matched."""

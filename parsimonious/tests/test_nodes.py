@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from unittest import SkipTest, TestCase
 from parsimonious import Grammar, NodeVisitor, VisitationError, rule
-from parsimonious.expressions import Literal
-from parsimonious.nodes import Node
+from parsimonious.expressions import Literal, Regex
+from parsimonious.grammar import TokenGrammar
+from parsimonious.nodes import Node, RegexNode
+from parsimonious.utils import Token
 
 
 class HtmlFormatter(NodeVisitor):
@@ -86,6 +88,97 @@ class SimpleTests(TestCase):
     def test_match_shortcut(self):
         """Exercise the simple case in which the visitor takes care of matching."""
         self.assertEqual(HtmlFormatter().match('((other things'), '<b>')
+
+
+class NodeTruthinessTests(TestCase):
+    """A node's truth value describes whether it consumed input."""
+
+    def test_absent_optional_and_repeated_nodes(self):
+        for suffix in ('?', '*'):
+            with self.subTest(suffix=suffix):
+                node = Grammar("value = 'a'" + suffix).parse('')
+                self.assertIsInstance(node, Node)
+                self.assertEqual((node.start, node.end), (0, 0))
+                self.assertEqual(node.children, [])
+                self.assertFalse(node)
+
+    def test_empty_match_at_nonzero_offset(self):
+        for empty, text in (('', 'ab'), (b'', b'ab')):
+            with self.subTest(text=text):
+                node = Literal(empty).match(text, pos=1)
+                self.assertEqual((node.start, node.end), (1, 1))
+                self.assertEqual(node.text, empty)
+                self.assertFalse(node)
+
+    def test_nonempty_leaf_nodes(self):
+        for text in ('枚', b'\x00'):
+            with self.subTest(text=text):
+                node = Literal(text).parse(text)
+                self.assertEqual((node.start, node.end), (0, 1))
+                self.assertEqual(node.children, [])
+                self.assertTrue(node)
+
+    def test_regex_nodes_follow_match_span(self):
+        expression = Regex('a*')
+        present = expression.match('baaa', pos=1)
+        self.assertIsInstance(present, RegexNode)
+        self.assertEqual(present.match.span(), (1, 4))
+        self.assertTrue(present)
+
+        absent = expression.match('b', pos=1)
+        self.assertIsInstance(absent, RegexNode)
+        self.assertEqual((absent.start, absent.end), (1, 1))
+        self.assertEqual(absent.match.span(), (1, 1))
+        self.assertFalse(absent)
+
+    def test_token_nodes_follow_token_span(self):
+        grammar = TokenGrammar('value = "long_token_name"?')
+        present = grammar.parse([Token('long_token_name')])
+        self.assertEqual((present.start, present.end), (0, 1))
+        self.assertTrue(present)
+        self.assertTrue(present.children[0])
+
+        absent = grammar.match([Token('other')], pos=1)
+        self.assertEqual((absent.start, absent.end), (1, 1))
+        self.assertFalse(absent)
+
+    def test_visitor_can_use_node_truthiness(self):
+        class OptionalValueVisitor(NodeVisitor):
+            grammar = Grammar('value = "a"?')
+
+            def visit_value(self, node, visited_children):
+                if not node:
+                    return []
+                return [node.text]
+
+            def generic_visit(self, node, visited_children):
+                return node.text
+
+        visitor = OptionalValueVisitor()
+        self.assertEqual(visitor.parse('a'), ['a'])
+        self.assertEqual(visitor.parse(''), [])
+
+    def test_zero_width_nodes_with_children(self):
+        tree = Grammar('value = (&"a")? &"a"').match('a')
+        self.assertEqual(len(tree.children), 2)
+        self.assertEqual(len(tree.children[0].children), 1)
+        for node in [tree] + tree.children:
+            with self.subTest(expression=type(node.expr).__name__):
+                self.assertEqual((node.start, node.end), (0, 0))
+                self.assertFalse(node)
+
+    def test_zero_width_matches_remain_parse_successes(self):
+        examples = (
+            ('value = ("" / "x") "a"', 'a'),
+            ('value = (&"a")+ "a" !"a"', 'a'),
+            ('value = ""', ''),
+        )
+        for rules, text in examples:
+            with self.subTest(rules=rules):
+                node = Grammar(rules).parse(text)
+                self.assertIsInstance(node, Node)
+                self.assertEqual((node.start, node.end), (0, len(text)))
+                self.assertEqual(node.text, text)
 
 
 class CoupledFormatter(NodeVisitor):
