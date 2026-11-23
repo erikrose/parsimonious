@@ -10,7 +10,7 @@ from textwrap import dedent
 
 from parsimonious.exceptions import BadGrammar, UndefinedLabel
 from parsimonious.expressions import (Literal, Regex, Sequence, OneOf,
-    Lookahead, Quantifier, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
+    Lookahead, Quantifier, Separated, Optional, ZeroOrMore, OneOrMore, Not, TokenMatcher,
     expression, is_callable)
 from parsimonious.nodes import NodeVisitor
 from parsimonious.utils import evaluate_string
@@ -236,7 +236,8 @@ rule_syntax = (r'''
     sequence = term term+
     not_term = "!" term _
     lookahead_term = "&" term _
-    term = not_term / lookahead_term / quantified / atom
+    term = not_term / lookahead_term / separated / quantified / atom
+    separated = quantified "%" _ atom
     quantified = atom quantifier
     atom = reference / literal / regex / parenthesized
     regex = "~" spaceless_literal ~"[ilmsuxa]*"i _
@@ -344,6 +345,11 @@ class RuleVisitor(NodeVisitor):
                 min_match = int(quantifier[0]) if quantifier[0] else 0
                 max_match = int(quantifier[1]) if quantifier[1] else float('inf')
             return Quantifier(atom, min=min_match, max=max_match)
+
+    def visit_separated(self, node, separated):
+        quantified, percent, _, separator = separated
+        return Separated(quantified.members[0], separator,
+                         min=quantified.min, max=quantified.max)
 
     def visit_lookahead_term(self, node, lookahead_term):
         ampersand, term, _ = lookahead_term
