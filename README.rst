@@ -14,6 +14,42 @@ of RAM to do one page, but it's applicable to all sorts of languages.
 :Package: https://pypi.org/project/parsimonious/
 
 
+Railroad diagrams
+=================
+
+Install the optional renderer with ``pip install "parsimonious[railroad]"``.
+It produces standalone SVG without external binaries or GUI libraries::
+
+    from pathlib import Path
+    from parsimonious.grammar import Grammar
+    from parsimonious.diagrams import convert_grammar_to_diagram
+
+    grammar = Grammar('''
+        greeting = "hello" space name
+        space = " "+
+        name = ~"[A-Za-z]+"
+    ''')
+    diagrams = convert_grammar_to_diagram(grammar, collapsible=('space',))
+    Path('greeting.svg').write_bytes(diagrams['greeting'])
+
+The result is an ``OrderedDict`` of rule names to UTF-8 SVG bytes, in the
+grammar's order. Each SVG includes its stylesheet and can be opened directly in
+a browser or embedded as an image. The grammar is unchanged.
+
+References normally appear as rule-name boxes. ``collapsible`` expands selected
+references in place, stopping at recursive references. Aliases share the
+canonical name of their compiled expression. Every rule still gets its own
+diagram. Ordered alternatives are displayed from top to bottom; lookahead is
+explicitly labelled as consuming no input. Bounded repetitions carry count
+labels rather than duplicating their contents thousands of times. Regexes keep
+their flags, literals use Python notation (including byte strings and escapes),
+and custom parsers are labelled opaque boxes without executing them.
+
+Only ``engine='railroad_diagrams'`` is supported. The renderer is imported when
+the function is called; ordinary parsing and importing the diagrams module do
+not require the optional dependency.
+
+
 Goals
 =====
 
